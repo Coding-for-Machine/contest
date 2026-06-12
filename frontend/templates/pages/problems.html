@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Masalalar — RobaContest</title>
+<link rel="stylesheet" href="../assets/css/style.css"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<style>
+/* ─── Page-specific overrides ─── */
+body { background: #f8fafc; }
+
+.tag-filter-strip {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding-bottom: 2px;
+  margin-bottom: 20px;
+  scrollbar-width: none;
+}
+.tag-filter-strip::-webkit-scrollbar { display: none; }
+
+.tag-filter-btn {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.03em;
+  color: var(--text-3);
+  background: var(--bg);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-full);
+  padding: 5px 14px;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition);
+  flex-shrink: 0;
+}
+.tag-filter-btn:hover { color: var(--text); border-color: var(--border-hi); }
+.tag-filter-btn.active {
+  color: var(--accent-dark);
+  background: var(--accent-dim);
+  border-color: var(--border-focus);
+}
+
+/* Stats cards */
+.diff-stat-card {
+  background: var(--bg);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px;
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  border: 1px solid var(--border);
+  box-shadow: var(--shadow-xs);
+  transition: var(--transition-slow);
+  cursor: default;
+}
+.diff-stat-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+
+.diff-stat-icon {
+  width: 40px; height: 40px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px; flex-shrink: 0;
+}
+.diff-stat-card.easy   .diff-stat-icon { background: var(--easy-bg);   }
+.diff-stat-card.medium .diff-stat-icon { background: var(--medium-bg); }
+.diff-stat-card.hard   .diff-stat-icon { background: var(--hard-bg);   }
+
+.diff-stat-pct {
+  font-family: var(--font-mono);
+  font-size: 22px; font-weight: 800;
+  margin-left: auto;
+}
+.diff-stat-card.easy   .diff-stat-pct { color: var(--easy);   }
+.diff-stat-card.medium .diff-stat-pct { color: var(--medium); }
+.diff-stat-card.hard   .diff-stat-pct { color: var(--hard);   }
+
+/* Table title cell */
+.problem-title-link {
+  font-weight: 600;
+  color: var(--text);
+  transition: color 0.12s;
+}
+.rc-table tbody tr:hover .problem-title-link { color: var(--accent); }
+
+.problem-id {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--text-4);
+}
+
+/* Rate cell */
+.rate-cell { min-width: 80px; }
+.rate-val {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  font-weight: 600;
+}
+.rate-val.high   { color: var(--easy-dark);   }
+.rate-val.medium { color: var(--medium-dark); }
+.rate-val.low    { color: var(--hard-dark);   }
+
+/* Empty / error */
+.empty-cell {
+  padding: 56px 20px !important;
+  text-align: center;
+  font-size: 13px;
+  color: var(--text-4);
+}
+.empty-icon { font-size: 30px; display: block; margin-bottom: 10px; opacity: 0.5; }
+
+/* Loader row */
+.loader-cell {
+  padding: 52px 20px !important;
+  text-align: center;
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--text-4);
+}
+</style>
+</head>
+<body>
+
+<!-- ── TOPBAR ── -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="logo">
+      <div class="logo-mark">R</div>
+      RobaContest
+    </a>
+    <nav class="topbar-nav">
+      <a href="../index.html"         class="nav-link">Dashboard</a>
+      <a href="problems.html"         class="nav-link active">Masalalar</a>
+      <a href="contests.html"         class="nav-link">Musobaqalar</a>
+      <a href="leaderboard.html"      class="nav-link">Reyting</a>
+    </nav>
+    <div class="topbar-right">
+      <a href="login.html"  class="btn btn-ghost btn-sm btn-login">Kirish</a>
+      <a href="login.html"  class="btn btn-primary btn-sm btn-signup">Ro'yxatdan o'tish</a>
+      <a href="profile.html" class="user-avatar" style="display:none">AS</a>
+    </div>
+  </div>
+</header>
+
+<!-- ── MAIN ── -->
+<main class="page-main" style="background:#f8fafc;min-height:calc(100vh - 56px)">
+
+  <!-- Page header -->
+  <div class="page-header anim-fade-up">
+    <div>
+      <div class="breadcrumb">
+        <a href="../index.html">robacontest</a>
+        <span class="breadcrumb-sep">›</span>
+        <span style="color:var(--text-3)">masalalar</span>
+      </div>
+      <h1 class="page-title">Masalalar</h1>
+      <p class="page-subtitle" id="totalText">Yuklanmoqda...</p>
+    </div>
+
+    <!-- Controls -->
+    <div style="display:flex;flex-direction:column;gap:10px;align-items:flex-end">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end">
+        <!-- Search -->
+        <div class="input-search-wrap">
+          <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <input class="input" id="searchInput" type="search"
+            placeholder="masala qidirish..." autocomplete="off" spellcheck="false"
+            style="width:210px"/>
+        </div>
+        <!-- Difficulty -->
+        <select class="select" id="diffFilter" style="width:140px">
+          <option value="">barcha daraja</option>
+          <option value="easy">Easy</option>
+          <option value="medium">Medium</option>
+          <option value="hard">Hard</option>
+        </select>
+        <!-- Category -->
+        <select class="select" id="catFilter" style="width:160px">
+          <option value="">barcha kategoriya</option>
+        </select>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats -->
+  <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:20px" class="anim-fade-up">
+    <div class="diff-stat-card easy">
+      <div class="diff-stat-icon">🟢</div>
+      <div>
+        <div class="section-title" style="margin-bottom:4px">Easy</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-4)" id="easyCount">— ta masala</div>
+      </div>
+      <div class="diff-stat-pct" id="easyPct">—</div>
+    </div>
+    <div class="diff-stat-card medium">
+      <div class="diff-stat-icon">🟡</div>
+      <div>
+        <div class="section-title" style="margin-bottom:4px">Medium</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-4)" id="medCount">— ta masala</div>
+      </div>
+      <div class="diff-stat-pct" id="medPct">—</div>
+    </div>
+    <div class="diff-stat-card hard">
+      <div class="diff-stat-icon">🔴</div>
+      <div>
+        <div class="section-title" style="margin-bottom:4px">Hard</div>
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-4)" id="hardCount">— ta masala</div>
+      </div>
+      <div class="diff-stat-pct" id="hardPct">—</div>
+    </div>
+  </div>
+
+  <!-- Tag filter strip -->
+  <div class="tag-filter-strip" id="tagsStrip">
+    <button class="tag-filter-btn active" data-tag="" onclick="setTag(this,'')">Barchasi</button>
+  </div>
+
+  <!-- Table -->
+  <div class="table-wrap" style="margin-bottom:16px">
+    <div class="table-scroll">
+      <table class="rc-table">
+        <thead>
+          <tr>
+            <th style="width:54px">#</th>
+            <th>Masala nomi</th>
+            <th style="width:220px">Mavzular</th>
+            <th class="sortable" style="width:110px" onclick="toggleSort('difficulty')">Qiyinlik</th>
+            <th class="sortable" style="width:90px"  onclick="toggleSort('acceptance_rate')">Qabul %</th>
+            <th style="width:60px;text-align:center">Holat</th>
+          </tr>
+        </thead>
+        <tbody id="tbody">
+          <tr><td colspan="6" class="loader-cell">
+            <span class="spinner" style="vertical-align:middle;margin-right:8px"></span>
+            Masalalar yuklanmoqda...
+          </td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer-bar">
+    <div class="pag-info" id="pagInfo">—</div>
+    <button class="load-more-btn" id="loadBtn" onclick="loadMore()">
+      Ko'proq yuklash
+      <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>
+    </button>
+  </div>
+
+</main>
+
+<script src="../assets/js/main.js"></script>
+<script>
+/* ═══ CONFIG ═══ */
+const API       = window.RC?.API_BASE || 'http://localhost:8000/api';
+const PAGE_SIZE = 20;
+
+/* ═══ STATE ═══ */
+let offset    = 0;
+let total     = 0;
+let loading   = false;
+let hasMore   = true;
+let sortField = '';
+let sortDir   = 'asc';
+
+const filters = { search:'', difficulty:'', category_id:'', tag_id:'' };
+
+/* ═══ BUILD ROW ═══ */
+function buildRow(p, idx) {
+  const slug  = p.slug || p.id;
+  const diff  = (p.difficulty || p.diff || 'easy').toLowerCase();
+  const rate  = Math.round(p.acceptance_rate ?? p.rate ?? 0);
+  const rCls  = rate >= 60 ? 'high' : rate >= 35 ? 'medium' : 'low';
+  const tags  = (p.tags || []).slice(0, 3);
+  const delay = `animation-delay:${(idx % PAGE_SIZE) * 25}ms`;
+
+  const statusHtml = p.status === 1 || p.status === true
+    ? '<span class="status-icon status-solved" title="Yechilgan">✓</span>'
+    : p.status === 0 || p.status === false
+    ? '<span class="status-icon status-attempted" title="Urinilgan">✗</span>'
+    : '<span class="status-icon status-none" title="—">·</span>';
+
+  const tagsHtml = tags.length
+    ? tags.map(t => `<span class="chip">${escHtml(typeof t === 'string' ? t : t.name)}</span>`).join('')
+    : `<span style="color:var(--text-5);font-size:11px">—</span>`;
+
+  return `<tr class="anim-fade-up" style="${delay}"
+    onclick="location.href='problem-detail.html?id=${encodeURIComponent(slug)}'">
+    <td><span class="problem-id">${p.id}</span></td>
+    <td>
+      <div class="problem-title-link">${escHtml(p.title)}</div>
+      ${p.time_limit ? `<div style="font-family:var(--font-mono);font-size:10px;color:var(--text-5);margin-top:2px">${p.time_limit}s · ${p.memory_limit || 256}MB</div>` : ''}
+    </td>
+    <td><div style="display:flex;flex-wrap:wrap;gap:4px">${tagsHtml}</div></td>
+    <td><span class="badge badge-${diff}">${diff.charAt(0).toUpperCase() + diff.slice(1)}</span></td>
+    <td class="rate-cell">
+      <div class="rate-val ${rCls}">${rate}%</div>
+      <div class="rate-bar"><div class="rate-fill ${rCls}" data-width="${rate}"></div></div>
+    </td>
+    <td style="text-align:center">${statusHtml}</td>
+  </tr>`;
+}
+
+/* ═══ LOAD ═══ */
+async function loadProblems(reset = false) {
+  if (loading) return;
+  if (reset) { offset = 0; hasMore = true; }
+  if (!hasMore && !reset) return;
+
+  loading = true;
+  const tbody = document.getElementById('tbody');
+
+  if (reset) {
+    tbody.innerHTML = `<tr><td colspan="6" class="loader-cell">
+      <span class="spinner" style="vertical-align:middle;margin-right:8px"></span>
+      Yuklanmoqda...</td></tr>`;
+  }
+
+  const qs = new URLSearchParams({ limit: PAGE_SIZE, offset });
+  if (filters.difficulty)  qs.append('difficulty',   filters.difficulty);
+  if (filters.search)      qs.append('search',       filters.search);
+  if (filters.category_id) qs.append('category_id',  filters.category_id);
+  if (filters.tag_id)      qs.append('tag_id',       filters.tag_id);
+  if (sortField)           { qs.append('sort', sortField); qs.append('dir', sortDir); }
+
+  try {
+    const data = await apiFetch(`/problems?${qs}`);
+    total = data.total || 0;
+    const items = data.items || [];
+
+    const html = items.map((p, i) => buildRow(p, reset ? i : offset + i)).join('');
+
+    if (reset) {
+      tbody.innerHTML = html || `<tr><td colspan="6" class="empty-cell">
+        <span class="empty-icon">🔍</span>Hech qanday masala topilmadi
+      </td></tr>`;
+    } else {
+      tbody.insertAdjacentHTML('beforeend', html);
+    }
+
+    if (data.stats) updateStats(data.stats);
+    document.getElementById('totalText').textContent = `${total} ta masala`;
+    updatePagInfo(items.length);
+
+    offset  += items.length;
+    hasMore  = items.length === PAGE_SIZE && offset < total;
+    updateLoadBtn();
+    animateRateBars();
+
+  } catch (err) {
+    if (reset) {
+      tbody.innerHTML = `<tr><td colspan="6" class="empty-cell">
+        <span class="empty-icon">⚠️</span>
+        Xatolik: ${escHtml(err.message)}<br><br>
+        <button class="btn btn-secondary btn-sm" onclick="loadProblems(true)" style="margin-top:8px">
+          Qayta urinib ko'rish
+        </button>
+      </td></tr>`;
+    }
+    showToast(err.message, 'error');
+  } finally {
+    loading = false;
+  }
+}
+
+function loadMore() { loadProblems(false); }
+
+/* ═══ STATS ═══ */
+function updateStats(s) {
+  const easy = s.easy || 0, med = s.medium || 0, hard = s.hard || 0;
+  const sum  = (easy + med + hard) || 1;
+  document.getElementById('easyCount').textContent  = `${easy} ta masala`;
+  document.getElementById('medCount').textContent   = `${med} ta masala`;
+  document.getElementById('hardCount').textContent  = `${hard} ta masala`;
+  document.getElementById('easyPct').textContent    = `${Math.round(easy / sum * 100)}%`;
+  document.getElementById('medPct').textContent     = `${Math.round(med  / sum * 100)}%`;
+  document.getElementById('hardPct').textContent    = `${Math.round(hard / sum * 100)}%`;
+}
+
+/* ═══ UI ═══ */
+function updatePagInfo(count) {
+  const shown = Math.min(offset + (count || 0), total);
+  const from  = Math.min(offset + 1, total);
+  document.getElementById('pagInfo').innerHTML = total > 0
+    ? `<span>${from}–${shown}</span> / <span>${total}</span> masala`
+    : '0 masala';
+}
+
+function updateLoadBtn() {
+  const btn = document.getElementById('loadBtn');
+  btn.disabled = !hasMore;
+  btn.innerHTML = hasMore
+    ? `Ko'proq yuklash <svg width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="m9 18 6-6-6-6"/></svg>`
+    : `Barchasi yuklandi ✓`;
+}
+
+function toggleSort(field) {
+  if (sortField === field) sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+  else { sortField = field; sortDir = 'asc'; }
+  loadProblems(true);
+}
+
+function setTag(btn, id) {
+  document.querySelectorAll('.tag-filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  filters.tag_id = id;
+  loadProblems(true);
+}
+
+/* ═══ FILTER DATA ═══ */
+async function loadFiltersData() {
+  try {
+    const cats = await apiFetch('/categories');
+    if (Array.isArray(cats)) {
+      const sel = document.getElementById('catFilter');
+      cats.forEach(c => {
+        const o = document.createElement('option');
+        o.value = c.id; o.textContent = c.name; sel.appendChild(o);
+      });
+    }
+  } catch {}
+
+  try {
+    const tags = await apiFetch('/tags');
+    if (Array.isArray(tags)) {
+      const strip = document.getElementById('tagsStrip');
+      tags.slice(0, 18).forEach(t => {
+        const btn = document.createElement('button');
+        btn.className    = 'tag-filter-btn';
+        btn.dataset.tag  = t.id;
+        btn.textContent  = t.name;
+        btn.onclick      = () => setTag(btn, String(t.id));
+        strip.appendChild(btn);
+      });
+    }
+  } catch {}
+}
+
+/* ═══ EVENTS ═══ */
+document.addEventListener('DOMContentLoaded', () => {
+  loadProblems(true);
+  loadFiltersData();
+
+  const debouncedSearch = debounce(() => loadProblems(true), 380);
+  document.getElementById('searchInput').addEventListener('input', function () {
+    filters.search = this.value.trim();
+    debouncedSearch();
+  });
+
+  document.getElementById('diffFilter').addEventListener('change', function () {
+    filters.difficulty = this.value;
+    loadProblems(true);
+  });
+
+  document.getElementById('catFilter').addEventListener('change', function () {
+    filters.category_id = this.value;
+    loadProblems(true);
+  });
+
+  /* Infinite scroll */
+  const observer = new IntersectionObserver(entries => {
+    if (entries[0].isIntersecting && hasMore && !loading) loadMore();
+  }, { threshold: 0.5 });
+  observer.observe(document.getElementById('loadBtn'));
+});
+
+function escHtml(str) {
+  const d = document.createElement('div');
+  d.textContent = str || '';
+  return d.innerHTML;
+}
+</script>
+</body>
+</html>

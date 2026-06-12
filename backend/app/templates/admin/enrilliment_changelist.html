@@ -1,0 +1,48 @@
+{% extends "admin/change_list.html" %}
+
+{% block content_top %}
+<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+    <!-- Mini Kartalar -->
+    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <p class="text-gray-500 text-sm font-medium">Jami to'lovlar</p>
+        <h2 class="text-2xl font-bold text-green-600">{{ total_revenue }} ta</h2>
+    </div>
+    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
+        <p class="text-gray-500 text-sm font-medium">Faol kurslar</p>
+        <h2 class="text-2xl font-bold text-indigo-600">{{ active_courses }} ta</h2>
+    </div>
+</div>
+
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+    <!-- Asosiy Grafika (Line) -->
+    <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <h3 class="text-lg font-bold mb-4">So'nggi 7 kunlik faollik</h3>
+        <canvas id="mainActivityChart" height="120"></canvas>
+    </div>
+
+    <!-- Kurslar taqsimoti (Pie) -->
+    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
+        <h3 class="text-lg font-bold mb-4">Kurslar bo'yicha</h3>
+        <canvas id="coursePieChart"></canvas>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net"></script>
+<script>
+    document.addEventListener("DOMContentLoaded", function() {
+        // Line Chart
+        new Chart(document.getElementById('mainActivityChart'), {
+            type: 'line',
+            data: {{ main_chart|safe }},
+            options: { responsive: true, plugins: { legend: { display: false } } }
+        });
+
+        // Pie Chart
+        new Chart(document.getElementById('coursePieChart'), {
+            type: 'doughnut',
+            data: {{ pie_chart|safe }},
+            options: { responsive: true, cutout: '70%' }
+        });
+    });
+</script>
+{% endblock %}

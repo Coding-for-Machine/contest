@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0,maximum-scale=1.0,user-scalable=no"/>
+<title>Kirish — CfM Contest</title>
+<link rel="stylesheet" href="/assets/css/style.css">
+
+<title>CfM Contest – Onlayn Musobaqalarda Qatnashing</title>
+
+<meta name="description"
+      content="CFM musobaqalarida qatnashing. Telegram bot orqali xavfsizlik kodini oling, ro'yxatdan o'ting va onlayn musobaqalarda ishtirok eting.">
+
+<meta name="keywords"
+      content="CFM, musobaqa, online musobaqa, telegram bot, konkurs, olimpiada, test, qatnashish, xavfsizlik kodi">
+
+<meta name="robots" content="index, follow">
+
+<link rel="canonical" href="https://sizning-domeningiz.uz/">
+
+<meta property="og:title" content="CFM Musobaqalari">
+<meta property="og:description" content="Telegram bot orqali ro'yxatdan o'ting va musobaqalarda qatnashing.">
+<meta property="og:type" content="website">
+<meta property="og:url" content="https://sizning-domeningiz.uz/">
+<meta property="og:image" content="https://sizning-domeningiz.uz/images/og-image.jpg">
+
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="CFM Musobaqalari">
+<meta name="twitter:description" content="Telegram bot orqali ro'yxatdan o'ting va musobaqalarda qatnashing.">
+<meta name="twitter:image" content="https://sizning-domeningiz.uz/images/og-image.jpg">
+<style>
+html, body {
+  height: 100%;
+  overflow: hidden;
+  background: linear-gradient(135deg, #f0f4ff 0%, #fafbff 50%, #f5f8ff 100%);
+}
+
+/* Ambient glows */
+.bg-glow {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 0;
+  overflow: hidden;
+}
+.glow-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(120px);
+  opacity: 0.18;
+}
+.glow-blob-1 { top: -80px; left: -80px;  width: 420px; height: 420px; background: #3b82f6; }
+.glow-blob-2 { bottom: -80px; right: -80px; width: 480px; height: 480px; background: #8b5cf6; }
+.glow-blob-3 { top: 40%; left: 40%; width: 300px; height: 300px; background: #06b6d4; opacity: 0.08; }
+
+/* Floating emojis */
+.bg-floats {
+  position: fixed; inset: 0;
+  pointer-events: none; z-index: 1;
+  overflow: hidden;
+}
+.float-item {
+  position: absolute;
+  user-select: none;
+  opacity: 0.4;
+}
+.float-item:nth-child(1) { font-size: 38px; left:7%;  top:14%; animation: floatUp 13s infinite ease-in-out; }
+.float-item:nth-child(2) { font-size: 28px; right:9%; top:18%; animation: floatUp 17s infinite ease-in-out 1.5s; }
+.float-item:nth-child(3) { font-size: 42px; left:10%; bottom:14%; animation: floatUp 15s infinite ease-in-out 3s; }
+.float-item:nth-child(4) { font-size: 34px; right:11%; bottom:17%; animation: floatUp 14s infinite ease-in-out 2s; }
+.float-item:nth-child(5) { font-size: 24px; left:44%; top:7%;  animation: floatUp 11s infinite ease-in-out 4s; }
+.float-item:nth-child(6) { font-size: 26px; right:43%; bottom:7%; animation: floatUp 12s infinite ease-in-out 5s; }
+.float-item:nth-child(7) { font-size: 22px; left:22%; top:46%; animation: floatUp 19s infinite ease-in-out 1s; opacity: 0.2; }
+.float-item:nth-child(8) { font-size: 22px; right:22%; top:52%; animation: floatUp 21s infinite ease-in-out 2.5s; opacity: 0.2; }
+
+@keyframes floatUp {
+  0%   { transform: translateY(0)   rotate(0deg)  scale(1);    opacity: 0.3; }
+  50%  { transform: translateY(-28px) rotate(15deg) scale(1.12); opacity: 0.7; }
+  100% { transform: translateY(0)   rotate(0deg)  scale(1);    opacity: 0.3; }
+}
+
+/* Card */
+.login-wrap {
+  position: relative; z-index: 10;
+  display: flex; align-items: center; justify-content: center;
+  min-height: 100vh;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 420px;
+  background: rgba(255,255,255,0.92);
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  border: 1px solid rgba(59,130,246,0.15);
+  border-radius: 28px;
+  box-shadow: 0 24px 64px rgba(59,130,246,0.08), 0 4px 16px rgba(0,0,0,0.04), inset 0 1px 0 rgba(255,255,255,0.9);
+  padding: 44px 36px 36px;
+  text-align: center;
+}
+
+/* Logo mark */
+.login-logo {
+  width: 68px; height: 68px;
+  background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+  border-radius: 20px;
+  margin: 0 auto 24px;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 8px 28px rgba(59,130,246,0.30);
+  font-size: 30px;
+  font-weight: 900;
+  color: #fff;
+  letter-spacing: -0.04em;
+  border: 1px solid rgba(255,255,255,0.3);
+  transition: transform 0.2s, box-shadow 0.2s;
+}
+.login-logo:hover {
+  transform: scale(1.04);
+  box-shadow: 0 12px 36px rgba(59,130,246,0.40);
+}
+
+.login-title {
+  font-size: 22px;
+  font-weight: 800;
+  color: var(--text);
+  letter-spacing: -0.03em;
+  margin-bottom: 8px;
+}
+
+.login-sub {
+  font-size: 13.5px;
+  color: var(--text-3);
+  line-height: 1.65;
+  margin-bottom: 32px;
+}
+
+.bot-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--accent-dark);
+  font-weight: 600;
+  padding: 3px 9px;
+  background: var(--accent-dim);
+  border-radius: 8px;
+  border: 1px solid var(--accent-glow);
+  text-decoration: none;
+  transition: var(--transition);
+}
+.bot-link:hover {
+  background: rgba(59,130,246,0.14);
+  box-shadow: 0 0 12px var(--accent-glow);
+}
+
+/* OTP inputs */
+.otp-row {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 28px;
+}
+
+.otp-box {
+  width: 52px; height: 60px;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-md);
+  border-radius: 14px;
+  text-align: center;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--text);
+  outline: none;
+  transition: var(--transition);
+  caret-color: var(--accent);
+  -webkit-appearance: none;
+  -moz-appearance: textfield;
+}
+.otp-box::-webkit-inner-spin-button,
+.otp-box::-webkit-outer-spin-button { -webkit-appearance: none; margin: 0; }
+
+.otp-box:focus {
+  border-color: var(--accent);
+  background: var(--bg);
+  box-shadow: 0 0 0 4px var(--accent-dim);
+  transform: scale(1.05) translateY(-2px);
+}
+.otp-box.filled {
+  border-color: var(--accent-glow);
+  background: var(--accent-dim);
+  color: var(--accent-dark);
+}
+.otp-box.error {
+  border-color: var(--hard);
+  background: var(--hard-bg);
+  animation: shake 0.4s;
+}
+.otp-box.success {
+  border-color: var(--easy);
+  background: var(--easy-bg);
+  color: var(--easy-dark);
+}
+
+/* Submit btn */
+.login-btn {
+  width: 100%;
+  padding: 14px;
+  background: linear-gradient(135deg, var(--accent) 0%, var(--accent-dark) 100%);
+  color: #fff;
+  border: none;
+  border-radius: 14px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 6px 22px rgba(59,130,246,0.28);
+  transition: all 0.2s;
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  letter-spacing: -0.01em;
+}
+.login-btn:hover:not(:disabled) {
+  background: linear-gradient(135deg, #4f95ff 0%, #2563eb 100%);
+  box-shadow: 0 8px 28px rgba(59,130,246,0.40);
+  transform: translateY(-1px);
+}
+.login-btn:active:not(:disabled) { transform: translateY(0); }
+.login-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Back link */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  margin-top: 20px;
+  color: var(--text-4);
+  font-size: 12.5px;
+  text-decoration: none;
+  transition: color 0.15s;
+}
+.back-link:hover { color: var(--text-3); }
+
+/* Divider */
+.login-divider {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 20px 0;
+  color: var(--text-5);
+  font-size: 11px;
+  font-family: var(--font-mono);
+}
+.login-divider::before,
+.login-divider::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* Step indicator */
+.step-dots {
+  display: flex;
+  justify-content: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+.step-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  background: var(--border-hi);
+  transition: var(--transition);
+}
+.step-dot.active {
+  background: var(--accent);
+  width: 20px;
+  border-radius: 3px;
+  box-shadow: 0 0 8px var(--accent-glow);
+}
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%,75%  { transform: translateX(-5px); }
+  50%      { transform: translateX(5px); }
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<!-- Ambient -->
+<div class="bg-glow">
+  <div class="glow-blob glow-blob-1"></div>
+  <div class="glow-blob glow-blob-2"></div>
+  <div class="glow-blob glow-blob-3"></div>
+</div>
+
+<!-- Floating emojis -->
+<div class="bg-floats">
+  <div class="float-item">🏆</div>
+  <div class="float-item">✨</div>
+  <div class="float-item">🎉</div>
+  <div class="float-item">🥇</div>
+  <div class="float-item">🥈</div>
+  <div class="float-item">🥉</div>
+  <div class="float-item">🎊</div>
+  <div class="float-item">⚡</div>
+</div>
+
+<!-- Card -->
+<div class="login-wrap">
+  <div class="login-card">
+
+    <!-- Logo -->
+    <a href="../index.html" class="login-logo">R</a>
+
+    <div class="login-title">CfM Contest-ga xush kelibsiz</div>
+    <p class="login-sub">
+      Musobaqalarda qatnashish uchun
+       <a href="https://t.me/cfm_login_bot?start=competition" target="_blank" class="bot-link">
+        <svg width="12" height="12" fill="currentColor" viewBox="0 0 24 24"><path d="M12 0C5.373 0 0 5.373 0 12s5.373 12 12 12 12-5.373 12-12S18.627 0 12 0zm5.562 8.248l-1.97 9.289c-.145.658-.537.818-1.084.508l-3-2.21-1.447 1.394c-.16.16-.295.295-.605.295l.213-3.053 5.56-5.023c.242-.213-.054-.333-.373-.12l-6.871 4.326-2.962-.924c-.643-.204-.657-.643.136-.953l11.57-4.461c.537-.194 1.006.131.833.932z"/></svg>
+        @cfm_login_bot
+      </a>
+      ga kiring va 6 xonali kodni oling.
+    </p>
+
+    <!-- Step dots -->
+    <div class="step-dots">
+      <div class="step-dot active"></div>
+      <div class="step-dot"></div>
+      <div class="step-dot"></div>
+    </div>
+
+    <!-- OTP Form -->
+    <form id="otpForm" onsubmit="return handleSubmit(event)">
+      <div class="otp-row" id="otpRow">
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+        <input type="number" class="otp-box" maxlength="1" max="9" min="0" autocomplete="off" inputmode="numeric"/>
+      </div>
+      <input type="hidden" id="fullCode" name="full_code"/>
+
+      <button type="submit" class="login-btn" id="loginBtn">
+        <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+        Kodni Tasdiqlash
+      </button>
+    </form>
+
+    <a href="/" class="back-link">
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      Bosh sahifaga qaytish
+    </a>
+  </div>
+</div>
+
+<script src="../assets/js/main.js"></script>
+<script>
+/* ════════════ CONFIG ════════════ */
+const API_BASE    = window.RC?.API_BASE || 'http://localhost:8000/api';
+let isSubmitting  = false;
+
+/* ════════════ INIT ════════════ */
+document.addEventListener('DOMContentLoaded', () => {
+  /* Auto-redirect if already logged in */
+  const token = localStorage.getItem('auth_token');
+  if (token) {
+    fetch(API_BASE + '/verify', {
+      headers: { 'Authorization': 'Bearer ' + token, 'Accept': 'application/json' }
+    }).then(r => {
+      if (r.ok) window.location.replace('../index.html');
+      else { localStorage.removeItem('auth_token'); localStorage.removeItem('user_data'); }
+    }).catch(() => {});
+  }
+
+  /* Focus first box */
+  const boxes = document.querySelectorAll('.otp-box');
+  boxes[0]?.focus();
+
+  boxes.forEach((box, idx) => {
+    /* Input */
+    box.addEventListener('input', () => {
+      box.value = box.value.replace(/[^0-9]/g, '').slice(0, 1);
+      box.classList.toggle('filled', box.value !== '');
+
+      if (box.value && idx < boxes.length - 1) {
+        boxes[idx + 1].focus();
+      }
+
+      /* Auto-submit when all filled */
+      const code = getCode();
+      if (code.length === 6 && !isSubmitting) submitCode(code);
+    });
+
+    /* Backspace */
+    box.addEventListener('keydown', e => {
+      if (e.key === 'Backspace' && !box.value && idx > 0) {
+        boxes[idx - 1].value = '';
+        boxes[idx - 1].classList.remove('filled');
+        boxes[idx - 1].focus();
+      }
+    });
+
+    /* Paste */
+    box.addEventListener('paste', e => {
+      e.preventDefault();
+      const pasted = (e.clipboardData || window.clipboardData).getData('text').trim();
+      if (/^\d{6}$/.test(pasted)) {
+        boxes.forEach((b, i) => {
+          b.value = pasted[i];
+          b.classList.add('filled');
+        });
+        boxes[5].focus();
+        if (!isSubmitting) submitCode(pasted);
+      }
+    });
+  });
+});
+
+function getCode() {
+  return Array.from(document.querySelectorAll('.otp-box')).map(b => b.value).join('');
+}
+
+function handleSubmit(e) {
+  e.preventDefault();
+  const code = getCode();
+  if (code.length < 6) {
+    showToast("Iltimos, 6 xonali kodni to'liq kiriting!", 'warning');
+    return false;
+  }
+  submitCode(code);
+  return false;
+}
+
+async function submitCode(code) {
+  if (isSubmitting) return;
+  isSubmitting = true;
+
+  const btn = document.getElementById('loginBtn');
+  btn.disabled = true;
+  btn.innerHTML = `
+    <span style="width:16px;height:16px;border:2px solid rgba(255,255,255,0.4);border-top-color:#fff;border-radius:50%;animation:spin .7s linear infinite;display:inline-block;flex-shrink:0"></span>
+    Tekshirilmoqda...`;
+
+  const dots = document.querySelectorAll('.step-dot');
+  dots[1]?.classList.add('active');
+
+  try {
+    const res = await fetch(API_BASE + '/login', {
+      method:  'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json' },
+      body:    JSON.stringify({ otp_code: code }),
+    });
+
+    const data = await res.json().catch(() => ({}));
+
+    if (!res.ok) throw new Error(data.error || data.detail || 'Tasdiqlash kodi xato!');
+
+    if (data.token) {
+      localStorage.setItem('auth_token', data.token);
+      localStorage.setItem('user_data', JSON.stringify(data.user || {}));
+
+      /* Success state */
+      document.querySelectorAll('.otp-box').forEach(b => {
+        b.classList.remove('filled', 'error');
+        b.classList.add('success');
+      });
+      dots[2]?.classList.add('active');
+
+      const name = data.user?.full_name || data.user?.username || 'Chempion';
+      showToast(`Xush kelibsiz, ${name}! 🏆`, 'success');
+
+      setTimeout(() => {
+        const next = new URLSearchParams(location.search).get('next') || '../index.html';
+        window.location.replace(next);
+      }, 1000);
+    } else {
+      throw new Error("Server token qaytarmadi.");
+    }
+
+  } catch (err) {
+    showToast(err.message, 'error');
+    document.querySelectorAll('.otp-box').forEach(b => {
+      b.value = '';
+      b.classList.remove('filled', 'success');
+      b.classList.add('error');
+    });
+    setTimeout(() => {
+      document.querySelectorAll('.otp-box').forEach(b => b.classList.remove('error'));
+      document.querySelector('.otp-box')?.focus();
+    }, 600);
+    dots[1]?.classList.remove('active');
+  } finally {
+    isSubmitting = false;
+    btn.disabled = false;
+    btn.innerHTML = `
+      <svg width="15" height="15" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      Kodni Tasdiqlash`;
+  }
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,447 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8"/>
+    <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SEO va Open Graph teglar (Go backenddan keladi) -->
+    <title>{{if .Title}}{{.Title}}{{else}}Foydalanuvchi profili - CFM Contest{{end}}</title>
+    <meta name="description" content="{{if .Description}}{{.Description}}{{else}}Dasturlash platformasi profil sahifasi{{end}}">
+    <link rel="canonical" href="{{if .URL}}{{.URL}}{{else}}https://saytingiz.com{{end}}">
+    
+    <meta property="og:title" content="{{if .Title}}{{.Title}}{{else}}CFM Contest{{end}}">
+    <meta property="og:description" content="{{if .Description}}{{.Description}}{{else}}Dasturlash platformasi{{end}}">
+    <meta property="og:url" content="{{if .URL}}{{.URL}}{{else}}https://saytingiz.com{{end}}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="CFM Contest">
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+<style>
+body { background: #f8fafc; }
+
+/* Profile hero */
+.profile-hero {
+  background: linear-gradient(135deg, #1e3a5f 0%, #1d4ed8 100%);
+  border-radius: var(--radius-2xl);
+  padding: 0;
+  margin-bottom: 24px;
+  overflow: hidden;
+  position: relative;
+}
+.profile-cover {
+  height: 120px;
+  background: linear-gradient(135deg, #1e40af, #0ea5e9, #8b5cf6);
+  position: relative;
+}
+.profile-cover::before {
+  content:'';position:absolute;inset:0;
+  background:url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.04'%3E%3Ccircle cx='30' cy='30' r='20'/%3E%3C/g%3E%3C/svg%3E");
+}
+.profile-info {
+  padding: 0 28px 24px;
+  background: var(--bg);
+  position: relative;
+}
+.profile-avatar-xl {
+  width: 80px; height: 80px;
+  border-radius: 20px;
+  background: linear-gradient(135deg, var(--accent), #1d4ed8);
+  color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 28px; font-weight: 800;
+  border: 4px solid var(--bg);
+  box-shadow: var(--shadow-md);
+  position: absolute;
+  top: -40px; left: 28px;
+}
+.profile-name {
+  font-size: 20px; font-weight: 800;
+  color: var(--text); letter-spacing: -0.03em;
+  padding-top: 52px;
+}
+.profile-handle {
+  font-family: var(--font-mono); font-size: 13px; color: var(--text-4); margin-top: 2px;
+}
+.profile-badges { display:flex;gap:6px;flex-wrap:wrap;margin-top:10px; }
+
+/* Quick stats */
+.pqs-grid {
+  display: grid; grid-template-columns: repeat(4,1fr); gap: 10px;
+}
+.pqs-item {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 14px 16px; text-align: center;
+  box-shadow: var(--shadow-xs);
+}
+.pqs-val { font-size: 20px; font-weight: 800; letter-spacing: -0.04em; color: var(--text); }
+.pqs-lbl { font-size: 10.5px; color: var(--text-4); margin-top: 3px; }
+
+/* Heatmap */
+.heatmap { display:grid;grid-template-columns:repeat(52,1fr);gap:3px; }
+.hm-cell { aspect-ratio:1;border-radius:2px;background:var(--bg-raised); }
+.hm-1 { background:rgba(34,197,94,0.18); }
+.hm-2 { background:rgba(34,197,94,0.42); }
+.hm-3 { background:rgba(34,197,94,0.68); }
+.hm-4 { background:var(--easy); }
+
+/* Problem breakdown */
+.pb-row {
+  display:flex;align-items:center;gap:12px;
+  padding:12px 0;border-bottom:1px solid var(--border);
+}
+.pb-row:last-child { border-bottom:none; }
+.pb-count { font-family:var(--font-mono);font-size:18px;font-weight:800; min-width:42px; }
+
+/* Submission row */
+.sub-item {
+  display:flex;align-items:center;gap:12px;
+  padding:11px 16px;border-bottom:1px solid var(--border);
+  transition:background .12s;cursor:pointer;
+}
+.sub-item:hover { background:var(--bg-surface); }
+.sub-item:last-child { border-bottom:none; }
+
+/* Tag cloud */
+.tag-cloud { display:flex;flex-wrap:wrap;gap:6px; }
+.tc-tag {
+  display:inline-flex;align-items:center;gap:5px;
+  padding:5px 12px;
+  border-radius:var(--radius-full);
+  font-size:12px;font-weight:500;
+  background:var(--bg-surface);
+  border:1px solid var(--border-md);
+  color:var(--text-3);
+  transition:var(--transition);cursor:default;
+}
+.tc-tag:hover { border-color:var(--accent-glow);color:var(--accent-dark);background:var(--accent-dim); }
+.tc-tag .tc-count {
+  background:var(--bg-raised);
+  padding:1px 6px;border-radius:99px;
+  font-size:10px;font-weight:700;color:var(--text-4);
+  font-family:var(--font-mono);
+}
+
+/* Contest history */
+.ch-row {
+  display:grid;grid-template-columns:1fr 80px 80px 80px;
+  align-items:center;padding:11px 16px;
+  border-bottom:1px solid var(--border);
+  transition:background .12s;cursor:pointer;
+}
+.ch-row:hover { background:var(--bg-surface); }
+.ch-row.head  { background:var(--bg-surface);border-bottom:2px solid var(--border-md);cursor:default; }
+.ch-row:hover.head { background:var(--bg-surface); }
+.ch-row:last-child { border-bottom:none; }
+
+/* Edit btn */
+.edit-fab {
+  position:absolute;top:16px;right:16px;
+}
+
+/* Two col */
+.two-col { display:grid;grid-template-columns:340px 1fr;gap:20px; }
+@media(max-width:900px){ .two-col{grid-template-columns:1fr;} .pqs-grid{grid-template-columns:repeat(2,1fr);} }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="logo"><div class="logo-mark">R</div>RobaContest</a>
+    <nav class="topbar-nav">
+      <a href="../index.html"      class="nav-link">Dashboard</a>
+      <a href="problems.html"      class="nav-link">Masalalar</a>
+      <a href="contests.html"      class="nav-link">Musobaqalar</a>
+      <a href="leaderboard.html"   class="nav-link">Reyting</a>
+    </nav>
+    <div class="topbar-right">
+      <a href="profile.html" class="user-avatar">AS</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+
+  <!-- Profile hero card -->
+  <div class="card anim-fade-up" style="margin-bottom:24px;overflow:visible;position:relative">
+    <div class="profile-cover"></div>
+    <div class="profile-info">
+      <div class="profile-avatar-xl" id="profileAvatar">AS</div>
+      <button class="btn btn-ghost btn-sm edit-fab" onclick="showToast('Tahrirlash — tez kunda','info')">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        Tahrirlash
+      </button>
+      <div class="profile-name" id="profileName">Asadbek Sotvoldiyev</div>
+      <div class="profile-handle" id="profileHandle">@asadbek_s</div>
+      <div class="profile-badges">
+        <span class="badge badge-blue">Rated Div.2</span>
+        <span class="badge" style="background:rgba(245,158,11,.08);color:#b45309;border:1px solid rgba(245,158,11,.2)">🔥 7 kunlik streak</span>
+        <span class="badge" style="background:rgba(139,92,246,.08);color:#6d28d9;border:1px solid rgba(139,92,246,.2)">⚡ Top 10%</span>
+        <span class="badge badge-green">✅ 142 masala</span>
+      </div>
+      <div style="display:flex;gap:20px;margin-top:14px;flex-wrap:wrap">
+        <span style="font-size:12px;color:var(--text-4);display:flex;align-items:center;gap:4px">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>
+          Toshkent, O'zbekiston
+        </span>
+        <span style="font-size:12px;color:var(--text-4);display:flex;align-items:center;gap:4px">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          2024-yildan beri
+        </span>
+        <span style="font-size:12px;color:var(--text-4);display:flex;align-items:center;gap:4px">
+          <svg width="12" height="12" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6A19.79 19.79 0 0 1 2.12 4.18 2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+          Telegram ulangan
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Quick stats -->
+  <div class="pqs-grid anim-fade-up" style="animation-delay:.05s;margin-bottom:24px">
+    <div class="pqs-item">
+      <div class="pqs-val" style="color:var(--accent-dark)">#38</div>
+      <div class="pqs-lbl">Global reyting</div>
+    </div>
+    <div class="pqs-item">
+      <div class="pqs-val">2,840</div>
+      <div class="pqs-lbl">Jami ball</div>
+    </div>
+    <div class="pqs-item">
+      <div class="pqs-val" style="color:var(--easy-dark)">142</div>
+      <div class="pqs-lbl">Yechilgan</div>
+    </div>
+    <div class="pqs-item">
+      <div class="pqs-val" style="color:var(--medium-dark)">12</div>
+      <div class="pqs-lbl">Musobaqalar</div>
+    </div>
+  </div>
+
+  <!-- Tabs -->
+  <div class="tabs anim-fade-up" style="background:var(--bg);border-radius:var(--radius-xl);margin-bottom:20px;border:1px solid var(--border);animation-delay:.08s">
+    <button class="tab-btn active" onclick="switchTab('overview',this)">Umumiy</button>
+    <button class="tab-btn" onclick="switchTab('submissions',this)">Yuborishlar</button>
+    <button class="tab-btn" onclick="switchTab('contests',this)">Musobaqalar</button>
+    <button class="tab-btn" onclick="switchTab('settings',this)">Sozlamalar</button>
+  </div>
+
+  <!-- OVERVIEW -->
+  <div id="pane-overview">
+    <div class="two-col">
+
+      <!-- LEFT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Problem breakdown -->
+        <div class="card-surface" style="padding:20px">
+          <div class="sec-header" style="margin-bottom:16px">
+            <div class="sec-title">Masalalar bo'yicha</div>
+            <span style="font-family:var(--font-mono);font-size:12px;color:var(--text-4)">142 / 512</span>
+          </div>
+
+          <!-- Circle overall -->
+          <div style="display:flex;align-items:center;gap:20px;margin-bottom:16px">
+            <svg width="90" height="90" viewBox="0 0 90 90">
+              <circle fill="none" stroke="var(--bg-raised)" stroke-width="10" cx="45" cy="45" r="34"/>
+              <circle fill="none" stroke="var(--accent)" stroke-width="10" cx="45" cy="45" r="34"
+                stroke-dasharray="213.6" stroke-dashoffset="131"
+                stroke-linecap="round"
+                transform="rotate(-90 45 45)"/>
+              <text x="45" y="50" text-anchor="middle" fill="var(--text)"
+                font-size="15" font-weight="800" font-family="'JetBrains Mono',monospace">38%</text>
+            </svg>
+            <div style="flex:1;display:flex;flex-direction:column;gap:10px">
+              <div class="pb-row" style="padding:0;border:none;margin-bottom:0">
+                <div class="pb-count" style="color:var(--easy-dark)">78</div>
+                <div style="flex:1">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:600;color:var(--easy-dark)">Easy</span>
+                    <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">120</span>
+                  </div>
+                  <div style="height:5px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:65%;background:var(--easy);border-radius:3px"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="pb-row" style="padding:0;border:none;margin-bottom:0">
+                <div class="pb-count" style="color:var(--medium-dark)">51</div>
+                <div style="flex:1">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:600;color:var(--medium-dark)">Medium</span>
+                    <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">280</span>
+                  </div>
+                  <div style="height:5px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:18%;background:var(--medium);border-radius:3px"></div>
+                  </div>
+                </div>
+              </div>
+              <div class="pb-row" style="padding:0;border:none;margin-bottom:0">
+                <div class="pb-count" style="color:var(--hard-dark)">13</div>
+                <div style="flex:1">
+                  <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+                    <span style="font-size:12px;font-weight:600;color:var(--hard-dark)">Hard</span>
+                    <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">112</span>
+                  </div>
+                  <div style="height:5px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+                    <div style="height:100%;width:12%;background:var(--hard);border-radius:3px"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Badges / Achievements -->
+        <div class="card-surface" style="padding:20px">
+          <div class="section-title" style="margin-bottom:12px">Yutuqlar</div>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+            ${[
+              { emoji:'🔥', title:'7 kun streak', lbl:'Faol qatnashuvchi' },
+              { emoji:'⚡', title:'100 masala', lbl:'Yuzta yechish' },
+              { emoji:'🏆', title:'Top 10%', lbl:'Reyting' },
+              { emoji:'🎯', title:'10 musobaqa', lbl:"Musobaqa o'yinchisi" },
+              { emoji:'💡', title:'Hard yechuvchi', lbl:'Hard masala' },
+              { emoji:'🚀', title:'Tez yechuvchi', lbl:'Tezlik rekordi' },
+            ].map(b => `
+              <div style="text-align:center;padding:12px 8px;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius-lg);box-shadow:var(--shadow-xs)">
+                <div style="font-size:24px;margin-bottom:4px">${b.emoji}</div>
+                <div style="font-size:11.5px;font-weight:700;color:var(--text)">${b.title}</div>
+                <div style="font-size:10px;color:var(--text-4);margin-top:2px">${b.lbl}</div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+      </div>
+
+      <!-- RIGHT -->
+      <div style="display:flex;flex-direction:column;gap:20px">
+
+        <!-- Activity heatmap -->
+        <div class="card-surface" style="padding:20px">
+          <div class="sec-header" style="margin-bottom:12px">
+            <div class="sec-title">Faollik</div>
+            <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">234 kun faol</span>
+          </div>
+          <div class="heatmap" id="heatmap"></div>
+          <div style="display:flex;align-items:center;gap:5px;margin-top:8px;justify-content:flex-end">
+            <span style="font-size:10px;color:var(--text-4)">Kam</span>
+            <div style="width:9px;height:9px;border-radius:2px;background:var(--bg-raised)"></div>
+            <div style="width:9px;height:9px;border-radius:2px" class="hm-1"></div>
+            <div style="width:9px;height:9px;border-radius:2px" class="hm-2"></div>
+            <div style="width:9px;height:9px;border-radius:2px" class="hm-3"></div>
+            <div style="width:9px;height:9px;border-radius:2px" class="hm-4"></div>
+            <span style="font-size:10px;color:var(--text-4)">Ko'p</span>
+          </div>
+        </div>
+
+        <!-- Tag stats -->
+        <div class="card-surface" style="padding:20px">
+          <div class="section-title" style="margin-bottom:12px">Mavzular bo'yicha</div>
+          <div class="tag-cloud" id="tagCloud"></div>
+        </div>
+
+        <!-- Recent submissions -->
+        <div class="card-surface">
+          <div style="padding:14px 16px 0;display:flex;align-items:center;justify-content:space-between">
+            <div class="sec-title">So'nggi yuborishlar</div>
+            <button class="btn btn-ghost btn-sm" style="font-size:11px" onclick="switchTab('submissions',document.querySelectorAll('.tab-btn')[1])">Hammasi →</button>
+          </div>
+          <div id="recentSubs"></div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <!-- SUBMISSIONS -->
+  <div id="pane-submissions" style="display:none">
+    <div class="card-surface">
+      <div style="padding:12px 16px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+        <select class="select" style="width:140px;font-size:12px">
+          <option>Barcha natijalar</option>
+          <option>Faqat AC</option>
+          <option>Faqat WA</option>
+        </select>
+        <select class="select" style="width:130px;font-size:12px">
+          <option>Barcha tillar</option>
+          <option>C++ 17</option>
+          <option>Python 3</option>
+        </select>
+      </div>
+      <div id="allSubsList"></div>
+    </div>
+  </div>
+
+  <!-- CONTESTS -->
+  <div id="pane-contests" style="display:none">
+    <div class="table-wrap">
+      <div class="ch-row head">
+        <div style="font-size:10px;color:var(--text-4);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono)">Musobaqa</div>
+        <div style="font-size:10px;color:var(--text-4);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);text-align:center">O'rin</div>
+        <div style="font-size:10px;color:var(--text-4);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);text-align:center">Ball</div>
+        <div style="font-size:10px;color:var(--text-4);text-transform:uppercase;letter-spacing:.08em;font-family:var(--font-mono);text-align:right">Sana</div>
+      </div>
+      <div id="contestHistory"></div>
+    </div>
+  </div>
+
+  <!-- SETTINGS -->
+  <div id="pane-settings" style="display:none">
+    <div style="max-width:560px;display:flex;flex-direction:column;gap:16px">
+      <div class="card" style="padding:24px">
+        <div class="section-title" style="margin-bottom:16px">Profil ma'lumotlari</div>
+        <div class="form-group">
+          <label class="label">To'liq ism</label>
+          <input class="input" type="text" value="Asadbek Sotvoldiyev"/>
+        </div>
+        <div class="form-group">
+          <label class="label">Foydalanuvchi nomi</label>
+          <input class="input" type="text" value="asadbek_s"/>
+        </div>
+        <div class="form-group">
+          <label class="label">Joylashuv</label>
+          <input class="input" type="text" value="Toshkent, O'zbekiston"/>
+        </div>
+        <button class="btn btn-primary" onclick="showToast('Saqlandi!','success')">
+          Saqlash
+        </button>
+      </div>
+
+      <div class="card" style="padding:24px">
+        <div class="section-title" style="margin-bottom:16px">Bildirishnomalar</div>
+        ${[
+          { label:'Yangi musobaqalar', checked:true },
+          { label:'Yuborish natijalari', checked:true },
+          { label:"Ko'rsatmalarga oid maslahatlar", checked:false },
+          { label:'Haftalik hisobot', checked:true },
+        ].map(n => `
+          <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 0;border-bottom:1px solid var(--border)">
+            <span style="font-size:13px;color:var(--text)">${n.label}</span>
+            <label style="position:relative;display:inline-block;width:40px;height:22px;cursor:pointer">
+              <input type="checkbox" ${n.checked?'checked':''} style="opacity:0;width:0;height:0"
+                onchange="showToast('Sozlama saqlandi','success')"/>
+              <span style="position:absolute;inset:0;background:${n.checked?'var(--accent)':'var(--border-hi)'};border-radius:11px;transition:all .2s"></span>
+              <span style="position:absolute;left:${n.checked?'20':'2'}px;top:2px;width:18px;height:18px;background:#fff;border-radius:50%;transition:left .2s;box-shadow:var(--shadow-sm)"></span>
+            </label>
+          </div>`).join('')}
+      </div>
+
+      <div class="card" style="padding:24px">
+        <div class="section-title" style="margin-bottom:12px">Xavf zonasi</div>
+        <button class="btn btn-ghost btn-sm" style="color:var(--hard-dark);border-color:var(--hard-border)"
+          onclick="if(confirm('Tizimdan chiqasizmi?')) logout()">
+          Tizimdan chiqish
+        </button>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<script src="/assets/js/main.js"></script>
+<!-- 🛠️ YANGI: Profil uchun alohida JS fayl ulandi -->
+<script src="/assets/js/profile.js"></script>
+</body>
+</html>

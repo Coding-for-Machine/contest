@@ -1,0 +1,1361 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>1. Two Sum — RobaContest</title>
+<link rel="stylesheet" href="../assets/css/style.css"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs/loader.min.js"></script>
+<style>
+/* ─── Full-viewport split ─── */
+html, body { height: 100%; overflow: hidden; }
+body { background: var(--bg); }
+
+/* ─── Topbar overrides for compact nav ─── */
+.topbar { height: 46px; }
+.topbar-inner { height: 46px; }
+:root { --topbar-height: 46px; }
+
+/* ─── Problem sub-topbar ─── */
+.prob-topbar {
+  height: 42px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 12px;
+  flex-shrink: 0;
+}
+
+/* ─── LEFT PANEL ─── */
+.split-left {
+  width: 44%;
+  min-width: 320px;
+  display: flex;
+  flex-direction: column;
+  border-right: 1px solid var(--border);
+  background: var(--bg);
+  overflow: hidden;
+}
+
+.left-tabs { padding: 0 4px; }
+
+.panel-scroll {
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+}
+
+/* ─── PROBLEM DESCRIPTION ─── */
+.prob-title {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--text);
+  line-height: 1.4;
+  margin-bottom: 12px;
+  letter-spacing: -0.02em;
+}
+
+.prob-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+  align-items: center;
+}
+
+.meta-info {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 11px;
+  color: var(--text-4);
+  font-family: var(--font-mono);
+}
+
+/* Accept/submission stats row */
+.prob-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 10px 0;
+  border-top: 1px solid var(--border);
+  border-bottom: 1px solid var(--border);
+  margin-bottom: 16px;
+}
+.ps-item { text-align: center; }
+.ps-val  { font-size: 14px; font-weight: 700; color: var(--text); font-family: var(--font-mono); }
+.ps-lbl  { font-size: 10px; color: var(--text-4); margin-top: 1px; letter-spacing: 0.03em; }
+
+/* ─── RIGHT PANEL (editor) ─── */
+.split-right {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: #1e1e1e;
+}
+
+/* Editor topbar */
+.editor-topbar {
+  height: 42px;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px;
+  flex-shrink: 0;
+}
+
+.editor-select {
+  background: #3c3c3c;
+  color: #ccc;
+  border: 1px solid #555;
+  border-radius: 5px;
+  padding: 4px 8px;
+  font-size: 12px;
+  font-family: var(--font-mono);
+  outline: none;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.editor-select:hover { background: #4a4a4a; }
+
+.editor-sep { width: 1px; height: 20px; background: #3c3c3c; flex-shrink: 0; }
+
+.editor-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 8px;
+  border-radius: 5px;
+  font-size: 12px;
+  background: transparent;
+  color: #888;
+  border: none;
+  cursor: pointer;
+  transition: all 0.12s;
+  font-family: var(--font-sans);
+  white-space: nowrap;
+}
+.editor-btn:hover { background: #3c3c3c; color: #ccc; }
+.editor-btn.run {
+  background: #1a7f37; color: #fff;
+  font-weight: 600; padding: 4px 14px;
+}
+.editor-btn.run:hover { background: #2ea043; }
+.editor-btn.submit {
+  background: #1c3e70; color: #79b8ff;
+  font-weight: 600; padding: 4px 14px;
+  border: 1px solid #1f6feb44;
+}
+.editor-btn.submit:hover { background: #26507a; border-color: #58a6ff; }
+
+.font-ctrl {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+.font-ctrl button {
+  width: 20px; height: 20px;
+  background: #3c3c3c;
+  border: 1px solid #555;
+  border-radius: 3px;
+  color: #888; font-size: 13px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  transition: all 0.1s;
+}
+.font-ctrl button:hover { background: #4a4a4a; color: #ccc; }
+.font-ctrl span {
+  font-size: 11px; color: #666;
+  min-width: 20px; text-align: center;
+  font-family: var(--font-mono);
+}
+
+/* Monaco mount */
+#monacoMount { flex: 1; min-height: 0; }
+
+/* Bottom zone */
+.bottom-zone {
+  border-top: 1px solid #3c3c3c;
+  background: #1e1e1e;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.bottom-tabbar {
+  display: flex;
+  align-items: center;
+  background: #252526;
+  border-bottom: 1px solid #3c3c3c;
+  padding: 0 8px;
+  flex-shrink: 0;
+  height: 36px;
+}
+
+.btab {
+  padding: 0 12px;
+  height: 36px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #666;
+  border: none;
+  background: none;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.btab:hover  { color: #aaa; }
+.btab.active { color: #4fc3f7; border-bottom-color: #4fc3f7; }
+
+.bottom-resize {
+  height: 4px;
+  background: #2d2d2d;
+  cursor: row-resize;
+  flex-shrink: 0;
+  transition: background 0.15s;
+}
+.bottom-resize:hover { background: #58a6ff; }
+
+.bottom-body {
+  flex: 1;
+  overflow-y: auto;
+  min-height: 0;
+}
+
+/* Test cases */
+.tc-area {
+  width: 100%;
+  background: #252526;
+  border: 1px solid #3c3c3c;
+  border-radius: 5px;
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: #d4d4d4;
+  resize: vertical;
+  min-height: 48px;
+  outline: none;
+  transition: border 0.15s;
+}
+.tc-area:focus { border-color: #58a6ff55; }
+
+.tc-label {
+  font-size: 10px;
+  color: #555;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 5px;
+  font-family: var(--font-mono);
+}
+
+/* Result */
+.result-verdict {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  border-bottom: 1px solid #2d2d2d;
+}
+
+.verdict-text { font-size: 15px; font-weight: 700; }
+.verdict-ac   { color: #3fb950; }
+.verdict-wa   { color: #f85149; }
+.verdict-tle  { color: #d29922; }
+
+.result-stat-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  background: #2d2d2d;
+  color: #8b949e;
+  font-family: var(--font-mono);
+}
+
+.tc-result-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 14px;
+  border-bottom: 1px solid #2d2d2d;
+  cursor: pointer;
+  transition: background 0.1s;
+}
+.tc-result-row:hover { background: #252526; }
+
+.io-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  padding: 8px 14px 12px;
+  background: #252526;
+  border-bottom: 1px solid #2d2d2d;
+}
+.io-cell label {
+  display: block;
+  font-size: 10px;
+  color: #555;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  margin-bottom: 4px;
+}
+.io-cell pre {
+  background: #1e1e1e;
+  border: 1px solid #3c3c3c;
+  border-radius: 5px;
+  padding: 6px 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: #d4d4d4;
+  white-space: pre-wrap;
+  min-height: 30px;
+}
+
+/* Non-coding panel */
+.noncoding-panel {
+  flex: 1;
+  background: var(--bg);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.nc-head {
+  height: 42px;
+  background: var(--bg-surface);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 16px;
+  flex-shrink: 0;
+}
+
+.nc-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.nc-submit-bar {
+  padding: 12px 16px;
+  background: var(--bg-surface);
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+/* MCQ */
+.mcq-option {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  cursor: pointer;
+  transition: var(--transition);
+  margin-bottom: 8px;
+  background: var(--bg);
+}
+.mcq-option:hover { border-color: var(--accent-glow); background: var(--accent-dim); }
+.mcq-option.selected { border-color: var(--accent); background: var(--accent-dim); }
+.mcq-option.correct  { border-color: var(--easy);   background: var(--easy-bg);    }
+.mcq-option.wrong    { border-color: var(--hard);    background: var(--hard-bg);    }
+
+.mcq-letter {
+  width: 28px; height: 28px;
+  border-radius: 7px;
+  border: 2px solid var(--border-hi);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700;
+  color: var(--text-3);
+  flex-shrink: 0;
+  transition: var(--transition);
+}
+.mcq-option.selected .mcq-letter { border-color: var(--accent); background: var(--accent); color: #fff; }
+.mcq-option.correct  .mcq-letter { border-color: var(--easy);   background: var(--easy);   color: #fff; }
+.mcq-option.wrong    .mcq-letter { border-color: var(--hard);    background: var(--hard);    color: #fff; }
+
+/* Short answer */
+.short-input {
+  width: 100%;
+  background: var(--bg-surface);
+  border: 2px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 13px 15px;
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--text);
+  outline: none;
+  transition: var(--transition);
+}
+.short-input:focus  { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
+.short-input.correct { border-color: var(--easy); box-shadow: 0 0 0 3px var(--easy-bg); }
+.short-input.wrong   { border-color: var(--hard);  box-shadow: 0 0 0 3px var(--hard-bg); animation: shake 0.4s; }
+
+/* Verdict overlay */
+.verdict-overlay {
+  position: fixed; inset: 0;
+  background: rgba(15,23,42,0.50);
+  backdrop-filter: blur(8px);
+  z-index: 999;
+  display: flex; align-items: center; justify-content: center;
+  padding: 20px;
+  opacity: 0; pointer-events: none;
+  transition: opacity 0.2s;
+}
+.verdict-overlay.show { opacity: 1; pointer-events: all; }
+.verdict-overlay.show .verdict-modal { transform: scale(1) translateY(0); }
+.verdict-overlay .verdict-modal {
+  transform: scale(0.93) translateY(12px);
+  transition: transform 0.3s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+/* Submissions */
+.sub-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 16px;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+  transition: background 0.12s;
+}
+.sub-row:hover { background: var(--bg-surface); }
+
+@keyframes shake {
+  0%,100% { transform: translateX(0); }
+  25%,75%  { transform: translateX(-5px); }
+  50%      { transform: translateX(5px); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+</style>
+</head>
+<body>
+
+<!-- ══ TOPBAR ══ -->
+<nav class="topbar">
+  <div class="topbar-inner">
+    <div style="display:flex;align-items:center;gap:4px">
+      <a href="../index.html" class="logo">
+        <div class="logo-mark">R</div>
+        RobaContest
+      </a>
+      <span style="color:var(--text-5);margin:0 4px">/</span>
+      <a href="problems.html" class="nav-link" style="font-size:12px">Masalalar</a>
+    </div>
+    <div style="display:flex;align-items:center;gap:6px">
+      <!-- Problem nav -->
+      <button class="btn-icon btn-sm" onclick="navigateProblem(-1)" title="Oldingi">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span style="font-size:12px;color:var(--text-4);font-family:var(--font-mono)">1 / 512</span>
+      <button class="btn-icon btn-sm" onclick="navigateProblem(1)" title="Keyingi">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+      </button>
+
+      <div style="width:1px;height:18px;background:var(--border-md);margin:0 4px"></div>
+
+      <button class="btn-icon btn-sm" id="bookmarkBtn" onclick="toggleBookmark()" title="Saqlash">
+        <svg id="bmIcon" width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <path d="m19 21-7-4-7 4V5a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2z"/>
+        </svg>
+      </button>
+      <button class="btn-icon btn-sm" onclick="toggleFullscreen()" title="To'liq ekran">
+        <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+          <polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </button>
+      <a href="profile.html" class="user-avatar" style="width:28px;height:28px;font-size:11px">AS</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ══ PROBLEM TOPBAR ══ -->
+<div class="prob-topbar">
+  <div style="display:flex;align-items:center;gap:8px">
+    <span style="font-size:14px;font-weight:700;color:var(--text)" id="probTitle">1. Two Sum</span>
+    <span class="badge badge-easy" id="probDiff">Easy</span>
+    <span class="meta-info">
+      <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+      2s
+    </span>
+    <span class="meta-info">256MB</span>
+  </div>
+  <!-- Problem type switcher -->
+  <div style="display:flex;align-items:center;gap:6px">
+    <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">tur:</span>
+    <div class="tabs-pill" style="background:var(--bg-raised);padding:3px;gap:2px">
+      <button class="tab-pill-btn active" id="typeBtn-coding"  onclick="switchType('coding')">
+        &lt;/&gt; Coding
+      </button>
+      <button class="tab-pill-btn" id="typeBtn-mcq"    onclick="switchType('mcq')">✦ MCQ</button>
+      <button class="tab-pill-btn" id="typeBtn-short"  onclick="switchType('short')">✎ Short</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WORKSPACE ══ -->
+<div class="split-workspace" id="workspace">
+
+  <!-- ── LEFT PANEL ── -->
+  <div class="split-left" id="splitLeft">
+    <div class="tabs left-tabs">
+      <button class="tab-btn active" onclick="switchLeftTab('desc',this)">Description</button>
+      <button class="tab-btn" onclick="switchLeftTab('editorial',this)">Editorial</button>
+      <button class="tab-btn" onclick="switchLeftTab('solutions',this)">Solutions</button>
+      <button class="tab-btn" onclick="switchLeftTab('submissions',this)">Submissions</button>
+    </div>
+
+    <!-- DESCRIPTION -->
+    <div class="panel-scroll" id="tab-desc">
+      <div class="prob-title" id="descTitle">1. Two Sum</div>
+      <div class="prob-meta" id="descMeta">
+        <span class="badge badge-easy">Easy</span>
+        <span class="meta-info">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
+          Qabul: 72.3%
+        </span>
+        <span class="meta-info">
+          <svg width="10" height="10" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          2 soniya
+        </span>
+        <span class="meta-info">256 MB</span>
+      </div>
+
+      <!-- Like row -->
+      <div style="display:flex;align-items:center;gap:6px;margin-bottom:14px">
+        <button class="like-btn" onclick="this.classList.toggle('liked');this.querySelector('.lc').textContent=this.classList.contains('liked')?'25.2K':'25.1K'">
+          <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16"><path d="M8.864.046C7.908-.193 7.02.53 6.956 1.466c-.072 1.051-.23 2.016-.428 2.59-.125.36-.479 1.013-1.04 1.639-.557.623-1.282 1.178-2.131 1.41C2.685 7.288 2 7.87 2 8.72v4.001c0 .845.682 1.464 1.448 1.545 1.07.114 1.564.415 2.068.723l.048.03c.272.165.578.348.97.484.397.136.861.217 1.466.217h3.5c.937 0 1.599-.477 1.934-1.064a1.86 1.86 0 0 0 .254-.912c0-.152-.023-.312-.077-.464.201-.263.38-.578.488-.901.11-.33.172-.762.004-1.149.069-.13.12-.269.159-.403.077-.27.113-.568.113-.857 0-.288-.036-.585-.113-.856a2.144 2.144 0 0 0-.138-.362 1.9 1.9 0 0 0 .234-1.734c-.206-.592-.682-1.1-1.2-1.272-.847-.282-1.803-.276-2.516-.211a9.84 9.84 0 0 0-.443.05 9.365 9.365 0 0 0-.062-4.509A1.38 1.38 0 0 0 9.125.111L8.864.046z"/></svg>
+          <span class="lc">25.1K</span>
+        </button>
+        <div style="flex:1"></div>
+        <div style="display:flex;gap:14px">
+          <div class="ps-item"><div class="ps-val" style="color:var(--easy-dark)">34.8K</div><div class="ps-lbl">Accepted</div></div>
+          <div class="ps-item"><div class="ps-val">48.1K</div><div class="ps-lbl">Submissions</div></div>
+        </div>
+      </div>
+
+      <div id="probBody" class="prob-desc"></div>
+
+      <div class="section-title" style="margin-top:20px">Mavzular</div>
+      <div class="tags-list" id="tagsWrap" style="margin-bottom:16px"></div>
+
+      <div class="section-title">Maslahatlar</div>
+      <div id="hintsWrap"></div>
+    </div>
+
+    <!-- EDITORIAL -->
+    <div class="panel-scroll" id="tab-editorial" style="display:none">
+      <div class="alert alert-info" style="margin-bottom:16px">
+        <svg class="alert-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Tahririyat — masalani yechgan foydalanuvchilarga ko'rinadi.
+      </div>
+      <div class="section-title">Yondashuv 1 — Hash Map O(n)</div>
+      <div class="prob-desc" style="margin-top:8px">
+        <p>Har bir element uchun <code>target - nums[i]</code> farqini hash mapda qidiring.</p>
+        <p>Bu <strong>O(n)</strong> vaqt va <strong>O(n)</strong> xotira talab qiladi.</p>
+      </div>
+      <div class="example-block" style="margin-top:12px">
+        <div class="example-head">C++ yechimi</div>
+        <div class="example-io">
+          <pre style="color:var(--text-2);line-height:1.7;font-family:var(--font-mono);font-size:12.5px">vector&lt;int&gt; twoSum(vector&lt;int&gt;&amp; nums, int target) {
+    unordered_map&lt;int,int&gt; mp;
+    for(int i=0; i&lt;nums.size(); i++) {
+        if(mp.count(target - nums[i]))
+            return {mp[target-nums[i]], i};
+        mp[nums[i]] = i;
+    }
+    return {};
+}</pre>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+        <span class="chip">⏱ O(n) vaqt</span>
+        <span class="chip">💾 O(n) xotira</span>
+      </div>
+    </div>
+
+    <!-- SOLUTIONS -->
+    <div class="panel-scroll" id="tab-solutions" style="display:none">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+        <div style="font-size:12px;color:var(--text-3)">3,241 yechim</div>
+        <select class="select" style="width:auto;font-size:12px">
+          <option>Eng ko'p yoqilgan</option>
+          <option>Eng yangi</option>
+        </select>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:8px">
+        <div class="card card-hover" style="padding:14px;cursor:pointer">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div class="user-avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">JD</div>
+            <span style="font-size:13px;font-weight:600;color:var(--text)">javlon_dev</span>
+            <span class="chip" style="margin-left:auto">C++17</span>
+            <span style="font-size:12px;color:var(--easy-dark);font-weight:500">O(n)</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-3);line-height:1.55">
+            HashMap yordamida bitta o'tishda yechim. Har bir element uchun...
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <span style="font-size:11px;color:var(--text-4)">👍 284</span>
+            <span style="font-size:11px;color:var(--text-4)">💬 12</span>
+          </div>
+        </div>
+        <div class="card card-hover" style="padding:14px;cursor:pointer">
+          <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+            <div class="user-avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0;background:var(--accent-dim);color:var(--accent-dark)">ZX</div>
+            <span style="font-size:13px;font-weight:600;color:var(--text)">zafar_x</span>
+            <span class="chip" style="margin-left:auto">Python 3</span>
+            <span style="font-size:12px;color:var(--easy-dark);font-weight:500">O(n)</span>
+          </div>
+          <div style="font-size:12.5px;color:var(--text-3);line-height:1.55">
+            Python dict bilan eng toza yechim. Two-pass kerak emas...
+          </div>
+          <div style="display:flex;gap:10px;margin-top:10px">
+            <span style="font-size:11px;color:var(--text-4)">👍 197</span>
+            <span style="font-size:11px;color:var(--text-4)">💬 5</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SUBMISSIONS -->
+    <div id="tab-submissions" style="display:none;overflow-y:auto;flex:1">
+      <div style="padding:10px 14px;border-bottom:1px solid var(--border);display:flex;gap:8px">
+        <select class="select" style="flex:1;font-size:12px">
+          <option>Barcha yuborishlar</option>
+          <option>Faqat AC</option>
+          <option>Faqat WA</option>
+        </select>
+      </div>
+      <div id="subList"></div>
+    </div>
+  </div>
+
+  <!-- ── DRAG BAR ── -->
+  <div class="split-drag" id="splitDrag"></div>
+
+  <!-- ── RIGHT: CODING ── -->
+  <div class="split-right" id="codingPanel">
+    <!-- Editor toolbar -->
+    <div class="editor-topbar">
+      <select class="editor-select" id="langSel" onchange="changeLang(this.value)">
+        <option value="cpp">C++ 17</option>
+        <option value="python">Python 3.11</option>
+        <option value="java">Java 17</option>
+        <option value="js">JavaScript</option>
+        <option value="rust">Rust</option>
+        <option value="go">Go 1.21</option>
+      </select>
+      <div class="editor-sep"></div>
+      <select class="editor-select" id="themeSel" onchange="changeTheme(this.value)">
+        <option value="dark">Dark+</option>
+        <option value="light">Light</option>
+        <option value="hc">HC Black</option>
+      </select>
+      <div class="font-ctrl">
+        <button onclick="adjFont(-1)">−</button>
+        <span id="fsLbl">14</span>
+        <button onclick="adjFont(1)">+</button>
+      </div>
+      <div class="editor-sep"></div>
+      <button class="editor-btn" onclick="formatCode()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><line x1="21" y1="10" x2="3" y2="10"/><line x1="21" y1="6" x2="3" y2="6"/><line x1="21" y1="14" x2="3" y2="14"/><line x1="21" y1="18" x2="7" y2="18"/></svg>
+        Format
+      </button>
+      <button class="editor-btn" onclick="resetEditor()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/></svg>
+        Reset
+      </button>
+      <div style="flex:1"></div>
+      <button class="editor-btn run" id="runBtn" onclick="runCode()">
+        <svg width="11" height="11" fill="currentColor" viewBox="0 0 16 16"><path d="M10.804 8 5 4.633v6.734L10.804 8z"/></svg>
+        Run
+        <span style="font-size:10px;opacity:0.65">Ctrl+↵</span>
+      </button>
+      <button class="editor-btn submit" id="submitBtn" onclick="submitCode()">
+        <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg>
+        Submit
+      </button>
+    </div>
+
+    <div id="monacoMount"></div>
+
+    <div class="bottom-resize" id="bottomResize"></div>
+
+    <div class="bottom-zone" id="bottomZone" style="height:200px">
+      <div class="bottom-tabbar">
+        <button class="btab active" onclick="switchBtab('testcase',this)">Testcase</button>
+        <button class="btab"        onclick="switchBtab('result',this)">Result</button>
+        <button class="btab"        onclick="switchBtab('console',this)">Console</button>
+        <div style="flex:1"></div>
+        <button style="background:none;border:none;color:#484f58;cursor:pointer;font-size:14px;line-height:1;padding:0 4px" onclick="adjBottom(-50)">↓</button>
+        <button style="background:none;border:none;color:#484f58;cursor:pointer;font-size:14px;line-height:1;padding:0 4px" onclick="adjBottom(50)">↑</button>
+      </div>
+      <div class="bottom-body" id="bottomBody"></div>
+    </div>
+  </div>
+
+  <!-- ── RIGHT: NON-CODING ── -->
+  <div class="noncoding-panel" id="nonCodingPanel" style="display:none">
+    <div class="nc-head">
+      <div id="ncType" style="font-size:13px;color:var(--text-3)">—</div>
+      <div id="ncTimer" style="font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--medium)"></div>
+    </div>
+    <div class="nc-body" id="ncBody"></div>
+    <div class="nc-submit-bar">
+      <button class="btn btn-success" id="ncSubmitBtn" onclick="submitNonCoding()" style="flex:1">
+        Javobni yuborish
+      </button>
+      <button class="btn btn-secondary" onclick="resetNonCoding()">Tozalash</button>
+    </div>
+  </div>
+
+</div>
+
+<!-- ══ VERDICT OVERLAY ══ -->
+<div class="verdict-overlay" id="verdictOverlay">
+  <div class="modal verdict-modal" style="text-align:center;padding:32px 36px" id="verdictModal">
+    <div class="verdict-icon" id="vIcon"></div>
+    <div class="verdict-title" id="vTitle"></div>
+    <div class="verdict-sub" id="vSub"></div>
+    <div class="verdict-stats" id="vStats" style="margin:16px 0"></div>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+      <button class="btn btn-secondary" onclick="closeVerdict()">Yopish</button>
+      <button class="btn btn-ghost" onclick="closeVerdict();switchLeftTab('submissions',document.querySelectorAll('.tab-btn')[3])">
+        Yuborishlar
+      </button>
+      <a href="problems.html" class="btn btn-success">Keyingi masala →</a>
+    </div>
+  </div>
+</div>
+
+<script src="../assets/js/main.js"></script>
+<script>
+/* ════════════════════════════════════
+   DATA
+════════════════════════════════════ */
+const PROBLEM = {
+  title: '1. Two Sum',
+  diff: 'easy',
+  tags: ['Array', 'Hash Table', 'Two Pointers'],
+  hints: [
+    'Birinchi elementi va target farqini izlang.',
+    'Hash map yordamida O(n) da hal qiling.',
+    'for i in range(n): if target-a[i] in seen: return [seen[target-a[i]], i]',
+  ],
+  desc: `<p>Butun sonlar massivi <code>nums</code> va <code>target</code> butun soni berilgan.</p>
+<p>Yig'indisi <strong>target</strong>ga teng bo'lgan ikki raqamning indekslarini qaytaring.</p>
+<p>Har bir masalada aynan <strong>bitta yechim</strong> mavjud deb faraz qiling va bir xil elementni ikki marta ishlatmasligingiz kerak.</p>`,
+  examples: [
+    { title: 'Misol 1', input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explain: "nums[0] + nums[1] == 9 bo'lgani uchun [0,1] qaytaramiz." },
+    { title: 'Misol 2', input: 'nums = [3,2,4], target = 6',     output: '[1,2]', explain: '' },
+    { title: 'Misol 3', input: 'nums = [3,3], target = 6',       output: '[0,1]', explain: '' },
+  ],
+  constraints: [
+    '2 ≤ nums.length ≤ 10⁴',
+    '-10⁹ ≤ nums[i] ≤ 10⁹',
+    '-10⁹ ≤ target ≤ 10⁹',
+    "Faqat bitta to'g'ri javob mavjud",
+  ],
+};
+
+const MCQ_DATA = {
+  question: `Quyidagi kod nechta operatsiya bajaradi?
+<pre style="background:var(--bg-surface);padding:12px;border-radius:8px;margin:12px 0;font-size:12px;color:var(--text-2);font-family:var(--font-mono);line-height:1.7;border:1px solid var(--border)">for(int i=0; i&lt;n; i++) {
+  for(int j=i; j&lt;n; j++) {
+    // O(1) amal
+  }
+}</pre>`,
+  options: ['O(n)', 'O(n log n)', 'O(n²)', 'O(n²/2) ≈ O(n²)'],
+  correct: 3,
+  explain: "Ichki sikl i dan n gacha ishlaydi: n + (n-1) + ... + 1 = n(n+1)/2 = O(n²). D to'g'ri javob.",
+};
+
+const SHORT_DATA = {
+  question: `Fibonacci ketma-ketligining <strong>10-elementini</strong> toping.<br/>
+<div style="margin:14px 0;padding:10px 14px;background:var(--bg-surface);border:1px solid var(--border);border-radius:8px;font-family:var(--font-mono);font-size:12px;color:var(--text-3);line-height:1.7">
+  F(1)=1 &nbsp; F(2)=1 &nbsp; F(n)=F(n-1)+F(n-2)<br/>
+  F(3)=2, F(4)=3, F(5)=5, F(6)=8, ...
+</div>`,
+  answer: '55',
+  placeholder: 'Javobingiz...',
+};
+
+const CODE_TEMPLATES = {
+  cpp: `#include <bits/stdc++.h>
+using namespace std;
+
+class Solution {
+public:
+    vector<int> twoSum(vector<int>& nums, int target) {
+        unordered_map<int, int> mp;
+        for (int i = 0; i < (int)nums.size(); i++) {
+            auto it = mp.find(target - nums[i]);
+            if (it != mp.end()) return {it->second, i};
+            mp[nums[i]] = i;
+        }
+        return {};
+    }
+};`,
+  python: `from typing import List
+
+class Solution:
+    def twoSum(self, nums: List[int], target: int) -> List[int]:
+        seen: dict[int, int] = {}
+        for i, num in enumerate(nums):
+            complement = target - num
+            if complement in seen:
+                return [seen[complement], i]
+            seen[num] = i
+        return []`,
+  java: `import java.util.*;
+
+class Solution {
+    public int[] twoSum(int[] nums, int target) {
+        Map<Integer, Integer> map = new HashMap<>();
+        for (int i = 0; i < nums.length; i++) {
+            int complement = target - nums[i];
+            if (map.containsKey(complement))
+                return new int[]{map.get(complement), i};
+            map.put(nums[i], i);
+        }
+        throw new IllegalArgumentException("No solution");
+    }
+}`,
+  js: `/**
+ * @param {number[]} nums
+ * @param {number} target
+ * @return {number[]}
+ */
+var twoSum = function(nums, target) {
+    const map = new Map();
+    for (let i = 0; i < nums.length; i++) {
+        const comp = target - nums[i];
+        if (map.has(comp)) return [map.get(comp), i];
+        map.set(nums[i], i);
+    }
+};`,
+  rust: `use std::collections::HashMap;
+impl Solution {
+    pub fn two_sum(nums: Vec<i32>, target: i32) -> Vec<i32> {
+        let mut map: HashMap<i32, i32> = HashMap::new();
+        for (i, &num) in nums.iter().enumerate() {
+            if let Some(&j) = map.get(&(target - num)) {
+                return vec![j, i as i32];
+            }
+            map.insert(num, i as i32);
+        }
+        vec![]
+    }
+}`,
+  go: `package main
+import "fmt"
+func twoSum(nums []int, target int) []int {
+    seen := make(map[int]int)
+    for i, v := range nums {
+        if j, ok := seen[target-v]; ok { return []int{j, i} }
+        seen[v] = i
+    }
+    return nil
+}
+func main() { fmt.Println(twoSum([]int{2,7,11,15}, 9)) }`,
+};
+
+const TEST_CASES = [
+  { input: 'nums = [2,7,11,15]\ntarget = 9', expected: '[0,1]' },
+  { input: 'nums = [3,2,4]\ntarget = 6',     expected: '[1,2]' },
+  { input: 'nums = [3,3]\ntarget = 6',       expected: '[0,1]' },
+];
+
+const SUBMISSIONS = [
+  { status:'ac',  lang:'C++ 17',   time:'124ms', mem:'9.2MB',  ago:'2 min oldin',  beats:'98.2%' },
+  { status:'wa',  lang:'C++ 17',   time:'—',     mem:'—',      ago:'18 min oldin', detail:'Test 3 da xato' },
+  { status:'tle', lang:'Python 3', time:'>2000ms',mem:'—',     ago:'1 soat oldin', detail:'Vaqt limiti oshdi' },
+  { status:'ac',  lang:'Java 17',  time:'180ms', mem:'11.4MB', ago:'1 kun oldin',  beats:'87.4%' },
+];
+
+/* ════════════════════════════════════
+   STATE
+════════════════════════════════════ */
+let editor       = null;
+let currentType  = 'coding';
+let currentLang  = 'cpp';
+let fontSize     = 14;
+let activeTcIdx  = 0;
+let ncTimerIv    = null;
+let selectedMCQ  = -1;
+let bookmarked   = false;
+
+/* ════════════════════════════════════
+   INIT
+════════════════════════════════════ */
+window.addEventListener('DOMContentLoaded', () => {
+  renderProblemDesc();
+  renderSubList();
+  initMonaco();
+  initSplitDrag({ bar: document.getElementById('splitDrag'), left: document.getElementById('splitLeft'), onResize: () => editor?.layout() });
+  initBottomResize({ handle: document.getElementById('bottomResize'), zone: document.getElementById('bottomZone'), onResize: () => editor?.layout() });
+  switchBtab('testcase', document.querySelector('.btab.active'));
+});
+
+/* ════════════════════════════════════
+   PROBLEM DESCRIPTION
+════════════════════════════════════ */
+function renderProblemDesc() {
+  let html = PROBLEM.desc;
+  PROBLEM.examples.forEach(ex => {
+    html += `<div class="example-block">
+      <div class="example-head">${ex.title}</div>
+      <div class="example-io">
+        <div class="io-label">Kirish:</div>
+        <pre><strong>${ex.input}</strong></pre>
+        <div class="io-label" style="margin-top:8px">Chiqish:</div>
+        <pre><strong>${ex.output}</strong></pre>
+        ${ex.explain ? `<div style="margin-top:8px;font-size:12px;color:var(--text-3);line-height:1.55"><strong>Izoh:</strong> ${ex.explain}</div>` : ''}
+      </div>
+    </div>`;
+  });
+  html += `<div class="section-title" style="margin-top:18px">Cheklovlar</div>`;
+  PROBLEM.constraints.forEach(c => {
+    html += `<div class="constraint-item">${c}</div>`;
+  });
+  document.getElementById('probBody').innerHTML = html;
+
+  document.getElementById('tagsWrap').innerHTML = PROBLEM.tags.map(t =>
+    `<span class="tag-chip">${t}</span>`).join('');
+
+  document.getElementById('hintsWrap').innerHTML = PROBLEM.hints.map((h, i) => `
+    <div class="hint-toggle">
+      <span>💡 Maslahat ${i + 1}</span>
+      <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="6 9 12 15 18 9"/></svg>
+    </div>
+    <div class="hint-body">${h}</div>`).join('');
+}
+
+/* ════════════════════════════════════
+   TYPE SWITCH (coding / mcq / short)
+════════════════════════════════════ */
+function switchType(type) {
+  currentType = type;
+  ['coding','mcq','short'].forEach(t => {
+    const btn = document.getElementById('typeBtn-' + t);
+    btn.classList.toggle('active', t === type);
+  });
+
+  const codingPanel = document.getElementById('codingPanel');
+  const ncPanel     = document.getElementById('nonCodingPanel');
+
+  if (type === 'coding') {
+    codingPanel.style.display = 'flex';
+    ncPanel.style.display     = 'none';
+  } else {
+    codingPanel.style.display = 'none';
+    ncPanel.style.display     = 'flex';
+    if (type === 'mcq')   renderMCQ();
+    if (type === 'short') renderShort();
+  }
+}
+
+/* ════════════════════════════════════
+   MCQ
+════════════════════════════════════ */
+function renderMCQ() {
+  selectedMCQ = -1;
+  document.getElementById('ncType').innerHTML = `
+    <span class="badge" style="background:rgba(188,140,255,.1);color:#7c3aed;border:1px solid rgba(188,140,255,.2)">✦ Ko'p javobli test</span>`;
+  startNCTimer(180);
+
+  document.getElementById('ncBody').innerHTML = `
+    <div style="font-size:14px;font-weight:600;color:var(--text);line-height:1.55;margin-bottom:18px">${MCQ_DATA.question}</div>
+    <div id="mcqOpts">
+      ${MCQ_DATA.options.map((opt, i) => `
+        <div class="mcq-option" id="mcqOpt-${i}" onclick="selectMCQ(${i})">
+          <div class="mcq-letter" id="mcqLtr-${i}">${String.fromCharCode(65+i)}</div>
+          <div style="font-size:13.5px;color:var(--text-2);padding-top:2px;line-height:1.5">${opt}</div>
+        </div>`).join('')}
+    </div>
+    <div id="mcqFeedback" style="display:none;margin-top:14px"></div>`;
+
+  document.getElementById('ncSubmitBtn').disabled = false;
+  document.getElementById('ncSubmitBtn').textContent = 'Javobni yuborish';
+}
+
+function selectMCQ(idx) {
+  selectedMCQ = idx;
+  document.querySelectorAll('[id^="mcqOpt-"]').forEach((el, i) => {
+    el.classList.toggle('selected', i === idx);
+  });
+}
+
+function submitMCQ() {
+  if (selectedMCQ < 0) { showToast('Javobni tanlang!', 'warning'); return; }
+  const correct = selectedMCQ === MCQ_DATA.correct;
+  document.querySelectorAll('[id^="mcqOpt-"]').forEach((el, i) => {
+    el.classList.remove('selected');
+    if (i === MCQ_DATA.correct) el.classList.add('correct');
+    else if (i === selectedMCQ && !correct) el.classList.add('wrong');
+  });
+  clearInterval(ncTimerIv);
+  document.getElementById('ncSubmitBtn').disabled = true;
+  const fb = document.getElementById('mcqFeedback');
+  fb.style.display = 'block';
+  fb.innerHTML = correct
+    ? `<div class="alert alert-success"><svg class="alert-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>To'g'ri javob! +500 ball qo'shildi.</div>`
+    : `<div class="alert alert-error"><svg class="alert-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Noto'g'ri. To'g'ri javob: <strong>D</strong> — ${MCQ_DATA.explain}</div>`;
+}
+
+/* ════════════════════════════════════
+   SHORT ANSWER
+════════════════════════════════════ */
+function renderShort() {
+  document.getElementById('ncType').innerHTML = `
+    <span class="badge badge-green">✎ Qisqa javob</span>`;
+  startNCTimer(120);
+
+  document.getElementById('ncBody').innerHTML = `
+    <div style="font-size:14px;color:var(--text-2);line-height:1.7;margin-bottom:20px">${SHORT_DATA.question}</div>
+    <div>
+      <div class="label">Javobingiz</div>
+      <input id="shortInp" type="text" class="short-input" placeholder="${SHORT_DATA.placeholder}"
+        onkeydown="if(event.key==='Enter') submitShort()"/>
+    </div>
+    <div id="shortFeedback" style="display:none;margin-top:12px"></div>
+    <div style="margin-top:20px" class="card-surface" style="padding:12px">
+      <div class="section-title">Yordamchi jadval</div>
+      <table style="font-family:var(--font-mono);font-size:11px;color:var(--text-3);border-collapse:collapse;margin-top:8px">
+        <tr style="border-bottom:1px solid var(--border)">
+          ${[1,2,3,4,5,6,7,8,9,10].map(n=>`<th style="padding:4px 7px;color:var(--text-4);font-weight:500">F(${n})</th>`).join('')}
+        </tr>
+        <tr>
+          ${[1,1,2,3,5,8,13,21,34,55].map(v=>`<td style="padding:4px 7px;text-align:center;color:var(--text)">${v}</td>`).join('')}
+        </tr>
+      </table>
+    </div>`;
+
+  document.getElementById('ncSubmitBtn').disabled = false;
+  document.getElementById('ncSubmitBtn').textContent = 'Javobni yuborish';
+}
+
+function submitShort() {
+  const val = (document.getElementById('shortInp')?.value || '').trim();
+  if (!val) return;
+  const correct = val === SHORT_DATA.answer;
+  const inp = document.getElementById('shortInp');
+  inp.classList.toggle('correct', correct);
+  inp.classList.toggle('wrong', !correct);
+  inp.disabled = true;
+  clearInterval(ncTimerIv);
+  document.getElementById('ncSubmitBtn').disabled = true;
+  const fb = document.getElementById('shortFeedback');
+  fb.style.display = 'block';
+  fb.innerHTML = correct
+    ? `<div class="alert alert-success"><svg class="alert-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>To'g'ri! F(10) = 55. +800 ball 🎉</div>`
+    : `<div class="alert alert-error"><svg class="alert-icon" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>Noto'g'ri. To'g'ri javob: <strong>${SHORT_DATA.answer}</strong></div>`;
+}
+
+function submitNonCoding() {
+  if (currentType === 'mcq')   submitMCQ();
+  if (currentType === 'short') submitShort();
+}
+function resetNonCoding() {
+  if (currentType === 'mcq')   renderMCQ();
+  if (currentType === 'short') renderShort();
+}
+
+/* ════════════════════════════════════
+   NC TIMER
+════════════════════════════════════ */
+function startNCTimer(secs) {
+  clearInterval(ncTimerIv);
+  let s = secs;
+  const el = document.getElementById('ncTimer');
+  function tick() {
+    const m = String(Math.floor(s / 60)).padStart(2, '0');
+    const sec = String(s % 60).padStart(2, '0');
+    if (el) {
+      el.textContent = `⏱ ${m}:${sec}`;
+      el.style.color = s < 30 ? 'var(--hard-dark)' : s < 60 ? 'var(--medium-dark)' : 'var(--text-3)';
+    }
+    if (s-- <= 0) clearInterval(ncTimerIv);
+  }
+  tick();
+  ncTimerIv = setInterval(tick, 1000);
+}
+
+/* ════════════════════════════════════
+   MONACO INIT
+════════════════════════════════════ */
+function initMonaco() {
+  require.config({ paths: { vs: 'https://cdnjs.cloudflare.com/ajax/libs/monaco-editor/0.44.0/min/vs' } });
+  require(['vs/editor/editor.main'], () => {
+    editor = monaco.editor.create(document.getElementById('monacoMount'), {
+      value:              CODE_TEMPLATES.cpp,
+      language:           'cpp',
+      theme:              'vs-dark',
+      fontSize:           14,
+      fontFamily:         "'JetBrains Mono','Fira Code',monospace",
+      fontLigatures:      true,
+      lineNumbers:        'on',
+      minimap:            { enabled: false },
+      scrollBeyondLastLine: false,
+      automaticLayout:    true,
+      padding:            { top: 14, bottom: 14 },
+      cursorBlinking:     'smooth',
+      cursorSmoothCaretAnimation: 'on',
+      smoothScrolling:    true,
+      tabSize:            4,
+      wordWrap:           'off',
+      bracketPairColorization: { enabled: true },
+      guides:             { bracketPairs: true, indentation: true },
+      renderLineHighlight: 'all',
+      suggest:            { showIcons: true },
+      quickSuggestions:   { other: true },
+      showFoldingControls: 'always',
+      mouseWheelZoom:     true,
+      scrollbar:          { verticalScrollbarSize: 5, horizontalScrollbarSize: 5 },
+      glyphMargin:        false,
+    });
+
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.Enter, runCode);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyMod.Shift | monaco.KeyCode.Enter, submitCode);
+    editor.addCommand(monaco.KeyMod.CtrlCmd | monaco.KeyCode.KeyS, () => showToast('💾 Saqlandi', 'success', 1500));
+  });
+}
+
+const LANG_MAP = { cpp:'cpp', python:'python', java:'java', js:'javascript', rust:'rust', go:'go' };
+
+function changeLang(lang) {
+  currentLang = lang;
+  if (!editor) return;
+  monaco.editor.setModelLanguage(editor.getModel(), LANG_MAP[lang] || lang);
+  editor.setValue(CODE_TEMPLATES[lang] || '// Kodingizni yozing\n');
+}
+
+function changeTheme(t) {
+  if (!editor) return;
+  const map = { dark:'vs-dark', light:'vs', hc:'hc-black' };
+  monaco.editor.setTheme(map[t] || 'vs-dark');
+}
+
+function adjFont(d) {
+  fontSize = Math.max(10, Math.min(24, fontSize + d));
+  document.getElementById('fsLbl').textContent = fontSize;
+  editor?.updateOptions({ fontSize });
+}
+
+function formatCode()  { editor?.getAction('editor.action.formatDocument')?.run(); }
+function resetEditor() {
+  if (confirm("Kodni boshlang'ich holatga qaytarasizmi?"))
+    editor?.setValue(CODE_TEMPLATES[currentLang] || '');
+}
+
+/* ════════════════════════════════════
+   BOTTOM TABS
+════════════════════════════════════ */
+function switchBtab(name, btn) {
+  document.querySelectorAll('.btab').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderBottomPane(name);
+}
+
+function renderBottomPane(name) {
+  const body = document.getElementById('bottomBody');
+  if (name === 'testcase') {
+    body.innerHTML = `
+      <div style="display:flex;gap:4px;padding:8px;border-bottom:1px solid #2d2d2d">
+        ${TEST_CASES.map((_, i) => `
+          <button class="btab ${i===activeTcIdx?'active':''}" style="font-size:11px;padding:4px 10px;height:auto"
+            onclick="activeTcIdx=${i};renderTC(${i});this.parentElement.querySelectorAll('.btab').forEach(b=>b.classList.remove('active'));this.classList.add('active')">
+            Case ${i+1}
+          </button>`).join('')}
+        <button onclick="TEST_CASES.push({input:'',expected:''});switchBtab('testcase',null)"
+          style="background:none;border:1px dashed #3c3c3c;border-radius:5px;color:#555;cursor:pointer;padding:4px 9px;font-size:11px;margin-left:auto;transition:all .15s"
+          onmouseover="this.style.borderColor='#555'" onmouseout="this.style.borderColor='#3c3c3c'">+ Qo'shish</button>
+      </div>
+      <div style="padding:10px" id="tcContent"></div>`;
+    renderTC(activeTcIdx);
+  } else if (name === 'result') {
+    body.innerHTML = `<div style="padding:40px 14px;text-align:center;color:#484f58;font-size:12px;font-family:var(--font-mono)">
+      Hali natija yo'q.
+      <button onclick="runCode()" style="color:#58a6ff;background:none;border:none;cursor:pointer;font-size:12px"> Run </button>
+      tugmasini bosing.
+    </div>`;
+  } else {
+    body.innerHTML = `<div style="padding:10px;font-family:var(--font-mono);font-size:12px;color:#484f58">// Console output</div>`;
+  }
+}
+
+function renderTC(idx) {
+  const tc = TEST_CASES[idx];
+  if (!tc) return;
+  document.getElementById('tcContent').innerHTML = `
+    <div style="margin-bottom:10px">
+      <div class="tc-label">stdin</div>
+      <textarea class="tc-area" rows="3">${tc.input}</textarea>
+    </div>
+    <div>
+      <div class="tc-label">Kutilgan chiqish</div>
+      <textarea class="tc-area" rows="2" style="color:#8b949e">${tc.expected}</textarea>
+    </div>`;
+}
+
+function adjBottom(d) {
+  const z = document.getElementById('bottomZone');
+  z.style.height = Math.max(80, Math.min(z.offsetHeight + d, 520)) + 'px';
+  editor?.layout();
+}
+
+/* ════════════════════════════════════
+   RUN / SUBMIT
+════════════════════════════════════ */
+function runCode() {
+  const btn = document.getElementById('runBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span style="width:11px;height:11px;border:2px solid #fff;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span> Running...`;
+
+  document.querySelectorAll('.btab').forEach((b, i) => b.classList.toggle('active', i === 1));
+  document.getElementById('bottomBody').innerHTML = `
+    <div style="display:flex;align-items:center;gap:10px;padding:14px;font-size:12px;color:#8b949e">
+      <span class="spinner spinner-sm"></span> Ishga tushirilmoqda...
+    </div>`;
+
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="11" height="11" fill="currentColor" viewBox="0 0 16 16"><path d="M10.804 8 5 4.633v6.734L10.804 8z"/></svg> Run <span style="font-size:10px;opacity:.65">Ctrl+↵</span>`;
+    renderRunResults();
+  }, 1100);
+}
+
+function renderRunResults() {
+  const results = [
+    { idx:0, status:'ac', actual:'[0,1]', runtime:'112ms', memory:'9.1MB' },
+    { idx:1, status:'ac', actual:'[1,2]', runtime:'108ms', memory:'9.0MB' },
+    { idx:2, status:'ac', actual:'[0,1]', runtime:'110ms', memory:'9.1MB' },
+  ];
+  const allAc = results.every(r => r.status === 'ac');
+  const body  = document.getElementById('bottomBody');
+  body.innerHTML = `
+    <div class="result-verdict">
+      <span class="verdict-text ${allAc ? 'verdict-ac' : 'verdict-wa'}">${allAc ? '✓ Accepted' : '✗ Wrong Answer'}</span>
+      ${allAc ? `
+        <span class="result-stat-chip">⏱ ${results[0].runtime}</span>
+        <span class="result-stat-chip">💾 ${results[0].memory}</span>
+        <span style="margin-left:auto;font-size:11px;color:#3fb950">Barcha ${results.length} ta test ✓</span>` : ''}
+    </div>
+    ${results.map((r, i) => `
+      <div>
+        <div class="tc-result-row" onclick="this.nextElementSibling.style.display=this.nextElementSibling.style.display==='block'?'none':'block'">
+          <span style="color:${r.status==='ac'?'#3fb950':'#f85149'};font-size:13px">${r.status==='ac'?'✓':'✗'}</span>
+          <span style="font-size:12px;color:#8b949e">Case ${i+1}</span>
+          <span style="font-size:11px;color:#484f58;font-family:var(--font-mono)">${TEST_CASES[r.idx]?.input?.split('\n')[0]?.substring(0,28)}...</span>
+          <span style="margin-left:auto;font-size:11px;color:#484f58">${r.runtime}</span>
+        </div>
+        <div class="io-grid" style="display:none">
+          <div class="io-cell"><label>Input</label><pre>${TEST_CASES[r.idx]?.input}</pre></div>
+          <div class="io-cell"><label>Expected</label><pre style="color:#3fb950">${TEST_CASES[r.idx]?.expected}</pre></div>
+          <div class="io-cell"><label>Output</label><pre style="color:${r.status==='ac'?'#3fb950':'#f85149'}">${r.actual}</pre></div>
+        </div>
+      </div>`).join('')}`;
+}
+
+function submitCode() {
+  const btn = document.getElementById('submitBtn');
+  btn.disabled = true;
+  btn.innerHTML = `<span style="width:11px;height:11px;border:2px solid #79b8ff;border-top-color:transparent;border-radius:50%;display:inline-block;animation:spin .7s linear infinite"></span> Submitting...`;
+  setTimeout(() => {
+    btn.disabled = false;
+    btn.innerHTML = `<svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M22 2 11 13"/><path d="M22 2 15 22 11 13 2 9l20-7z"/></svg> Submit`;
+    showVerdictModal(true);
+    SUBMISSIONS.unshift({ status:'ac', lang:'C++ 17', time:'124ms', mem:'9.2MB', ago:'Hozirgina', beats:'98.2%' });
+    renderSubList();
+  }, 1800);
+}
+
+/* ════════════════════════════════════
+   VERDICT MODAL
+════════════════════════════════════ */
+function showVerdictModal(accepted) {
+  const ov = document.getElementById('verdictOverlay');
+  const vm = document.getElementById('verdictModal');
+  document.getElementById('vIcon').textContent  = accepted ? '🎉' : '💔';
+  document.getElementById('vTitle').textContent = accepted ? 'Accepted!' : 'Wrong Answer';
+  document.getElementById('vTitle').style.color = accepted ? 'var(--easy-dark)' : 'var(--hard-dark)';
+  document.getElementById('vSub').textContent   = accepted
+    ? "Tabriklaymiz! Barcha testlar muvaffaqiyatli o'tdi."
+    : "Bir yoki bir nechta test holati noto'g'ri.";
+  document.getElementById('vStats').innerHTML = accepted ? `
+    <div class="vstat"><div class="vstat-val" style="color:var(--easy-dark)">124ms</div><div class="vstat-lbl">Runtime</div></div>
+    <div class="vstat"><div class="vstat-val" style="color:var(--accent)">9.2MB</div><div class="vstat-lbl">Memory</div></div>
+    <div class="vstat"><div class="vstat-val" style="color:var(--medium-dark)">Top 98%</div><div class="vstat-lbl">Tezlik</div></div>
+    <div class="vstat"><div class="vstat-val" style="color:#7c3aed">+50</div><div class="vstat-lbl">Ball</div></div>` : '';
+  ov.classList.add('show');
+}
+
+function closeVerdict() {
+  document.getElementById('verdictOverlay').classList.remove('show');
+}
+
+/* ════════════════════════════════════
+   SUBMISSIONS LIST
+════════════════════════════════════ */
+function renderSubList() {
+  const labels = { ac:'Accepted', wa:'Wrong Answer', tle:'Time Limit Exceeded', mle:'Memory Limit' };
+  const colors = { ac:'var(--easy-dark)', wa:'var(--hard-dark)', tle:'var(--medium-dark)', mle:'#7c3aed' };
+  document.getElementById('subList').innerHTML = SUBMISSIONS.map(s => `
+    <div class="sub-row">
+      <div class="sub-status-dot ${s.status}"></div>
+      <div style="flex:1">
+        <div style="font-size:13px;font-weight:600;color:${colors[s.status]||'var(--text-3)'}">${labels[s.status]||s.status}</div>
+        ${s.detail ? `<div style="font-size:11px;color:var(--text-4);margin-top:2px">${s.detail}</div>` : ''}
+      </div>
+      <div style="text-align:right">
+        <div style="font-family:var(--font-mono);font-size:12px;color:var(--text-3)">${s.time} · ${s.mem}</div>
+        ${s.beats ? `<div style="font-size:11px;color:var(--easy-dark);font-weight:500">Tezlik: ${s.beats}</div>` : ''}
+        <div style="font-size:11px;color:var(--text-4)">${s.lang} · ${s.ago}</div>
+      </div>
+    </div>`).join('');
+}
+
+/* ════════════════════════════════════
+   LEFT PANEL TABS
+════════════════════════════════════ */
+function switchLeftTab(name, btn) {
+  document.querySelectorAll('.split-left .tab-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  ['desc','editorial','solutions','submissions'].forEach(p => {
+    const el = document.getElementById('tab-' + p);
+    if (el) el.style.display = p === name ? '' : 'none';
+  });
+}
+
+/* ════════════════════════════════════
+   MISC
+════════════════════════════════════ */
+function toggleBookmark() {
+  bookmarked = !bookmarked;
+  document.getElementById('bmIcon').setAttribute('fill', bookmarked ? 'var(--medium)' : 'none');
+  document.getElementById('bmIcon').setAttribute('stroke', bookmarked ? 'var(--medium)' : 'currentColor');
+  showToast(bookmarked ? '🔖 Saqlandi' : 'Saqlashdan olib tashlandi', 'info', 1800);
+}
+
+function navigateProblem(dir) {
+  showToast(dir > 0 ? '→ Keyingi masala' : '← Oldingi masala', 'info', 1500);
+}
+</script>
+</body>
+</html>

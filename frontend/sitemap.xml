@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://sitemaps.org"
+        xmlns:xsi="http://w3.org"
+        xsi:schemaLocation="http://sitemaps.org
+        http://sitemaps.org/sitemap.xsd">
+  
+  <!-- Bosh sahifa -->
+  <url>
+    <loc>https://yourdomain.com</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1.00</priority>
+  </url>
+  
+  <!-- Masalalar ro'yxati -->
+  <url>
+    <loc>https://yourdomain.comproblems</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.90</priority>
+  </url>
+  
+  <!-- Musobaqalar -->
+  <url>
+    <loc>https://yourdomain.comcontests</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.85</priority>
+  </url>
+  
+  <!-- Peshqadamlar reytingi -->
+  <url>
+    <loc>https://yourdomain.comleaderboard</loc>
+    <lastmod>2026-06-09</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.70</priority>
+  </url>
+
+</urlset>

@@ -1,0 +1,19 @@
+# Barcha qidiruv botlari uchun amal qiladi
+User-agent: *
+
+# Indekslashga ruxsat berilgan asosiy sahifalar
+Allow: /
+Allow: /problems
+Allow: /problems/
+Allow: /contests
+Allow: /contests/
+Allow: /leaderboard
+
+# Qidiruv tizimidan yashirilishi shart bo'lgan maxfiy va shaxsiy sahifalar
+Disallow: /assets/js/     # Javascript kodlarimiz va network.js mantiqlarini yashiramiz
+Disallow: /pages/         # Toza shablon HTML fayllarga alohida kirishni yopamiz
+Disallow: /profile        # Foydalanuvchilarning shaxsiy kabinetini qidiruvga chiqarmaymiz
+Disallow: /login          # Avtorizatsiya sahifasini indekslash shart emas
+
+# Sayt xaritasini botga ko'rsatamiz (O'zingizning haqiqiy domeningizni yozasiz)
+Sitemap: https://yourdomain.com

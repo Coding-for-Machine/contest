@@ -1,0 +1,390 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Musobaqalar — RobaContest</title>
+<link rel="stylesheet" href="../assets/css/style.css"/>
+<style>
+body { background: #f8fafc; }
+
+/* Filter tabs */
+.filter-tabs {
+  display: flex; gap: 4px;
+  background: var(--bg);
+  border: 1px solid var(--border-md);
+  border-radius: var(--radius-lg);
+  padding: 4px;
+}
+.filter-tab {
+  padding: 7px 18px; border-radius: var(--radius-md);
+  font-size: 13px; font-weight: 500;
+  color: var(--text-3); background: transparent;
+  border: none; cursor: pointer; transition: var(--transition);
+  white-space: nowrap;
+}
+.filter-tab:hover { color: var(--text); background: var(--bg-surface); }
+.filter-tab.active { background: var(--accent); color: #fff; box-shadow: var(--shadow-accent); }
+
+/* Contest card */
+.contest-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 22px 24px;
+  box-shadow: var(--shadow-xs);
+  transition: var(--transition-slow);
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+}
+.contest-card::before {
+  content: '';
+  position: absolute; top: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: var(--radius-xl) var(--radius-xl) 0 0;
+}
+.contest-card.live::before   { background: linear-gradient(90deg, var(--hard), #f97316); }
+.contest-card.soon::before   { background: linear-gradient(90deg, var(--accent), #06b6d4); }
+.contest-card.ended::before  { background: var(--border-hi); }
+.contest-card:hover {
+  box-shadow: var(--shadow-md);
+  transform: translateY(-2px);
+  border-color: var(--border-md);
+}
+
+.c-status {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600;
+}
+.c-live   { background: var(--hard-bg);   color: var(--hard-dark);   border: 1px solid var(--hard-border);   }
+.c-soon   { background: var(--accent-dim); color: var(--accent-dark); border: 1px solid var(--accent-glow);  }
+.c-ended  { background: var(--bg-raised);  color: var(--text-4);      border: 1px solid var(--border);       }
+
+.c-live-dot {
+  width: 6px; height: 6px; border-radius: 50%;
+  background: var(--hard);
+  animation: blink 1.4s ease-in-out infinite;
+}
+@keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+
+.c-title {
+  font-size: 16px; font-weight: 700; color: var(--text);
+  letter-spacing: -0.02em; margin: 10px 0 6px;
+}
+.c-meta {
+  display: flex; flex-wrap: wrap; gap: 10px;
+  font-size: 12px; color: var(--text-3);
+  font-family: var(--font-mono); margin-bottom: 14px;
+}
+.c-meta-item { display: flex; align-items: center; gap: 4px; }
+
+.c-actions { display: flex; gap: 8px; align-items: center; }
+
+/* Countdown */
+.c-countdown {
+  font-family: var(--font-mono); font-size: 13px; font-weight: 700;
+  color: var(--text-2);
+  background: var(--bg-surface); border: 1px solid var(--border);
+  padding: 4px 12px; border-radius: var(--radius-md);
+  display: flex; align-items: center; gap: 6px;
+}
+.c-countdown.red { color: var(--hard-dark); background: var(--hard-bg); border-color: var(--hard-border); }
+
+/* Registered badge */
+.reg-badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 3px 10px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600;
+  background: var(--easy-bg); color: var(--easy-dark); border: 1px solid var(--easy-border);
+}
+
+/* Prize row */
+.prize-row {
+  display: flex; align-items: center; gap: 8px;
+  padding: 10px 12px;
+  background: linear-gradient(135deg, rgba(245,158,11,0.06), rgba(251,191,36,0.04));
+  border: 1px solid rgba(245,158,11,0.15);
+  border-radius: var(--radius-md);
+  margin-top: 12px;
+}
+.prize-icon { font-size: 16px; }
+.prize-text { font-size: 12px; color: var(--medium-dark); font-weight: 500; }
+
+/* Stats bar */
+.stat-bar {
+  display: grid; grid-template-columns: repeat(3,1fr);
+  gap: 0;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  margin-bottom: 24px;
+}
+.stat-bar-item {
+  padding: 16px 20px; text-align: center;
+  border-right: 1px solid var(--border);
+}
+.stat-bar-item:last-child { border-right: none; }
+.stat-bar-val { font-size: 22px; font-weight: 800; color: var(--text); letter-spacing: -0.04em; }
+.stat-bar-lbl { font-size: 11px; color: var(--text-4); margin-top: 2px; }
+
+/* Participants progress */
+.part-bar {
+  height: 4px; background: var(--bg-raised);
+  border-radius: 2px; margin-top: 6px; overflow: hidden;
+}
+.part-fill { height: 100%; background: var(--accent); border-radius: 2px; transition: width .8s ease; }
+
+.cards-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+}
+@media (max-width: 700px) { .cards-grid { grid-template-columns: 1fr; } }
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="../index.html" class="logo"><div class="logo-mark">R</div>RobaContest</a>
+    <nav class="topbar-nav">
+      <a href="../index.html"          class="nav-link">Dashboard</a>
+      <a href="problems.html"          class="nav-link">Masalalar</a>
+      <a href="contests.html"          class="nav-link active">Musobaqalar</a>
+      <a href="leaderboard.html"       class="nav-link">Reyting</a>
+    </nav>
+    <div class="topbar-right">
+      <a href="login.html" class="btn btn-ghost btn-sm">Kirish</a>
+      <a href="login.html" class="btn btn-primary btn-sm">Ro'yxatdan o'tish</a>
+      <a href="profile.html" class="user-avatar" style="display:none">AS</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+
+  <!-- Header -->
+  <div class="page-header anim-fade-up">
+    <div>
+      <div class="breadcrumb">
+        <a href="../index.html">robacontest</a>
+        <span class="breadcrumb-sep">›</span>
+        <span style="color:var(--text-3)">musobaqalar</span>
+      </div>
+      <h1 class="page-title">Musobaqalar</h1>
+      <p class="page-subtitle">Real vaqtda musobaqalarda ishtirok eting</p>
+    </div>
+    <div style="display:flex;gap:8px;align-items:center">
+      <div class="filter-tabs" id="filterTabs">
+        <button class="filter-tab active" onclick="setFilter('all',this)">Barchasi</button>
+        <button class="filter-tab" onclick="setFilter('live',this)">🔴 Live</button>
+        <button class="filter-tab" onclick="setFilter('soon',this)">⏳ Kutilmoqda</button>
+        <button class="filter-tab" onclick="setFilter('ended',this)">Tugagan</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Stats bar -->
+  <div class="stat-bar anim-fade-up" style="animation-delay:.05s">
+    <div class="stat-bar-item">
+      <div class="stat-bar-val" style="color:var(--hard-dark)">1</div>
+      <div class="stat-bar-lbl">Hozir live</div>
+    </div>
+    <div class="stat-bar-item">
+      <div class="stat-bar-val" style="color:var(--accent)">3</div>
+      <div class="stat-bar-lbl">Kutilmoqda</div>
+    </div>
+    <div class="stat-bar-item">
+      <div class="stat-bar-val">47</div>
+      <div class="stat-bar-lbl">Jami o'tkazildi</div>
+    </div>
+  </div>
+
+  <!-- Cards -->
+  <div class="cards-grid anim-fade-up" style="animation-delay:.1s" id="contestsGrid"></div>
+
+</main>
+
+<script src="../assets/js/main.js"></script>
+<script>
+const CONTESTS = [
+  {
+    id:1, status:'live', type:'Rated',
+    title:'RobaContest Round #47',
+    desc:'Hozir davom etmoqda! 4 ta masala, vaqt — 2 soat.',
+    problems:4, duration:'2 soat', participants:142, maxPart:300,
+    timer: 2534, registered:true,
+    prize:'Top 3 sovrinli',
+    tags:['Rated','Div. 2'],
+  },
+  {
+    id:2, status:'soon', type:'Rated',
+    title:'CFM Monthly Cup #8',
+    desc:"6 ta masala, 2500 ball jamg'arma.",
+    problems:6, duration:'3 soat', participants:89, maxPart:500,
+    startIn: 3600*2+14*60, registered:true,
+    prize:'Naqd sovrin: 500,000 so\'m',
+    tags:['Rated','Div. 1+2'],
+  },
+  {
+    id:3, status:'soon', type:'Unrated',
+    title:'Weekly Practice #12',
+    desc:"Mashq uchun 5 ta masala. Natija reytingga ta'sir qilmaydi.",
+    problems:5, duration:'1.5 soat', participants:34, maxPart:200,
+    startIn: 3600*24+3600*4, registered:false,
+    tags:['Unrated','Amaliyot'],
+  },
+  {
+    id:4, status:'soon', type:'Rated',
+    title:'Algorithm Sprint #5',
+    desc:'Tezlik va optimallik uchun musobaqa. Vaqt — 90 daqiqa.',
+    problems:3, duration:'90 daqiqa', participants:12, maxPart:150,
+    startIn: 3600*48, registered:false,
+    tags:['Rated','Div. 3'],
+  },
+  {
+    id:5, status:'ended', type:'Rated',
+    title:'RobaContest Round #46',
+    desc:"O'tgan hafta bo'lib o'tdi.",
+    problems:4, duration:'2 soat', participants:198, maxPart:300,
+    result:'#23', myScore:'1,840',
+    tags:['Rated','Tugagan'],
+  },
+  {
+    id:6, status:'ended', type:'Rated',
+    title:'CFM Monthly Cup #7',
+    desc:'Oy musobaqasi — 248 ishtirokchi.',
+    problems:6, duration:'3 soat', participants:248, maxPart:500,
+    result:'#41', myScore:'2,100',
+    tags:['Rated','Tugagan'],
+  },
+];
+
+let activeFilter = 'all';
+
+function setFilter(f, btn) {
+  activeFilter = f;
+  document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  renderCards();
+}
+
+function fmtCountdown(secs) {
+  if (secs <= 0) return '00:00:00';
+  const h = String(Math.floor(secs/3600)).padStart(2,'0');
+  const m = String(Math.floor(secs%3600/60)).padStart(2,'0');
+  const s = String(secs%60).padStart(2,'0');
+  return `${h}:${m}:${s}`;
+}
+
+function renderCards() {
+  const grid = document.getElementById('contestsGrid');
+  const list = activeFilter === 'all'
+    ? CONTESTS
+    : CONTESTS.filter(c => c.status === activeFilter);
+
+  if (!list.length) {
+    grid.innerHTML = `<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-4);font-size:13px">
+      <div style="font-size:28px;margin-bottom:10px;opacity:.5">🏆</div>
+      Bu bo'limda musobaqalar yo'q
+    </div>`;
+    return;
+  }
+
+  grid.innerHTML = list.map(c => {
+    const pct = Math.round(c.participants / (c.maxPart || 300) * 100);
+    const tagHtml = (c.tags||[]).map(t =>
+      `<span class="chip" style="font-size:10px">${t}</span>`).join('');
+
+    let statusHtml = '';
+    let actionHtml = '';
+    let timerHtml  = '';
+    let resultHtml = '';
+
+    if (c.status === 'live') {
+      statusHtml = `<span class="c-status c-live"><span class="c-live-dot"></span>LIVE</span>`;
+      timerHtml  = `<span class="c-countdown red" id="ct-${c.id}">⏱ ${fmtCountdown(c.timer)}</span>`;
+      actionHtml = `<a href="contest-detail.html?id=${c.id}" class="btn btn-primary btn-sm" style="flex:1;justify-content:center">Kirish →</a>`;
+    } else if (c.status === 'soon') {
+      statusHtml = `<span class="c-status c-soon">⏳ Kutilmoqda</span>`;
+      timerHtml  = `<span class="c-countdown" id="ct-${c.id}">${fmtCountdown(c.startIn)}</span>`;
+      actionHtml = c.registered
+        ? `<span class="reg-badge">✓ Ro'yxatdan o'tildi</span><a href="contest-detail.html?id=${c.id}" class="btn btn-ghost btn-sm" style="margin-left:auto">Batafsil</a>`
+        : `<a href="contest-detail.html?id=${c.id}" class="btn btn-secondary btn-sm" style="flex:1;justify-content:center">Ro'yxatdan o'tish</a>`;
+    } else {
+      statusHtml = `<span class="c-status c-ended">Tugagan</span>`;
+      if (c.result) {
+        resultHtml = `<div style="display:flex;gap:10px;margin-top:12px">
+          <div style="flex:1;text-align:center;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px">
+            <div style="font-family:var(--font-mono);font-size:16px;font-weight:800;color:var(--accent-dark)">${c.result}</div>
+            <div style="font-size:10px;color:var(--text-4);margin-top:2px">O'rin</div>
+          </div>
+          <div style="flex:1;text-align:center;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-md);padding:10px">
+            <div style="font-family:var(--font-mono);font-size:16px;font-weight:800;color:var(--text)">${c.myScore}</div>
+            <div style="font-size:10px;color:var(--text-4);margin-top:2px">Ball</div>
+          </div>
+        </div>`;
+      }
+      actionHtml = `<a href="contest-detail.html?id=${c.id}" class="btn btn-ghost btn-sm" style="flex:1;justify-content:center">Natijalar →</a>`;
+    }
+
+    return `
+      <div class="contest-card ${c.status}" onclick="location.href='contest-detail.html?id=${c.id}'" style="animation-delay:${list.indexOf(c)*40}ms" class="anim-fade-up">
+        <div style="display:flex;align-items:center;justify-content:space-between;gap:8px">
+          ${statusHtml}
+          ${timerHtml}
+        </div>
+        <div class="c-title">${c.title}</div>
+        <div class="c-meta">
+          <span class="c-meta-item">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/></svg>
+            ${c.problems} masala
+          </span>
+          <span class="c-meta-item">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            ${c.duration}
+          </span>
+          <span class="c-meta-item">
+            <svg width="11" height="11" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+            ${c.participants} ishtirokchi
+          </span>
+        </div>
+        <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:12px">${tagHtml}</div>
+        ${c.status !== 'ended' ? `
+          <div>
+            <div style="display:flex;justify-content:space-between;margin-bottom:4px">
+              <span style="font-size:11px;color:var(--text-4)">Ishtirokchilar</span>
+              <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-3)">${c.participants}/${c.maxPart||300}</span>
+            </div>
+            <div class="part-bar"><div class="part-fill" style="width:${pct}%"></div></div>
+          </div>` : ''}
+        ${c.prize ? `<div class="prize-row"><span class="prize-icon">🏆</span><span class="prize-text">${c.prize}</span></div>` : ''}
+        ${resultHtml}
+        <div class="c-actions" style="margin-top:14px" onclick="event.stopPropagation()">
+          ${actionHtml}
+        </div>
+      </div>`;
+  }).join('');
+
+  /* Start timers */
+  list.forEach(c => {
+    if (c.status === 'live' || c.status === 'soon') {
+      let s = c.status === 'live' ? (c.timer||0) : (c.startIn||0);
+      const el = document.getElementById('ct-' + c.id);
+      const iv = setInterval(() => {
+        if (!el || !document.body.contains(el)) { clearInterval(iv); return; }
+        s = Math.max(0, s-1);
+        el.textContent = (c.status === 'live' ? '⏱ ' : '') + fmtCountdown(s);
+        if (s <= 300 && c.status !== 'live') el.classList.add('red');
+      }, 1000);
+    }
+  });
+}
+
+document.addEventListener('DOMContentLoaded', renderCards);
+</script>
+</body>
+</html>

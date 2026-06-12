@@ -1,0 +1,93 @@
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: django_db
+    restart: always
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432" # ⭐ LOKALDA VERIFY QILISH VA ISHLATISH UCHUN OCHILDI
+
+  db_backup:
+    image: prodrigestivill/postgres-backup-local:16
+    container_name: django_db_backup
+    restart: always
+    environment:
+      POSTGRES_HOST: db
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      SCHEDULE: "@daily"
+      BACKUP_KEEP_DAYS: 7
+    volumes:
+      - ./backups:/backups
+    depends_on:
+      - db
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: django_redis
+    restart: always
+    ports:
+      - "6379:6379" # ⭐ LOKAL TERMINAL REDIS BILAN BOG'LANISHI UCHUN OCHILDI
+
+  minio:
+    image: firstfinger/minio:latest-arm64
+    container_name: django_minio
+    user: "1000:1000"
+    restart: always
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - minio_data:/data
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+      - "9002:9002"
+
+  admin:
+    build:
+      context: .
+      dockerfile: ./app/Dockerfile
+    container_name: django_app
+    restart: always
+    env_file: .env
+    command: python manage.py runserver 0.0.0.0:8000
+    volumes:
+      - .:/app
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+      - redis
+      - minio
+
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    container_name: golang_fiber
+    restart: always
+    environment:
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_USER: ${POSTGRES_USER}
+      DB_PASSWORD: ${POSTGRES_PASSWORD}
+      DB_NAME: ${POSTGRES_DB}
+      REDIS_HOST: redis:6379
+      MINIO_ENDPOINT: minio:9000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - db
+      - redis
+      - minio
+
+volumes:
+  postgres_data:
+  minio_data:

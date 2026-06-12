@@ -1,0 +1,537 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Dashboard — RobaContest</title>
+<link rel="stylesheet" href="assets/css/style.css"/>
+<style>
+body { background: #f8fafc; }
+
+/* Hero */
+.hero {
+  background: linear-gradient(135deg, #1d4ed8 0%, #3b82f6 50%, #06b6d4 100%);
+  border-radius: var(--radius-2xl);
+  padding: 36px 40px;
+  color: #fff;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 28px;
+  position: relative;
+  overflow: hidden;
+}
+.hero::before {
+  content: '';
+  position: absolute; inset: 0;
+  background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.05'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+}
+.hero-left { position: relative; z-index: 1; }
+.hero-greeting { font-size: 13px; font-weight: 500; opacity: 0.8; margin-bottom: 6px; font-family: var(--font-mono); }
+.hero-name { font-size: 28px; font-weight: 800; letter-spacing: -0.04em; margin-bottom: 8px; }
+.hero-sub  { font-size: 13px; opacity: 0.75; line-height: 1.5; }
+.hero-right { position: relative; z-index: 1; text-align: right; flex-shrink: 0; }
+.hero-streak {
+  background: rgba(255,255,255,0.15);
+  border: 1px solid rgba(255,255,255,0.25);
+  border-radius: var(--radius-xl);
+  padding: 16px 20px;
+  text-align: center;
+  backdrop-filter: blur(8px);
+}
+.hero-streak-val { font-size: 32px; font-weight: 900; letter-spacing: -0.04em; }
+.hero-streak-lbl { font-size: 11px; opacity: 0.7; margin-top: 2px; font-family: var(--font-mono); text-transform: uppercase; letter-spacing: 0.06em; }
+
+/* Quick stats */
+.qs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-bottom: 28px;
+}
+.qs-card {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 18px 20px;
+  box-shadow: var(--shadow-xs);
+  transition: var(--transition-slow);
+  position: relative;
+  overflow: hidden;
+}
+.qs-card:hover { box-shadow: var(--shadow-md); transform: translateY(-2px); }
+.qs-card::after {
+  content: '';
+  position: absolute;
+  bottom: 0; left: 0; right: 0;
+  height: 3px;
+  border-radius: 0 0 var(--radius-xl) var(--radius-xl);
+}
+.qs-card.blue::after   { background: var(--accent); }
+.qs-card.green::after  { background: var(--easy); }
+.qs-card.yellow::after { background: var(--medium); }
+.qs-card.purple::after { background: #8b5cf6; }
+.qs-icon {
+  width: 36px; height: 36px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 12px; font-size: 17px;
+}
+.qs-card.blue   .qs-icon { background: var(--accent-dim); }
+.qs-card.green  .qs-icon { background: var(--easy-bg); }
+.qs-card.yellow .qs-icon { background: var(--medium-bg); }
+.qs-card.purple .qs-icon { background: rgba(139,92,246,0.08); }
+.qs-val { font-size: 24px; font-weight: 800; letter-spacing: -0.04em; color: var(--text); }
+.qs-lbl { font-size: 11.5px; color: var(--text-4); margin-top: 2px; }
+.qs-delta { font-size: 11px; font-weight: 500; margin-top: 4px; display: flex; align-items: center; gap: 3px; }
+.qs-delta.up { color: var(--easy-dark); }
+
+/* Section header */
+.sec-header {
+  display: flex; align-items: center; justify-content: space-between;
+  margin-bottom: 16px;
+}
+.sec-title { font-size: 15px; font-weight: 700; color: var(--text); letter-spacing: -0.02em; }
+
+/* Progress ring */
+.progress-wrap {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 20px;
+  box-shadow: var(--shadow-xs);
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+.ring-svg { flex-shrink: 0; }
+.ring-track { fill: none; stroke: var(--bg-raised); stroke-width: 10; }
+.ring-fill  { fill: none; stroke-width: 10; stroke-linecap: round;
+              transform: rotate(-90deg); transform-origin: 50% 50%;
+              transition: stroke-dashoffset 1s ease; }
+.ring-easy   { stroke: var(--easy); }
+.ring-medium { stroke: var(--medium); }
+.ring-hard   { stroke: var(--hard); }
+.ring-label { position: relative; }
+
+/* Heatmap */
+.heatmap-grid {
+  display: grid;
+  grid-template-columns: repeat(52, 1fr);
+  gap: 3px;
+}
+.hm-cell {
+  aspect-ratio: 1;
+  border-radius: 2px;
+  background: var(--bg-raised);
+  transition: transform 0.1s;
+  cursor: default;
+}
+.hm-cell:hover { transform: scale(1.4); }
+.hm-1 { background: rgba(34,197,94,0.2); }
+.hm-2 { background: rgba(34,197,94,0.45); }
+.hm-3 { background: rgba(34,197,94,0.70); }
+.hm-4 { background: var(--easy); }
+
+/* Recent activity */
+.activity-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 11px 0;
+  border-bottom: 1px solid var(--border);
+}
+.activity-item:last-child { border-bottom: none; }
+.activity-icon {
+  width: 34px; height: 34px;
+  border-radius: var(--radius-md);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 15px; flex-shrink: 0;
+}
+.activity-icon.solved  { background: var(--easy-bg);   }
+.activity-icon.contest { background: var(--accent-dim); }
+.activity-icon.badge   { background: rgba(245,158,11,.1); }
+
+/* Upcoming contest card */
+.contest-preview {
+  background: var(--bg);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-xl);
+  padding: 16px 18px;
+  box-shadow: var(--shadow-xs);
+  transition: var(--transition-slow);
+  cursor: pointer;
+  margin-bottom: 10px;
+}
+.contest-preview:hover { box-shadow: var(--shadow-md); transform: translateY(-1px); border-color: var(--accent-glow); }
+.contest-live-badge {
+  display: inline-flex; align-items: center; gap: 5px;
+  padding: 3px 9px; border-radius: var(--radius-full);
+  font-size: 11px; font-weight: 600;
+  background: var(--hard-bg); color: var(--hard-dark); border: 1px solid var(--hard-border);
+}
+.live-dot {
+  width: 6px; height: 6px; border-radius: 50%; background: var(--hard);
+  animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:0.5;transform:scale(0.7)} }
+
+/* Leaderboard preview */
+.lb-row {
+  display: flex; align-items: center; gap: 12px;
+  padding: 10px 0; border-bottom: 1px solid var(--border);
+}
+.lb-row:last-child { border-bottom: none; }
+.lb-rank {
+  width: 26px; height: 26px; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px; font-weight: 700; flex-shrink: 0;
+  font-family: var(--font-mono);
+}
+
+/* Two-column grid */
+.two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.three-col { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+
+@media (max-width: 900px) {
+  .qs-grid   { grid-template-columns: repeat(2,1fr); }
+  .two-col   { grid-template-columns: 1fr; }
+  .three-col { grid-template-columns: 1fr; }
+  .hero      { flex-direction: column; align-items: flex-start; }
+  .hero-right { text-align: left; }
+}
+@media (max-width: 500px) {
+  .qs-grid { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- TOPBAR -->
+<header class="topbar">
+  <div class="topbar-inner">
+    <a href="index.html" class="logo">
+      <div class="logo-mark">R</div>
+      RobaContest
+    </a>
+    <nav class="topbar-nav">
+      <a href="index.html"             class="nav-link active">Dashboard</a>
+      <a href="pages/problems.html"    class="nav-link">Masalalar</a>
+      <a href="pages/contests.html"    class="nav-link">Musobaqalar</a>
+      <a href="pages/leaderboard.html" class="nav-link">Reyting</a>
+    </nav>
+    <div class="topbar-right">
+      <a href="pages/login.html" class="btn btn-ghost btn-sm btn-login">Kirish</a>
+      <a href="pages/login.html" class="btn btn-primary btn-sm btn-signup">Ro'yxatdan o'tish</a>
+      <a href="pages/profile.html" class="user-avatar" style="display:none">AS</a>
+    </div>
+  </div>
+</header>
+
+<main class="page-main">
+
+  <!-- HERO -->
+  <div class="hero anim-fade-up">
+    <div class="hero-left">
+      <div class="hero-greeting">👋 Xush kelibsiz</div>
+      <div class="hero-name" id="heroName">Asadbek</div>
+      <div class="hero-sub">Bugun ham yangi masalalar yechishga tayyormisiz?<br/>Siz <strong>38-o'rindasiz</strong> — yuqoriga chiqishga 12 ball yetmaydi!</div>
+      <div style="display:flex;gap:8px;margin-top:16px;flex-wrap:wrap">
+        <a href="pages/problems.html" class="btn btn-sm" style="background:rgba(255,255,255,0.2);color:#fff;border:1px solid rgba(255,255,255,0.3)">
+          <svg width="13" height="13" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg>
+          Masala yechish
+        </a>
+        <a href="pages/contests.html" class="btn btn-sm" style="background:rgba(255,255,255,0.12);color:#fff;border:1px solid rgba(255,255,255,0.2)">
+          🏆 Musobaqalar
+        </a>
+      </div>
+    </div>
+    <div class="hero-right">
+      <div class="hero-streak">
+        <div class="hero-streak-val">🔥 7</div>
+        <div class="hero-streak-lbl">Kun ketma-ket</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- QUICK STATS -->
+  <div class="qs-grid anim-fade-up" style="animation-delay:.05s">
+    <div class="qs-card blue">
+      <div class="qs-icon">✅</div>
+      <div class="qs-val">142</div>
+      <div class="qs-lbl">Yechilgan masalalar</div>
+      <div class="qs-delta up">↑ 3 bugun</div>
+    </div>
+    <div class="qs-card green">
+      <div class="qs-icon">🏅</div>
+      <div class="qs-val">2,840</div>
+      <div class="qs-lbl">Jami ball</div>
+      <div class="qs-delta up">↑ 150 bu hafta</div>
+    </div>
+    <div class="qs-card yellow">
+      <div class="qs-icon">🎯</div>
+      <div class="qs-val">12</div>
+      <div class="qs-lbl">Musobaqalar</div>
+      <div class="qs-delta up">↑ 2 bu oy</div>
+    </div>
+    <div class="qs-card purple">
+      <div class="qs-icon">⚡</div>
+      <div class="qs-val">#38</div>
+      <div class="qs-lbl">Global reyting</div>
+      <div class="qs-delta up">↑ 4 pozitsiya</div>
+    </div>
+  </div>
+
+  <!-- MAIN GRID -->
+  <div class="three-col anim-fade-up" style="animation-delay:.1s">
+
+    <!-- LEFT: Progress + Heatmap + Activity -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Solved progress -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header">
+          <div class="sec-title">Yechilgan masalalar</div>
+          <span style="font-size:12px;color:var(--text-4);font-family:var(--font-mono)">142 / 512</span>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px">
+          <!-- Easy -->
+          <div style="text-align:center">
+            <svg class="ring-svg" width="80" height="80" viewBox="0 0 80 80">
+              <circle class="ring-track" cx="40" cy="40" r="32"/>
+              <circle class="ring-fill ring-easy" cx="40" cy="40" r="32"
+                stroke-dasharray="201" stroke-dashoffset="100"
+                style="stroke-dashoffset:60"/>
+            </svg>
+            <div style="font-size:16px;font-weight:800;color:var(--easy-dark);margin-top:4px">78</div>
+            <div style="font-size:10px;color:var(--text-4)">Easy · 120</div>
+          </div>
+          <!-- Medium -->
+          <div style="text-align:center">
+            <svg class="ring-svg" width="80" height="80" viewBox="0 0 80 80">
+              <circle class="ring-track" cx="40" cy="40" r="32"/>
+              <circle class="ring-fill ring-medium" cx="40" cy="40" r="32"
+                stroke-dasharray="201" stroke-dashoffset="201"
+                style="stroke-dashoffset:130"/>
+            </svg>
+            <div style="font-size:16px;font-weight:800;color:var(--medium-dark);margin-top:4px">51</div>
+            <div style="font-size:10px;color:var(--text-4)">Medium · 280</div>
+          </div>
+          <!-- Hard -->
+          <div style="text-align:center">
+            <svg class="ring-svg" width="80" height="80" viewBox="0 0 80 80">
+              <circle class="ring-track" cx="40" cy="40" r="32"/>
+              <circle class="ring-fill ring-hard" cx="40" cy="40" r="32"
+                stroke-dasharray="201" stroke-dashoffset="201"
+                style="stroke-dashoffset:180"/>
+            </svg>
+            <div style="font-size:16px;font-weight:800;color:var(--hard-dark);margin-top:4px">13</div>
+            <div style="font-size:10px;color:var(--text-4)">Hard · 112</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Activity heatmap -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header">
+          <div class="sec-title">Faollik (52 hafta)</div>
+          <span style="font-size:11px;color:var(--text-4);font-family:var(--font-mono)">234 kun</span>
+        </div>
+        <div class="heatmap-grid" id="heatmap"></div>
+        <div style="display:flex;align-items:center;gap:6px;margin-top:10px;justify-content:flex-end">
+          <span style="font-size:10px;color:var(--text-4)">Kam</span>
+          <div style="width:10px;height:10px;border-radius:2px;background:var(--bg-raised)"></div>
+          <div style="width:10px;height:10px;border-radius:2px" class="hm-1"></div>
+          <div style="width:10px;height:10px;border-radius:2px" class="hm-2"></div>
+          <div style="width:10px;height:10px;border-radius:2px" class="hm-3"></div>
+          <div style="width:10px;height:10px;border-radius:2px" class="hm-4"></div>
+          <span style="font-size:10px;color:var(--text-4)">Ko'p</span>
+        </div>
+      </div>
+
+      <!-- Recent activity -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header">
+          <div class="sec-title">So'nggi faollik</div>
+          <a href="pages/profile.html" class="btn btn-ghost btn-sm" style="font-size:11px">Hammasi →</a>
+        </div>
+        <div id="activityList"></div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT: Contests + Leaderboard -->
+    <div style="display:flex;flex-direction:column;gap:20px">
+
+      <!-- Upcoming contests -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header">
+          <div class="sec-title">Musobaqalar</div>
+          <a href="pages/contests.html" class="btn btn-ghost btn-sm" style="font-size:11px">Barchasi →</a>
+        </div>
+
+        <div class="contest-preview" onclick="location.href='pages/contest-detail.html'">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="contest-live-badge"><span class="live-dot"></span>LIVE</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--hard-dark);font-weight:700" id="liveTimer">00:42:18</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">RobaContest Round #47</div>
+          <div style="font-size:11.5px;color:var(--text-3)">4 ta masala · 142 ishtirokchi</div>
+          <div style="margin-top:10px">
+            <a href="pages/contest-detail.html" class="btn btn-primary btn-sm" style="width:100%;justify-content:center">
+              Kirish →
+            </a>
+          </div>
+        </div>
+
+        <div class="contest-preview" onclick="location.href='pages/contest-detail.html'">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <span class="badge badge-blue">Tez kunda</span>
+            <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-4)">2 kun 14:00</span>
+          </div>
+          <div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:4px">CFM Monthly Cup #8</div>
+          <div style="font-size:11.5px;color:var(--text-3)">6 ta masala · 2500 ball</div>
+          <div style="margin-top:10px">
+            <button class="btn btn-secondary btn-sm" style="width:100%;justify-content:center">
+              ✓ Ro'yxatdan o'tildi
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Top leaderboard -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header">
+          <div class="sec-title">Top Reyting</div>
+          <a href="pages/leaderboard.html" class="btn btn-ghost btn-sm" style="font-size:11px">Ko'proq →</a>
+        </div>
+        <div id="lbPreview"></div>
+        <!-- "You" highlight -->
+        <div style="margin-top:10px;padding:10px 12px;background:var(--accent-dim);border:1px solid var(--accent-glow);border-radius:var(--radius-md);display:flex;align-items:center;gap:10px">
+          <span style="font-family:var(--font-mono);font-size:11px;color:var(--accent-dark);font-weight:700">#38</span>
+          <div class="user-avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">AS</div>
+          <span style="font-size:12px;font-weight:600;color:var(--text)">Siz</span>
+          <span style="margin-left:auto;font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--accent-dark)">2,840</span>
+        </div>
+      </div>
+
+      <!-- Tags breakdown -->
+      <div class="card card-surface" style="padding:20px">
+        <div class="sec-header"><div class="sec-title">Kuchli tomonlar</div></div>
+        <div style="display:flex;flex-direction:column;gap:10px" id="tagStats"></div>
+      </div>
+
+    </div>
+  </div>
+
+</main>
+
+<script src="assets/js/main.js"></script>
+<script>
+/* ── Heatmap ── */
+(function buildHeatmap() {
+  const grid = document.getElementById('heatmap');
+  const levels = [0,0,0,1,1,2,3,4,2,1,0,0,1,3,4,2,1,0,0,2,3,1,0,0,1,2,4,3,2,1,
+                  0,1,2,3,2,1,0,0,1,2,3,4,2,1,0,1,2,0,0,1,3,2,1,0,0,1,2,3,4,2,
+                  1,0,0,2,3,1,2,3,4,2,0,1,0,2,3,1,0,0,1,2,3,4,2,1,0,1,2,3,0,1,
+                  2,0,1,3,2,4,1,0,2,3,1,2,0,1,3,4,2,1,0,2,3,4,1,0,1,2,3,2,1,0,
+                  0,1,2,3,4,2,1,0,0,2,1,3,2,0,1,4,3,2,1,0,0,1,2,3,2,1,0,0,1,2,
+                  3,0,1,2,3,4,2,1,0,2,3,1,0,2,3,4,1,2,0,1,3,2,0,1,0,2,3,4,2,1,
+                  0,0,1,2,3,4,2,1,3,4,2,1,0,0,1,2,3,4,2,1,0,1,2,3,4,2,0,1,2,3,
+                  1,0,2,3,4,2,1,0,0,2,1,3,0,1,2,0,1,3,2,4,1,0,0,1,2,0,1,2,3,0,
+                  1,2,3,4,2,1,0,2,3,1,0,0,1,2,3,4,2,0,1,3,2,1,0,0,2,3,4,1,2,0,
+                  1,0,2,3,1,2,3,4,2,1,0,0,1,2,3,2,1,0,1,2,3,4,0,1,2,3,0,1,2,1,
+                  0,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+                  0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0];
+  const map = ['','hm-1','hm-2','hm-3','hm-4'];
+  levels.slice(0, 52*7).forEach(v => {
+    const cell = document.createElement('div');
+    cell.className = 'hm-cell ' + (map[v] || '');
+    grid.appendChild(cell);
+  });
+})();
+
+/* ── Activity ── */
+(function buildActivity() {
+  const data = [
+    { icon:'✅', cls:'solved',  title:'Two Sum yechildi',             sub:'Easy · +50 ball',           time:'2 soat oldin' },
+    { icon:'🏆', cls:'contest', title:"RobaContest #47 ga qo'shildi", sub:'142 ishtirokchi',            time:'5 soat oldin' },
+    { icon:'✅', cls:'solved',  title:'Longest Substring yechildi',   sub:'Medium · +100 ball',        time:'1 kun oldin'  },
+    { icon:'🎖️', cls:'badge',   title:'7 kunlik streak badji olindi', sub:'Yangi rekord!',              time:'1 kun oldin'  },
+    { icon:'✅', cls:'solved',  title:'Binary Tree BFS yechildi',     sub:'Medium · +100 ball',        time:'2 kun oldin'  },
+  ];
+  document.getElementById('activityList').innerHTML = data.map(d => `
+    <div class="activity-item">
+      <div class="activity-icon ${d.cls}">${d.icon}</div>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:12.5px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${d.title}</div>
+        <div style="font-size:11px;color:var(--text-4);margin-top:1px">${d.sub}</div>
+      </div>
+      <div style="font-size:10.5px;color:var(--text-5);white-space:nowrap;font-family:var(--font-mono)">${d.time}</div>
+    </div>`).join('');
+})();
+
+/* ── Leaderboard preview ── */
+(function buildLb() {
+  const users = [
+    { rank:1, name:'javlon_dev',   pts:'8,240', avatar:'JD' },
+    { rank:2, name:'zafar_x',      pts:'7,890', avatar:'ZX' },
+    { rank:3, name:'kamola.uz',    pts:'7,340', avatar:'KU' },
+    { rank:4, name:'timur_coder',  pts:'6,980', avatar:'TC' },
+    { rank:5, name:'dilnoza99',    pts:'6,450', avatar:'D9' },
+  ];
+  const rankCls = ['rank-1','rank-2','rank-3','rank-n','rank-n'];
+  document.getElementById('lbPreview').innerHTML = users.map((u,i) => `
+    <div class="lb-row">
+      <div class="lb-rank ${rankCls[i]}">${u.rank}</div>
+      <div class="user-avatar" style="width:26px;height:26px;font-size:10px;flex-shrink:0">${u.avatar}</div>
+      <div style="flex:1;font-size:12.5px;font-weight:600;color:var(--text)">${u.name}</div>
+      <div style="font-family:var(--font-mono);font-size:12px;font-weight:700;color:var(--text-2)">${u.pts}</div>
+    </div>`).join('');
+})();
+
+/* ── Tag stats ── */
+(function buildTags() {
+  const tags = [
+    { name:'Array',        solved:28, total:35, pct:80 },
+    { name:'Hash Table',   solved:21, total:28, pct:75 },
+    { name:'Dynamic Prog', solved:12, total:30, pct:40 },
+    { name:'Graph',        solved:9,  total:25, pct:36 },
+    { name:'Greedy',       solved:14, total:18, pct:78 },
+  ];
+  const colors = ['var(--accent)','var(--easy)','var(--medium)','var(--hard)','#8b5cf6'];
+  document.getElementById('tagStats').innerHTML = tags.map((t,i) => `
+    <div>
+      <div style="display:flex;justify-content:space-between;margin-bottom:5px">
+        <span style="font-size:12px;font-weight:500;color:var(--text)">${t.name}</span>
+        <span style="font-family:var(--font-mono);font-size:11px;color:var(--text-4)">${t.solved}/${t.total}</span>
+      </div>
+      <div style="height:6px;background:var(--bg-raised);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${t.pct}%;background:${colors[i]};border-radius:3px;transition:width 1s ease" class="rate-fill"></div>
+      </div>
+    </div>`).join('');
+})();
+
+/* ── Live contest timer ── */
+(function liveTimer() {
+  let secs = 2538;
+  const el = document.getElementById('liveTimer');
+  setInterval(() => {
+    if (secs <= 0) return;
+    secs--;
+    const h = String(Math.floor(secs/3600)).padStart(2,'0');
+    const m = String(Math.floor(secs%3600/60)).padStart(2,'0');
+    const s = String(secs%60).padStart(2,'0');
+    if (el) el.textContent = `${h}:${m}:${s}`;
+  }, 1000);
+})();
+
+/* ── User name from localStorage ── */
+document.addEventListener('DOMContentLoaded', () => {
+  const user = Auth?.getUser?.();
+  if (user?.full_name || user?.username) {
+    document.getElementById('heroName').textContent = user.full_name || user.username;
+  }
+});
+</script>
+</body>
+</html>

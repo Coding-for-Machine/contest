@@ -1,0 +1,54 @@
+{{define "layout"}}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- SEO Teglari -->
+    <title>{{if .Title}}{{.Title}}{{else}}CFM Contest{{end}}</title>
+    <meta name="description" content="{{if .Description}}{{.Description}}{{else}}Dasturlash platformasi{{end}}">
+    <link rel="canonical" href="{{if .URL}}{{.URL}}{{else}}https://saytingiz.com{{end}}">
+    
+    <!-- Open Graph -->
+    <meta property="og:title" content="{{if .Title}}{{.Title}}{{else}}CFM Contest{{end}}">
+    <meta property="og:description" content="{{if .Description}}{{.Description}}{{else}}Dasturlash platformasi{{end}}">
+    <meta property="og:url" content="{{if .URL}}{{.URL}}{{else}}https://saytingiz.com{{end}}">
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="CFM Contest">
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+    <!-- 🛠️ YANGI BLOK: Alohida sahifadan keladigan CSS shu yerga joylashadi -->
+    {{block "styles" .}}{{end}}
+</head>
+<body class="bg-gray-50 text-gray-900">
+
+    <!-- Sayt Navbari -->
+    <nav class="bg-white shadow">
+        <div class="max-w-6xl mx-auto px-4 py-3 flex justify-between items-center">
+            <a href="/" class="text-xl font-bold">CFM Contest</a>
+            <div class="space-x-4">
+                <a href="/problems" class="hover:text-blue-600">Masalalar</a>
+                <a href="/contests" class="hover:text-blue-600">Musobaqalar</a>
+                <a href="/login" class="bg-blue-600 text-white px-4 py-2 rounded">Kirish</a>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Asosiy kontent bloki -->
+    <main class="max-w-6xl mx-auto px-4 py-8">
+        <h1 class="text-3xl font-extrabold mb-6">
+            {{if .H1Title}}{{.H1Title}}{{else}}CFM Platformasi{{end}}
+        </h1>
+        
+        <!-- Go-da if ichida template ishlatib bo'lmaydi. Shuning uchun faqat shu qator qoladi: -->
+        {{template "content" .}}
+    </main>
+
+    <script src="/assets/js/main.js" defer></script>
+      <!-- 🛠️ YANGI BLOK: Alohida sahifadan keladigan JS skriptlar shu yerga joylashadi -->
+    {{block "scripts" .}}{{end}}
+</body>
+</html>
+{{end}}

@@ -1,0 +1,12 @@
+<!-- app/templates/admin/index.html -->
+{% extends "admin/index.html" %}
+{% load unfold %}
+
+{% block content %}
+    {% component "unfold/components/card.html" with title="User statistics" %}
+        <!-- Chart xatolik berayotgan bo'lsa, vaqtinchalik o'chirib turing -->
+        <p>Statistika yuklanmoqda...</p> 
+    {% endcomponent %}
+
+    {{ block.super }}
+{% endblock %}
