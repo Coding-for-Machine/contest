@@ -1,48 +1,111 @@
 {% extends "admin/change_list.html" %}
 
-{% block content_top %}
-<div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-    <!-- Mini Kartalar -->
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <p class="text-gray-500 text-sm font-medium">Jami to'lovlar</p>
-        <h2 class="text-2xl font-bold text-green-600">{{ total_revenue }} ta</h2>
+{% block content %}
+<div class="enrollment-dashboard">
+    
+    <!-- 📊 STATISTIKA KARTALARI -->
+    <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 1rem; margin-bottom: 2rem;">
+        <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; padding: 1.5rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; opacity: 0.9;">📊 Jami yozilishlar</h3>
+            <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ total_enrollments|default:cl.result_count }}</p>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white; padding: 1.5rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; opacity: 0.9;">💰 To'lovlar</h3>
+            <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ total_revenue|default:"0" }}</p>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); color: white; padding: 1.5rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; opacity: 0.9;">🎓 Faol kurslar</h3>
+            <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ active_courses|default:"0" }}</p>
+        </div>
+        
+        <div style="background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: white; padding: 1.5rem; border-radius: 12px;">
+            <h3 style="margin: 0 0 0.5rem 0; font-size: 0.875rem; opacity: 0.9;">📅 Bugungi yozilishlar</h3>
+            <p style="font-size: 2rem; font-weight: bold; margin: 0;">{{ today_enrollments|default:"0" }}</p>
+        </div>
     </div>
-    <div class="bg-white dark:bg-gray-800 p-5 rounded-xl border border-gray-100 dark:border-gray-700 shadow-sm">
-        <p class="text-gray-500 text-sm font-medium">Faol kurslar</p>
-        <h2 class="text-2xl font-bold text-indigo-600">{{ active_courses }} ta</h2>
+
+    <!-- 📈 GRAFIKLAR -->
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; margin-bottom: 2rem;">
+        <!-- Line Chart (Kunlik yozilishlar) -->
+        <div style="background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 1rem 0;">📈 So'nggi 7 kunlik yozilishlar</h3>
+            <canvas id="enrollmentChart" height="250"></canvas>
+        </div>
+        
+        <!-- Pie Chart (Kurslar bo'yicha) -->
+        <div style="background: white; padding: 1rem; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1);">
+            <h3 style="margin: 0 0 1rem 0;">🥧 Kurslar bo'yicha taqsimot</h3>
+            <canvas id="courseChart" height="250"></canvas>
+        </div>
     </div>
+
+    <!-- Asosiy ro'yxat -->
+    {{ block.super }}
 </div>
 
-<div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-    <!-- Asosiy Grafika (Line) -->
-    <div class="lg:col-span-2 bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 class="text-lg font-bold mb-4">So'nggi 7 kunlik faollik</h3>
-        <canvas id="mainActivityChart" height="120"></canvas>
-    </div>
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
-    <!-- Kurslar taqsimoti (Pie) -->
-    <div class="bg-white dark:bg-gray-800 p-6 rounded-2xl shadow-sm border border-gray-100 dark:border-gray-700">
-        <h3 class="text-lg font-bold mb-4">Kurslar bo'yicha</h3>
-        <canvas id="coursePieChart"></canvas>
-    </div>
-</div>
-
-<script src="https://cdn.jsdelivr.net"></script>
 <script>
-    document.addEventListener("DOMContentLoaded", function() {
-        // Line Chart
-        new Chart(document.getElementById('mainActivityChart'), {
+    document.addEventListener('DOMContentLoaded', function() {
+        // 1. Line Chart - Kunlik yozilishlar
+        const enrollmentCtx = document.getElementById('enrollmentChart').getContext('2d');
+        const enrollmentData = {{ main_chart|safe }};
+        
+        new Chart(enrollmentCtx, {
             type: 'line',
-            data: {{ main_chart|safe }},
-            options: { responsive: true, plugins: { legend: { display: false } } }
+            data: enrollmentData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'top' },
+                    tooltip: { mode: 'index', intersect: false }
+                },
+                scales: {
+                    y: { 
+                        beginAtZero: true,
+                        title: { display: true, text: 'Yozilishlar soni' }
+                    }
+                }
+            }
         });
-
-        // Pie Chart
-        new Chart(document.getElementById('coursePieChart'), {
+        
+        // 2. Pie Chart - Kurslar taqsimoti
+        const courseCtx = document.getElementById('courseChart').getContext('2d');
+        const pieData = {{ pie_chart|safe }};
+        
+        new Chart(courseCtx, {
             type: 'doughnut',
-            data: {{ pie_chart|safe }},
-            options: { responsive: true, cutout: '70%' }
+            data: pieData,
+            options: {
+                responsive: true,
+                maintainAspectRatio: true,
+                plugins: {
+                    legend: { position: 'bottom' },
+                    tooltip: { callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.raw || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percent = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value} (${percent}%)`;
+                        }
+                    }}
+                }
+            }
         });
     });
 </script>
+
+<style>
+    .enrollment-dashboard {
+        padding: 0.5rem;
+    }
+    .enrollment-dashboard canvas {
+        max-height: 300px;
+    }
+</style>
 {% endblock %}

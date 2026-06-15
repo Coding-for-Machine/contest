@@ -1,56 +1,80 @@
+import json
 from django.contrib import admin
 from django.db import models
 from django.db.models import Count
+from django.utils.html import format_html
+from django.urls import reverse
 from unfold.admin import ModelAdmin, TabularInline, StackedInline
-from unfold.contrib.forms.widgets import WysiwygWidget
+# from unfold.contrib.forms.widgets import WysiwygWidget
 from unfold.decorators import display
+from mdeditor.widgets import MDEditorWidget 
+
 from .models import (
     Test, Question, Choice, TestSession, 
-    UserAnswer, CertificateTemplate, Certificate, UserRank
+    UserResponse, CertificateTemplate, UserRank, Certificate
 )
 
+
 # ─────────────────────────────────────────────
-#  INLINES (Ichma-ich tahrirlash komponentlari)
+#  INLINES
 # ─────────────────────────────────────────────
 
 class ChoiceInline(TabularInline):
-    """Savol ichida javob variantlarini chiqarish"""
     model = Choice
     extra = 4
     tab = True
+    # 📝 Javob variantlari matni uchun WYSIWYG editor
+    formfield_overrides = {
+        models.TextField: {"widget": MDEditorWidget},
+    }
 
 
 class QuestionInline(StackedInline):
-    """Test ichida savollarni blok shaklida ko'rsatish"""
     model = Question
     extra = 1
     tab = True
     show_change_link = True
-    fields = ["text", "difficulty", "xp", "image", "order"]
+    fields = ["text", "difficulty", "xp", "order"]
+    # 📝 Test ichida savollarni tezkor yaratishda ham WYSIWYG ishlasa qulay bo'ladi
+    formfield_overrides = {
+        models.TextField: {"widget": MDEditorWidget},
+    }
+@admin.register(Certificate)
+class CertificateAdmin(ModelAdmin):
+    pass
 
-
-class UserAnswerInline(TabularInline):
-    """Sessiya ichida talaba bergan javoblar ro'yxati (Faqat ko'rish uchun)"""
-    model = UserAnswer
+class UserResponseInline(TabularInline):
+    model = UserResponse
     extra = 0
-    readonly_fields = ["question", "choice", "created_at"]
+    readonly_fields = ["question", "selected_choice", "get_is_correct"]
     can_delete = False
+    tab = True
+    
+    def has_add_permission(self, request, obj=None):
+        return False
+
+    @display(description="To'g'riligi")
+    def get_is_correct(self, obj):
+        if not obj.selected_choice:
+            return "Javob berilmagan"
+        return "To'g'ri" if obj.selected_choice.is_correct else "Xato"
 
 
 # ─────────────────────────────────────────────
-#  ADMIN CLASSES (Asosiy boshqaruv panellari)
+#  ADMIN CLASSES
 # ─────────────────────────────────────────────
 
 @admin.register(UserRank)
 class UserRankAdmin(ModelAdmin):
-    """Foydalanuvchilar reyting tizimi paneli"""
     list_display = ["user", "total_xp_display", "level_label", "updated_at"]
     list_filter = ["level", "updated_at"]
-    search_fields = ["user__username", "user__email", "user__first_name", "user__last_name"]
+    search_fields = ["user__username", "user__phone", "user__full_name"]
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user")
 
     @display(description="Jami Ball", header=True)
     def total_xp_display(self, obj):
-        return [f"✨ {obj.total_xp} XP", "To'plangan ball"]
+        return [f"✨ {obj.total_xp} XP", "To'plangan umumiy ball"]
 
     @display(description="Unvon / Daraja", label={
         "beginner": "info",
@@ -65,94 +89,174 @@ class UserRankAdmin(ModelAdmin):
 
 @admin.register(Test)
 class TestAdmin(ModelAdmin):
-    """Mustaqil va Kurs ichidagi Testlar paneli"""
-    list_display = ["title", "get_context_display", "duration_minutes", "min_pass_label", "is_active_status"]
-    
-    # ✅ TUZATILDI: 'lesson__course' xatosi olib tashlandi, o'rniga to'g'ri bog'liqliklar qo'yildi
-    list_filter = ["is_active", "lesson", "deadline", "created_at"]
-    
+    list_display = [
+        "title", "get_context_display", "duration_minutes", 
+        "penalty_label", "min_pass_label", "time_status", "is_active_status"
+    ]
+    list_filter = ["is_active", "start_time", "end_time", "created_at"]
     search_fields = ["title", "lesson__title", "lesson__course__title"]
     inlines = [QuestionInline]
+    
+    # 📝 Agar test modelida qandaydir qo'shimcha TextField bo'lsa editor ishlaydi
+    formfield_overrides = {
+        models.TextField: {"widget": MDEditorWidget},
+    }
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("lesson__modul__course")
 
     @display(description="Turi / Joylashuvi")
     def get_context_display(self, obj):
         if obj.lesson:
-            return f"📖 {obj.lesson.course.title} -> {obj.lesson.title}"
+            if obj.lesson.modul and obj.lesson.modul.course:
+                return f"📖 {obj.lesson.modul.course.title} ↳ {obj.lesson.title}"
+            return f"📖 {obj.lesson.title}"
         return "🌍 Mustaqil Umumiy Test"
 
-    @display(description="O'tish chegarasi", label=True)
+    @display(description="Jarima (K)")
+    def penalty_label(self, obj):
+        penalty_pct = int(getattr(obj, 'penalty_coefficient', 0) * 100)
+        return f"⚠️ {penalty_pct}% jarima"
+
+    @display(description="O'tish chegarasi")
     def min_pass_label(self, obj):
         return f"🎯 {obj.min_pass_percentage}%"
+
+    @display(description="Muddati")
+    def time_status(self, obj):
+        start_str = obj.start_time.strftime("%d.%m.%Y %H:%M") if obj.start_time else "-"
+        end_str = obj.end_time.strftime("%d.%m.%Y %H:%M") if obj.end_time else "-"
+        return [f"⏳ {start_str}", f"⌛ {end_str}"]
 
     @display(description="Holat", label=True)
     def is_active_status(self, obj):
         return ("Faol", "success") if obj.is_active else ("Nofaol", "danger")
 
 
+from django.contrib import admin
+from django.utils.html import format_html
+from unfold.admin import ModelAdmin
+from unfold.decorators import display
+from .models import Question, Choice
+from video.models import Video
+
+class ChoiceInline(admin.TabularInline):
+    model = Choice
+    extra = 4
+
 @admin.register(Question)
 class QuestionAdmin(ModelAdmin):
-    """Savollar va ularga mos variantlar boshqaruvi"""
-    list_display = ["display_header", "get_destination", "difficulty_label", "xp_display", "choices_count_display"]
-    list_filter = ["difficulty", "test", "problem", "created_at"]
+    list_display = ["id", "text_preview", "problem", "test", "difficulty"]
+    list_filter = ["difficulty", "created_at"]
     search_fields = ["text"]
     inlines = [ChoiceInline]
     
-    def get_queryset(self, request):
-        """N+1 SQL so'rovlar muammosini oldini olish uchun optimizatsiya (Annotate)"""
-        qs = super().get_queryset(request)
-        return qs.annotate(collected_choices=Count('choices'))
+    # Videoni qidirib topish select2 bo'lishi shart
+    autocomplete_fields = ["explanation_video", "problem", "test"]
+    
+    # Pleyer maydonini faqat o'qish rejimi qilamiz
+    readonly_fields = ["side_video_player"]
 
-    @display(header=True)
-    def display_header(self, obj):
-        return [obj.text[:60] + "..." if len(obj.text) > 60 else obj.text, f"ID: {obj.id} | Tartib: {obj.order}"]
+    # 🎛 Tahrirlash oynasini 2 ta ustunga (Grid) ajratamiz: Chapda formalar, O'ngda pleyer!
+    fieldsets = (
+        ("Asosiy sozlamalar", {
+            "fields": (
+                "text", 
+                "difficulty", 
+                "xp", 
+                "order", 
+                ("problem", "test"),  # Yonma-yon chiqishi uchun tuple
+                "explanation_video",
+                "side_video_player"   # 🎥 Pleyer shu yerda yonida chiqadi
+            ),
+        }),
+    )
 
-    @display(description="Bog'langan Manba")
-    def get_destination(self, obj):
-        if obj.test: return f"📝 Test: {obj.test.title}"
-        if obj.problem: return f"💻 Problem #{obj.problem_id}"
-        return "⚠️ Bog'lanmagan"
+    # 🚀 YONMA-YON CHIQADIGAN JONLI PLEYER (Tailwind Grid bilan o'ng tomonga suriladi)
+    def side_video_player(self, obj):
+        video_url = ""
+        video_title = "📺 Video tanlanmagan"
+        
+        if obj and obj.explanation_video:
+            video_url = obj.explanation_video.mp4_url or (obj.explanation_video.video.url if obj.explanation_video.video else "")
+            video_title = obj.explanation_video.title
 
-    @display(description="Qiyinchilik", label={
-        "easy": "success",
-        "medium": "warning",
-        "hard": "danger",
-    })
-    def difficulty_label(self, obj):
-        return obj.get_difficulty_display()
+        return format_html(
+            '''
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4" style="margin-top: 15px; background: #f9fafb; padding: 15px; border-radius: 12px; border: 1px solid #e5e7eb;">
+                <div class="md:col-span-2">
+                    <h4 style="margin: 0 0 8px 0; color: #374151; font-weight: 600;">{title}</h4>
+                    <video id="side-live-player" width="100%" height="auto" controls style="border-radius: 8px; background: #000; {display}">
+                        <source src="{url}" type="video/mp4">
+                    </video>
+                    <p id="side-no-video" style="color: #9ca3af; font-style: italic; margin: 10px 0 0 0; {placeholder_display}">Savol uchun video tahlil biriktirilsa, pleyer shu yerda faollashadi.</p>
+                </div>
+                <div class="md:col-span-1" style="border-left: 1px solid #e5e7eb; padding-left: 15px; display: flex; flex-direction: column; justify-content: center;">
+                    <span style="font-size: 12px; color: #6b7280; font-weight: bold; text-transform: uppercase;">Holat:</span>
+                    <p style="font-size: 14px; margin: 4px 0 0 0; color: #10b981; font-weight: 600;">{status_text}</p>
+                </div>
+            </div>
+            ''',
+            url=video_url,
+            title=video_title,
+            display="display: block;" if video_url else "display: none;",
+            placeholder_display="display: none;" if video_url else "display: block;",
+            status_text="✅ Biriktirilgan (Tayyor)" if video_url else "⏳ Video kutilmoqda"
+        )
+    side_video_player.short_description = "Video preview"
 
-    @display(description="Qiymati")
-    def xp_display(self, obj):
-        return f"{obj.xp} XP"
+    # 🤖 AVTOMATIK TANLASH (Saqlashdan oldin Masala yoki Test videosini o'zi bog'lab ketadi)
+    def save_model(self, request, obj, form, change):
+        # Agar administrator videoni qo'lda tanlamagan bo'lsa, avtomat qidiramiz
+        if not obj.explanation_video:
+            # 1. Agar savol biror Masalaga (Problem) tegishli bo'lsa, masalaning videosini olamiz
+            if obj.problem and obj.problem.solution_video:
+                obj.explanation_video = obj.problem.solution_video
+            # 2. Agar savol biror Testga tegishli bo'lsa, testning intro videosini olamiz
+            elif obj.test and obj.test.intro_video:
+                obj.explanation_video = obj.test.intro_video
+                
+        super().save_model(request, obj, form, change)
 
-    @display(description="Variantlar")
-    def choices_count_display(self, obj):
-        return f"{obj.collected_choices} ta variant"
-
+    @display(description="Savol matni")
+    def text_preview(self, obj):
+        return obj.text[:40] + "..." if len(obj.text) > 40 else obj.text
 
 @admin.register(TestSession)
 class TestSessionAdmin(ModelAdmin):
-    """Talabalarning jonli test topshirish sessiyalari logi"""
-    list_display = ["user", "get_target_display", "score_display", "percentage_label", "total_xp_earned", "status_label", "started_at"]
+    list_display = [
+        "user", "get_target_display", "score_display", 
+        "stats_display", "status_label", "started_at"
+    ]
     list_filter = ["status", "test", "started_at"]
-    search_fields = ["user__username", "user__email", "test__title", "problem__id"]
-    readonly_fields = ["score", "total_questions", "percentage", "total_xp_earned", "certificate_id", "started_at", "ended_at", "finish"]
-    inlines = [UserAnswerInline]
+    search_fields = ["user__username", "user__phone", "test__title"]
     
-    @display(description="Imtihon / Mashq", header=True)
+    # readonly_fields = [
+    #     "id", "user", "test", "status", "score", 
+    #     "correct_count", "wrong_count", "unanswered_count", 
+    #     "started_at", "completed_at"
+    # ]
+    inlines = [UserResponseInline]
+
+    def get_queryset(self, request):
+        return super().get_queryset(request).select_related("user", "test")
+    
+    @display(description="Imtihon", header=True)
     def get_target_display(self, obj):
-        if obj.test: return [f"📝 {obj.test.title}", "Test imtihoni"]
-        if obj.problem: return [f"💻 Problem #{obj.problem_id}", "Darslik mashqi"]
-        return ["Noma'lum", "-"]
+        return [f"📝 {obj.test.title}", "Test imtihoni"]
 
-    @display(description="Natija (To'g'ri / Jami)", header=True)
+    @display(description="Olimpiada Balli", header=True)
     def score_display(self, obj):
-        return [f"{obj.score} / {obj.total_questions}", "To'g'ri topildi"]
+        return [f"📊 {obj.score} Ball", "Sof matematika natijasi"]
 
-    @display(description="Foiz", label=True)
-    def percentage_label(self, obj):
-        if obj.percentage >= 80: return (f"{obj.percentage}%", "success")
-        if obj.percentage >= 50: return (f"{obj.percentage}%", "warning")
-        return (f"{obj.percentage}%", "danger")
+    @display(description="Statistika (C / W / U)")
+    def stats_display(self, obj):
+        return format_html(
+            '<span style="color: #10b981;">💚 {} ta</span> / <span style="color: #ef4444;">❤️ {} ta</span> / <span style="color: #6b7280;">📁 {} ta</span>',
+            getattr(obj, 'correct_count', 0),
+            getattr(obj, 'wrong_count', 0),
+            getattr(obj, 'unanswered_count', 0)
+        )
 
     @display(description="Sessiya Holati", label={
         "in_progress": "info",
@@ -162,63 +266,24 @@ class TestSessionAdmin(ModelAdmin):
     def status_label(self, obj):
         return obj.get_status_display()
 
-
 @admin.register(CertificateTemplate)
 class CertificateTemplateAdmin(ModelAdmin):
-    """Sertifikatlar uchun vizual HTML dizayn shablonlari paneli"""
-    list_display = ["name", "get_bound_to", "min_percentage_label"]
-    search_fields = ["name", "course__title", "test__title"]
+    # Olib tashlangan "min_percentage" list_display'dan ham o'chirildi
+    list_display = ["name", "organization_name", "mentor_name"]
+    search_fields = ["name", "mentor_name", "organization_name"]
     
-    # ✅ HTML shablon maydonini Unfold-ning maxsus vizual (WYSIWYG) muharririga o'tkazish
-    formfield_overrides = {
-        models.TextField: {"widget": WysiwygWidget},
-    }
-
-    @display(description="Sertifikat turi")
-    def get_bound_to(self, obj):
-        if obj.course: return f"🎓 Kurs uchun: {obj.course.title}"
-        if obj.test: return f"📝 Mustaqil test uchun: {obj.test.title}"
-        return "⚠️ Sozlanmagan"
-
-    @display(description="Minimal o'tish foizi", label=True)
-    def min_percentage_label(self, obj):
-        return f"{obj.min_percentage}%"
-
-
-@admin.register(Certificate)
-class CertificateAdmin(ModelAdmin):
-    """Talabalarga berilgan haqiqiy sertifikatlar arxivi"""
-    list_display = ["user", "certificate_code", "get_source_display", "view_pdf_button", "issued_at"]
-    list_filter = ["issued_at", "template"]
-    search_fields = ["user__username", "user__email", "certificate_code", "course__title", "test_session__test__title"]
-    readonly_fields = ["certificate_code", "qr_code_image", "pdf_file", "issued_at"]
-
-    @display(description="Berilish Asosi")
-    def get_source_display(self, obj):
-        if obj.course:
-            return f"🎓 Kurs: {obj.course.title}"
-        return f"📝 Test: {obj.test_session.test.title}"
-
-    @display(description="PDF Fayl")
-    def view_pdf_button(self, obj):
-        if obj.pdf_file:
-            return admin.utils.format_html(
-                '<a href="{}" target="_blank" class="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded text-xs font-semibold inline-block">📄 PDF-ni ochish</a>',
-                obj.pdf_file.url
-            )
-        return "Generatsiya qilinmoqda..."
-
-
-@admin.register(Choice)
-class ChoiceAdmin(ModelAdmin):
-    """Javob variantlarini qidirish va boshqarish paneli"""
-    list_display = ["text", "question", "is_correct", "order"]
-    list_filter = ["is_correct"]
-    search_fields = ["text", "question__text"]
-
-
-@admin.register(UserAnswer)
-class UserAnswerAdmin(ModelAdmin):
-    """Talaba loglarini alohida tekshirish paneli"""
-    list_display = ["session", "question", "choice", "created_at"]
-    search_fields = ["session__user__username", "question__text"]
+    # Guruhlar (Fieldsets) ichidan ham o'chirilgan maydonlar olib tashlandi
+    fieldsets = [
+        ("Asosiy sozlamalar", {
+            "fields": ["name"]
+        }),
+        ("Kompaniya (Platforma) ma'lumotlari", {
+            "fields": ["organization_name", "verify_domain", "logo_image"]
+        }),
+        ("Sertifikat matnlari", {
+            "fields": ["congratulation_text"]
+        }),
+        ("Mentor (O'qituvchi) ma'lumotlari", {
+            "fields": ["mentor_name", "mentor_status", "mentor_signature", "illustration_image"]
+        }),
+    ]

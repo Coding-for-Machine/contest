@@ -87,10 +87,16 @@ class Modul(TimeStampedModel):
         max_length=200,
         help_text="Modulning qisqa nomi"
     )
+    slug = models.SlugField(
+        "Slug",
+        max_length=255,
+        blank=True,
+        help_text="Modul URL uchun (ixtiyoriy, avtomatik hosil bo'ladi)"
+    )
     order = models.PositiveIntegerField(default=0, verbose_name="Tartib")
     class Meta:
-        verbose_name = "📚 Kurs"
-        verbose_name_plural = "📚 Kurslar"
+        verbose_name = "📚 Kurs Bobi"
+        verbose_name_plural = "📚 Kurs boblari"
 
     def __str__(self):
         return f"{self.title} ({self.course.title})"

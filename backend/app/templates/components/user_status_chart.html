@@ -1,0 +1,25 @@
+<div class="bg-white rounded-lg shadow p-4 dark:bg-gray-800">
+    <h3 class="text-lg font-semibold mb-4">📊 Foydalanuvchilar statistikasi</h3>
+    <canvas id="userStatusChart" height="{{ height }}"></canvas>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('userStatusChart').getContext('2d');
+        const data = {{ data|safe }};
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                    }
+                }
+            }
+        });
+    });
+</script>

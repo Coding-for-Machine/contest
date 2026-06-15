@@ -1,6 +1,8 @@
 # app/quizs/tests/tests.py
 from django.test import TestCase
+from ninja.testing import TestClient
 from quizs.models import Test
+from quizs.api import router
 
 from datetime import datetime, timedelta
 

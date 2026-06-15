@@ -1,12 +1,117 @@
-<!-- app/templates/admin/index.html -->
-{% extends "admin/index.html" %}
-{% load unfold %}
+{% extends "unfold/layouts/base_simple.html" %}
+{% load i18n %}
 
 {% block content %}
-    {% component "unfold/components/card.html" with title="User statistics" %}
-        <!-- Chart xatolik berayotgan bo'lsa, vaqtinchalik o'chirib turing -->
-        <p>Statistika yuklanmoqda...</p> 
-    {% endcomponent %}
+<div class="flex flex-col gap-4">
+    {# KPI kartalari #}
+    <div class="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        {% for item in kpi %}
+        <div class="rounded-default border border-base-200 bg-white p-6 shadow-sm dark:border-base-800 dark:bg-base-900">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-base-500 dark:text-base-400">
+                        {{ item.title }}
+                    </p>
+                    <p class="mt-2 text-3xl font-semibold text-base-900 dark:text-base-100">
+                        {{ item.metric }}
+                    </p>
+                    {% if item.footer %}
+                    <p class="mt-1 text-xs text-base-400 dark:text-base-500">
+                        {{ item.footer }}
+                    </p>
+                    {% endif %}
+                </div>
+                <div class="flex h-12 w-12 items-center justify-center rounded-full bg-primary-50 text-primary-600 dark:bg-primary-950 dark:text-primary-400">
+                    <span class="material-symbols-outlined">{{ item.icon }}</span>
+                </div>
+            </div>
+        </div>
+        {% empty %}
+        <div class="col-span-full text-center py-8 text-base-500">
+            {% trans "Ma'lumotlar mavjud emas" %}
+        </div>
+        {% endfor %}
+    </div>
 
-    {{ block.super }}
+    {# Grafik bloklari #}
+    <div class="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <div class="rounded-default border border-base-200 bg-white p-6 shadow-sm dark:border-base-800 dark:bg-base-900">
+            <h3 class="mb-4 text-base font-semibold text-base-900 dark:text-base-100">
+                {% trans "So'nggi 30 kunlik o'sish" %}
+            </h3>
+            <canvas id="usersGrowthChart" height="220"></canvas>
+        </div>
+
+        <div class="rounded-default border border-base-200 bg-white p-6 shadow-sm dark:border-base-800 dark:bg-base-900">
+            <h3 class="mb-4 text-base font-semibold text-base-900 dark:text-base-100">
+                {% trans "Yechimlar holati bo'yicha taqsimot" %}
+            </h3>
+            <canvas id="submissionStatusChart" height="220"></canvas>
+        </div>
+    </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    try {
+        const growthData = {{ users_growth_chart|safe|default:'{"labels":[],"datasets":[]}' }};
+        const statusData = {{ submission_status_chart|safe|default:'{"labels":[],"datasets":[]}' }};
+
+        // Users growth chart (line)
+        const growthCtx = document.getElementById("usersGrowthChart");
+        if (growthCtx && growthData.labels && growthData.labels.length > 0) {
+            new Chart(growthCtx, {
+                type: "line",
+                data: growthData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { 
+                        legend: { display: false },
+                        tooltip: { mode: 'index', intersect: false }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true, 
+                            ticks: { precision: 0 },
+                            title: { display: true, text: "{% trans 'Foydalanuvchilar soni' %}" }
+                        },
+                        x: { 
+                            title: { display: true, text: "{% trans 'Kunlar' %}" }
+                        }
+                    }
+                }
+            });
+        }
+
+        // Submission status chart (doughnut)
+        const statusCtx = document.getElementById("submissionStatusChart");
+        if (statusCtx && statusData.labels && statusData.labels.length > 0) {
+            new Chart(statusCtx, {
+                type: "doughnut",
+                data: statusData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: true,
+                    plugins: { 
+                        legend: { position: "bottom" },
+                        tooltip: { callbacks: {
+                            label: function(context) {
+                                const label = context.label || '';
+                                const value = context.raw || 0;
+                                const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                                const percent = total > 0 ? Math.round((value / total) * 100) : 0;
+                                return `${label}: ${value} (${percent}%)`;
+                            }
+                        }}
+                    }
+                }
+            });
+        }
+    } catch (error) {
+        console.error("Dashboard chart error:", error);
+    }
+});
+</script>
 {% endblock %}

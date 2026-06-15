@@ -139,6 +139,6 @@ def get_lesson_detail(request, lesson_slug: str):
         "problems": problems_data
     }
 
-@course_api.get("/progress/{course_slug}")
-def progress_course(request):
-    return {}
+# @course_api.get("/progress/{course_slug}")
+# def progress_course(request):
+#     return {}

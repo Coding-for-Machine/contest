@@ -1,0 +1,34 @@
+<div class="bg-white rounded-lg shadow p-4 dark:bg-gray-800">
+    <h3 class="text-lg font-semibold mb-4">📈 Foydalanuvchilar o'sishi</h3>
+    <canvas id="growthChart" height="{{ height }}"></canvas>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctx = document.getElementById('growthChart').getContext('2d');
+        const data = {{ data|safe }};
+        
+        new Chart(ctx, {
+            type: 'line',
+            data: data,
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'top',
+                    }
+                },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Foydalanuvchilar soni'
+                        }
+                    }
+                }
+            }
+        });
+    });
+</script>

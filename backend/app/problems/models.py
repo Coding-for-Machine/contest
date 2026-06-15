@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.utils.translation import gettext_lazy as _
 from django.core.validators import MinValueValidator, MaxValueValidator
+from video.models import Video
 from baseuser.models import BaseUser
 from contests.models import Contest
 from courses.models import TimeStampedModel
@@ -105,7 +106,15 @@ class Problem(TimeStampedModel):
         ),
         verbose_name="Tajriba ochkosi (XP)"
     )
-
+    solution_video = models.ForeignKey(
+        Video, 
+        on_delete=models.SET_NULL, 
+        null=True, 
+        blank=True,
+        related_name="problems",
+        verbose_name="Yechim video tahlili",
+        help_text="Ushbu masalaning kodli yoki g'oyaviy yechimi tushuntirilgan videoni biriktiring."
+    )
     time_limit = models.IntegerField(default=2000, null=True, blank=True, help_text="Millisekundlarda")
     memory_limit = models.IntegerField(default=256, null=True, blank=True, help_text="Megabaytlarda")
     order = models.PositiveIntegerField(default=0, verbose_name="Tartib")

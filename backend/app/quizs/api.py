@@ -1,228 +1,257 @@
-from ninja import Router, Schema
-from django.shortcuts import get_object_or_404
-from django.db import transaction
 from django.utils import timezone
-from typing import List, Optional
-from datetime import datetime, timedelta
+from django.db.models import OuterRef, Subquery, Max, Count, Q
+from ninja import Router, Query, Schema
 from ninja.errors import HttpError
+from typing import List
 
-from .models import Test, Question, TestSession, UserAnswer, Choice
-from status.models import UserStats # Avvalgi UserStats modeli
-from baseuser.authenticate import JWTAuth
-from baseuser.models import BaseUser
-quiz_api = Router(tags=["Test"])
+from django.db import transaction 
+from .models import Certificate, Test, TestSession, UserRank, UserResponse
+from .schemas import CertificateOut, HistoryOut, LeaderboardUserOut, TestListOut, TestFilterSchema, TestResultOut, TestStartOut, TestSubmitPayload
+from baseuser.authenticate import JWTAuth # Sizning JWTAuth klassingiz
 
+router = Router(tags=["Test va Olimpiadalar"])
 
-class QuizOut(Schema):
-    id: int
-    title: str
-    duration_minutes: int
-    question_count: int
-    max_attempts: int
-    has_access_code: bool
-    updated_at: datetime
+@router.get("/tests", response=List[TestListOut], auth=JWTAuth())
+def list_available_tests(request, filters: TestFilterSchema = Query(...)):
+    user = request.auth
+    now = timezone.now()
 
-class ChoiceOut(Schema):
-    id: int
-    text: str
+    queryset = Test.objects.filter(is_active=True)
 
-class QuestionOut(Schema):
-    id: int
-    text: str
-    image: Optional[str] = None
-    choices: List[ChoiceOut] # Savol bilan birga variantlarni ham yuboramiz
+    # Qidiruv filtri
+    if filters.search:
+        queryset = queryset.filter(title__icontains=filters.search)
 
-class AnswerIn(Schema):
-    question_id: int
-    choice_id: int
+    # Vaqt filtri
+    if filters.status == "active":
+        queryset = queryset.filter(start_time__lte=now, end_time__gte=now)
+    elif filters.status == "upcoming":
+        queryset = queryset.filter(start_time__gt=now)
+    elif filters.status == "ended":
+        queryset = queryset.filter(end_time__lt=now)
 
-class SessionOut(Schema):
-    session_id: int
-    status: str
-    started_at: datetime
+    # SQL darajasida eng yuqori ballni hisoblash (N+1 muammosiz)
+    best_score_subquery = TestSession.objects.filter(
+        user=user, test_id=OuterRef('pk'), status='completed'
+    ).values('test_id').annotate(max_score=Max('score')).values('max_score')
 
-class ResultOut(Schema):
-    score: int
-    total_questions: int
-    percentage: float
-    xp_earned: int
-    status: str
+    test_sessions = TestSession.objects.filter(user=user, test_id=OuterRef('pk'))
+    
+    queryset = queryset.annotate(
+        user_attempts_count=Count(Subquery(test_sessions.values('id'))),
+        has_in_progress=Count(Subquery(test_sessions.filter(status='in_progress').values('id'))),
+        computed_best_score=Subquery(best_score_subquery)
+    ).order_by("-created_at")
 
-class StartTestIn(Schema):
-    access_code: Optional[str] = None 
+    results = []
+    for test in queryset:
+        attempts_left = 999 if test.max_attempts == 0 else max(0, test.max_attempts - test.user_attempts_count)
+        
+        if test.has_in_progress > 0:
+            user_status = "in_progress"
+        elif test.user_attempts_count > 0:
+            user_status = "completed"
+        else:
+            user_status = "not_started"
 
-def get_authenticated_user(request):
-    user = getattr(request, "auth", None)
-    return user if (user and user is not True) else None
+        results.append(TestListOut(
+            id=test.id, title=test.title, duration_minutes=test.duration_minutes,
+            question_count=test.question_count, start_time=test.start_time, end_time=test.end_time,
+            min_pass_percentage=test.min_pass_percentage, max_attempts=test.max_attempts,
+            attempts_left=attempts_left, user_status=user_status, best_score=test.computed_best_score
+        ))
+    return results
 
-# 1. Barcha ochiq testlarni olish
-@quiz_api.get("/", response=List[QuizOut])
-def get_all_quizzes(request):
-    quizs = []
-    for q in Test.objects.filter(is_active=True, lesson__isnull=True):
-        quizs.append({
-            "id": q.id,
-            "title": q.title,
-            "duration_minutes": q.duration_minutes,
-            "question_count": q.question_count,
-            "max_attempts": q.max_attempts,
-            "has_access_code": True if q.access_code else False,
-            "updated_at": q.updated_at,
-        })
-    return quizs
+@router.post("/tests/{test_id}/start", response=TestStartOut, auth=JWTAuth())
+def start_test_session(request, test_id: int):
+    user = request.auth
+    now = timezone.now()
 
-# 2. Test sessiyasini boshlash (Urinishlarni tekshirish bilan)
-@quiz_api.post("/{test_id}/start", auth=[JWTAuth(), lambda request: True])
-def start_test(request, test_id: int, data: StartTestIn):
-    # user = get_authenticated_user(request)
-    user = BaseUser.objects.get(id=1)
+    # 1. Test mavjudligi va faolligini tekshirish
+    try:
+        test = Test.objects.get(id=test_id, is_active=True)
+    except Test.DoesNotExist:
+        raise HttpError(404, "Test topilmadi!")
 
-    test = get_object_or_404(Test, id=test_id, is_active=True)
-    # 1. Avval tugallanmagan sessiya bor-yo'qligini tekshiramiz
-    active_session = TestSession.objects.filter(
+    # 2. Test vaqtinchalik muddati faolligini tekshirish
+    if not (test.start_time <= now <= test.end_time):
+        raise HttpError(400, "Ushbu test muddati hozir faol emas!")
+
+    # 3. Avval ochilgan va yakunlanmagan (IN_PROGRESS) seansni tekshirish
+    existing_session = TestSession.objects.filter(
         user=user, 
         test=test, 
-        status=TestSession.Status.IN_PROGRESS,
+        status=TestSession.Status.IN_PROGRESS
     ).first()
 
-    # 2. Agar aktiv sessiya bo'lsa va muddati o'tmagan bo'lsa, o'shani qaytaramiz
-    if active_session:
-        if not active_session.is_expired: # is_expired property-sini modelda yozgan edik
-            end_time = active_session.started_at + timedelta(minutes=test.duration_minutes)
-            return {"session_id": active_session.id, "status": active_session.status, "end_time": end_time}
-        else:
-            # Muddati o'tgan bo'lsa, yopib qo'yamiz
-            active_session.status = TestSession.Status.EXPIRED
-            active_session.save()
+    if existing_session:
+        elapsed_time = now - existing_session.started_at
+        seconds_left = int((test.duration_minutes * 60) - elapsed_time.total_seconds())
 
-    # 3. Yangi sessiya yaratishdan oldin urinishlar sonini tekshiramiz
-    attempts_count = TestSession.objects.filter(user=user, test=test).count()
-    if test.max_attempts > 0 and attempts_count >= test.max_attempts:
-        raise HttpError(403, "Barcha urinishlaringiz tugagan!")
-    
-    duration = timedelta(minutes=test.duration_minutes)
-    expected_end = timezone.now() + duration
+        # Agar vaqt tugab bo'lgan bo'lsa, sessiyani yopamiz
+        if seconds_left <= 0:
+            existing_session.status = TestSession.Status.EXPIRED
+            existing_session.completed_at = now
+            existing_session.save()
+            raise HttpError(400, "Test topshirish vaqti tugagan!")
 
-    session = TestSession.objects.create(
-        user=user,
-        test=test,
-        total_questions=test.questions.count(),
-        ended_at=expected_end,  # <--- Bu qiymat None bo'lmasligi shart
-        status=TestSession.Status.IN_PROGRESS
+        # Vaqt tugamagan bo'lsa, eski sessiyani aniq 200 kodi bilan qaytaramiz
+        questions = test.questions.prefetch_related('choices').all()
+        return 200, {
+            "session_id": existing_session.id,
+            "duration_minutes": test.duration_minutes,
+            "seconds_left": seconds_left,
+            "questions": list(questions)
+        }
+
+    # 4. Maksimal urinishlar sonini tekshirish
+    completed_attempts = TestSession.objects.filter(user=user, test=test).count()
+    if test.max_attempts > 0 and completed_attempts >= test.max_attempts:
+        raise HttpError(400, "Sizda urinishlar soni qolmagan!")
+
+    # 5. Mutlaqo yangi sessiya ochish (Muvaffaqiyatli holat)
+    new_session = TestSession.objects.create(
+        user=user, 
+        test=test, 
+        status=TestSession.Status.IN_PROGRESS, 
+        started_at=now
     )
-
-    return {
-        "session_id": session.id, 
-        "status": session.status, 
-        "end_time": session.ended_at
+    questions = test.questions.prefetch_related('choices').all()
+    
+    # Aniq 200 status kodi bilan yangi ma'lumotlarni qaytaramiz
+    return 200, {
+        "session_id": new_session.id,
+        "duration_minutes": test.duration_minutes,
+        "seconds_left": test.duration_minutes * 60,
+        "questions": list(questions)
     }
-# 3. Sessiya savollarini olish (Variantlari bilan)
-@quiz_api.get("/session/{session_id}/questions")
-def get_questions(request, session_id: int):
-    # 1. Sessiyani olish (request.auth ishlatish tavsiya etiladi)
-    # user = get_authenticated_user(request)
-    user = BaseUser.objects.get(id=1)
 
-    session = get_object_or_404(TestSession, id=session_id, user=user)
-    
-    # 2. Vaqtni tekshirish (oldindan yozgan is_expired property orqali)
-    if session.is_expired:
-        session.status = TestSession.Status.EXPIRED
-        session.save()
-        raise HttpError(403, "Vaqt tugagan, savollarni olib bo'lmaydi")
+class ErrorOut(Schema):
+    message: str
 
-    # 3. Savollarni variantlari bilan olish
-    questions = session.test.questions.prefetch_related('choices').all()
-    
-    result = []
-    for q in questions:
-        # Har bir savol uchun variantlarni dict ko'rinishida yig'amiz
-        choices = []
-        for c in q.choices.all():
-            choices.append({
-                "id": c.id,
-                "text": c.text
-            })
-            
-        # Savol ma'lumotlarini dict ko'rinishida qo'shamiz
-        result.append({
-            "id": q.id,
-            "text": q.text,
-            "difficulty": q.difficulty,
-            "xp": q.xp,
-            "image": q.image.url if q.image else None,
-            "choices": choices  # Variantlar ro'yxati
-        })
+@router.post("/tests/submit", response={200: TestResultOut, 400: ErrorOut}, auth=JWTAuth())
+def submit_test(request, payload: TestSubmitPayload):
+    user = request.auth
+    now = timezone.now()
+
+    # 1. IN_PROGRESS holatidagi faol sessiyani bazadan qidirish
+    try:
+        # N+1 muammosini oldini olish uchun test ma'lumotlarini select_related bilan yuklaymiz
+        session = TestSession.objects.select_related('test').get(
+            user=user, 
+            test_id=payload.test_id, 
+            status=TestSession.Status.IN_PROGRESS
+        )
+    except TestSession.DoesNotExist:
+        return 400, {"message": "Faol test seansi topilmadi!"}
+
+    # 2. 1 daqiqa tarmoq zapasi bilan qat'iy vaqt tekshiruvi
+    test = session.test
+    max_time = session.started_at + timezone.timedelta(minutes=test.duration_minutes + 1)
+
+    if now > max_time:
+        with transaction.atomic():
+            session.status = TestSession.Status.EXPIRED
+            session.completed_at = now
+            session.save()
+        return 400, {"message": "Vaqt o'tib ketganligi sababli test rad etildi!"}
+
+    # 3. Tranzaksiya ichida javoblarni yozish va sertifikat yaratish
+    with transaction.atomic():
+        # Javoblarni bittada yozish (Bulk create)
+        responses = [
+            UserResponse(session=session, question_id=ans.question_id, selected_choice_id=ans.selected_choice_id)
+            for ans in payload.answers
+        ]
+        UserResponse.objects.bulk_create(responses)
         
-    return result
+        # Matematika formulasini yuritish (Model ichidagi mantiq)
+        final_score = session.calculate_mathematical_score()
+        
+        # Bazadan yangilangan hisob-kitob ballarini (score, correct_count va hk) joriy obyektga yuklash
+        session.refresh_from_db()
 
-# 4. Javobni saqlash (Har bir savol uchun alohida)
-@quiz_api.post("/session/{session_id}/answer")
-def submit_answer(request, session_id: int, data: AnswerIn):
-    # 1. Sessiyani olish (request.auth ishlatish tavsiya etiladi)
-    # user = get_authenticated_user(request)
-    user = BaseUser.objects.get(id=1)
-    session = get_object_or_404(TestSession, id=session_id, user=user, status="in_progress")
-    
-    # 2. Vaqt o'tib ketganini tekshirish (is_expired property orqali)
-    if session.is_expired:
-        session.status = TestSession.Status.EXPIRED
-        session.save()
-        return {
-            "message": "Vaqt tugagan! Javob qabul qilinmadi.",
-            "status": session.status
-        }
+        # Sertifikat va o'tish foizini tekshirish
+        total_xp = sum(q.xp for q in test.questions.all())
+        percentage = (max(0, final_score) / total_xp) * 100 if total_xp > 0 else 0
+        is_passed = percentage >= test.min_pass_percentage
 
-    # 3. XAVFSIZLIK: Choice aynan berilgan question_id ga tegishli ekanini tekshiramiz
-    # Bu orqali foydalanuvchi boshqa savolning to'g'ri javob ID-sini ishlata olmaydi
-    choice = get_object_or_404(Choice, id=data.choice_id, question_id=data.question_id)
+        cert_issued, cert_url = False, None
+        if is_passed and hasattr(test, 'certificate_template') and test.certificate_template:
+            template = test.certificate_template
+            if percentage >= template.min_percentage:
+                cert, _ = Certificate.objects.get_or_create(
+                    user=user, 
+                    template=template, 
+                    test_session=session, 
+                    test=test
+                )
+                cert_issued = True
+                cert_url = cert.pdf_file.url if cert.pdf_file else None
 
-    # 4. Javobni saqlash yoki yangilash
-    answer, created = UserAnswer.objects.update_or_create(
-        session=session, 
-        question_id=data.question_id,
-        defaults={
-            'choice': choice, 
-            'is_correct': choice.is_correct
-        }
-    )
+    # 4. Foydalanuvchi unvonini (Rank) xavfsiz aniqlash
+    user_rank = getattr(user, 'rank_profile', None)
+    rank_level_value = user_rank.get_level_display() if user_rank else "Yangi boshlovchi"
 
-    return {
-        "is_updated": not created,
-        "question_id": data.question_id,
-        "remaining_seconds": session.time_left # Property orqali qolgan vaqtni qaytarish foydali
+    # 5. Django Ninja formatida muvaffaqiyatli 200 javobini qaytarish
+    return 200, {
+        "session_id": session.id,
+        "score": getattr(session, 'score', 0),
+        "correct_count": getattr(session, 'correct_count', 0),
+        "wrong_count": getattr(session, 'wrong_count', 0),
+        "unanswered_count": getattr(session, 'unanswered_count', 0),
+        "rank_level": rank_level_value,
+        "is_passed": is_passed,
+        "certificate_issued": cert_issued,
+        "certificate_url": cert_url
     }
 
 
-# 5. Testni yakunlash va XP hisoblash
-@quiz_api.post("/session/{session_id}/finish", response=ResultOut)
-def finish_test(request, session_id: int):
-    session = get_object_or_404(TestSession, id=session_id, user=request.user, status="in_progress")
+@router.get("/dashboard/history", response=List[HistoryOut], auth=JWTAuth())
+def get_user_history(request):
+    """Foydalanuvchining barcha topshirgan testlari tarixi ro'yxati"""
+    sessions = TestSession.objects.filter(
+        user=request.auth
+    ).select_related('test').order_by('-started_at')
     
-    # 1. Natijalarni hisoblash
-    answers = session.answers.all()
-    correct_count = answers.filter(is_correct=True).count()
-    total_xp = sum(a.question.xp for a in answers.filter(is_correct=True))
+    return [
+        HistoryOut(
+            session_id=s.id,
+            test_title=s.test.title,
+            score=s.score,
+            status=s.get_status_display(),
+            completed_at=s.completed_at
+        ) for s in sessions
+    ]
+
+
+@router.get("/certificates", response=List[CertificateOut], auth=JWTAuth())
+def get_my_certificates(request):
+    """Talabaning yutib olgan barcha sertifikatlari ro'yxati"""
+    certs = Certificate.objects.filter(
+        user=request.auth
+    ).select_related('test').order_by('-issued_at')
     
-    # 2. Sessiyani yangilash
-    session.score = correct_count
-    session.total_xp_earned = total_xp
-    if session.total_questions > 0:
-        session.percentage = (correct_count / session.total_questions) * 100
-    session.status = "completed"
-    session.ended_at = timezone.now()
-    session.save()
+    return [
+        CertificateOut(
+            id=c.id,
+            test_title=c.test.title if c.test else "Umumiy Kurs",
+            certificate_code=c.certificate_code,
+            pdf_url=c.pdf_file.url if c.pdf_file else None,
+            issued_at=c.issued_at
+        ) for c in certs
+    ]
 
-    # 3. UserStats ga XP qo'shish (Gamifikatsiya)
-    stats, _ = UserStats.objects.get_or_create(user=request.user)
-    stats.xp += total_xp
-    stats.test_count += 1
-    stats.save()
 
-    return {
-        "score": session.score,
-        "total_questions": session.total_questions,
-        "percentage": float(session.percentage),
-        "xp_earned": total_xp,
-        "status": session.status
-    }
+@router.get("/leaderboard", response=List[LeaderboardUserOut])
+def global_leaderboard(request):
+    """Eng yuqori ball to'plagan Top-20 foydalanuvchilar reytingi"""
+    ranks = UserRank.objects.select_related('user')[:20]
+    
+    return [
+        LeaderboardUserOut(
+            username=r.user.username if r.user.username else f"user#{r.user.telegram_id}",
+            total_xp=r.total_xp,
+            level_display=r.get_level_display()
+        ) for r in ranks
+    ]

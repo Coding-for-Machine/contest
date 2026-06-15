@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <title>Sertifikat</title>
+    <style>
+        /* Google Fonts dan Montserrat va maxsus kalliografik (qo'lyozma) shriftni yuklash */
+        @import url('https://googleapis.com');
+        
+        /* WeasyPrint uchun A4 Landscape (Albom) o'lchamlarini qat'iy va to'liq sozlash */
+        @page {
+            size: A4 landscape;
+            margin: 0;
+        }
+        * { 
+            box-sizing: border-box; 
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #ffffff;
+            -webkit-print-color-adjust: exact; /* PDF yaratilganda ranglar tiniqligini ta'minlaydi */
+        }
+
+        /* Tashqi konteyner (Och kulrang/havo rang nozik kontrast fon) */
+        .cert-container {
+            width: 297mm;
+            height: 210mm;
+            padding: 16mm;
+            background-color: #f8fafc;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* Asosiy sertifikat blangi (Minimalist va toza oq qog'oz effekti) */
+        .cert-card {
+            width: 100%;
+            height: 100%;
+            background: #ffffff;
+            position: relative;
+            padding: 22mm 24mm;
+            
+            /* Xalqaro standartdagi ikki qavatli geometrik ramka (To'q ko'k va oltin chiziqlar) */
+            border: 1px solid #e2e8f0;
+            outline: 4px solid #1e3a8a; /* Google Royal Blue rangi */
+            outline-offset: -12px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.02);
+        }
+
+        /* Burchaklardagi minimalist oltin rangli dekorativ burchaklar */
+        .corner-notch {
+            position: absolute;
+            width: 35px;
+            height: 35px;
+            border: 2px solid #d4af37; /* Oltin rangli urg'u */
+            z-index: 10;
+        }
+        .top-left { top: 20px; left: 20px; border-right: none; border-bottom: none; }
+        .top-right { top: 20px; right: 20px; border-left: none; border-bottom: none; }
+        .bottom-left { bottom: 20px; left: 20px; border-right: none; border-top: none; }
+        .bottom-right { bottom: 20px; right: 20px; border-left: none; border-top: none; }
+
+        /* Yuqori qism (Tashkilot nomi va Logotip) */
+        .header-section {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 10mm;
+        }
+        
+        .org-name {
+            font-size: 13px;
+            font-weight: 700;
+            color: #64748b;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+        }
+
+        .logo-box {
+            height: 14mm;
+        }
+        .logo-img { height: 100%; max-width: 55mm; object-fit: contain; }
+
+        /* Markaziy kontent qismi (Asimmetrik chap tomondan tekislash) */
+        .content-section {
+            text-align: left;
+            margin-top: 5mm;
+        }
+
+        .cert-label {
+            color: #d4af37;
+            font-size: 14px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 4px;
+            margin-bottom: 4mm;
+        }
+
+        .student-name {
+            font-size: 42px;
+            font-weight: 800;
+            color: #0f172a;
+            margin: 2mm 0 4mm 0;
+            letter-spacing: -0.5px;
+        }
+
+        .congratulation-text {
+            font-size: 15px;
+            color: #475569;
+            max-width: 760px;
+            line-height: 1.7;
+            margin-bottom: 6mm;
+        }
+
+        .course-title {
+            font-size: 26px;
+            font-weight: 700;
+            color: #1e3a8a; /* To'q ko'k rang */
+            display: inline-block;
+            border-bottom: 2px solid #d4af37;
+            padding-bottom: 1.5mm;
+            margin-bottom: 15mm;
+        }
+
+        /* Pastki boshqaruv paneli (Footer: Imzo | Bezak | QR) */
+        .footer-section {
+            position: absolute;
+            bottom: 22mm;
+            left: 24mm;
+            right: 24mm;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+        }
+
+        /* Imzo hududi (Chap blok) */
+        .signature-box {
+            width: 65mm;
+        }
+        .sig-container {
+            height: 16mm;
+            position: relative;
+        }
+        .sig-img {
+            height: 20mm;
+            position: absolute;
+            bottom: -3mm;
+            left: 2mm;
+        }
+        /* Zaxira: Agar rasm yuklanmagan bo'lsa, qo'lyozma chiroyli shriftda chiqadi */
+        .sig-text-fallback {
+            font-family: 'Alex Brush', cursive;
+            font-size: 32px;
+            color: #1e3a8a;
+            position: absolute;
+            bottom: -2mm;
+            left: 2mm;
+        }
+        .sig-line {
+            border-top: 1px solid #cbd5e1;
+            margin-bottom: 2mm;
+        }
+
+        /* Markazdagi ixtiyoriy illyustratsiya (Markaziy blok) */
+        .illustration-box {
+            margin-bottom: -3mm;
+        }
+        .ill-img { height: 22mm; }
+
+        /* O'ng tomondagi QR kod va ID metasi (O'ng blok) */
+        .right-meta-box {
+            display: flex;
+            align-items: center;
+            text-align: right;
+        }
+
+        .meta-text {
+            margin-right: 6mm;
+            font-size: 12px;
+            color: #64748b;
+            line-height: 1.7;
+        }
+        .meta-text strong { 
+            color: #0f172a; 
+        }
+
+        .qr-img {
+            width: 28mm;
+            height: 28mm;
+            border: 1px solid #e2e8f0;
+            padding: 1.5mm;
+            background: #ffffff;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.03);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="cert-container">
+        <div class="cert-card">
+            <!-- Burchak naqshlari -->
+            <div class="corner-notch top-left"></div>
+            <div class="corner-notch top-right"></div>
+            <div class="corner-notch bottom-left"></div>
+            <div class="corner-notch bottom-right"></div>
+
+            <!-- Yuqori qism -->
+            <div class="header-section">
+                <div class="org-name">{{ organization_name }}</div>
+                <div class="logo-box">
+                    {% if logo_base64 %}
+                        <img src="data:image/png;base64,{{ logo_base64 }}" class="logo-img" alt="Logo">
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Markaziy kontent -->
+            <div class="content-section">
+                <div class="cert-label">Muvaffaqiyatli tamomlaganlik to'g'risida guvohnoma</div>
+                <div class="student-name">{{ full_name }}</div>
+                <p class="congratulation-text">{{ congratulation_text }}</p>
+                <div class="course-title">{{ title }}</div>
+            </div>
+
+            <!-- Pastki panel (Imzo, Bezak, QR) -->
+            <div class="footer-section">
+                <!-- Imzo bloki (Chapda) -->
+                <div class="signature-box">
+                    <div class="sig-container">
+                        {% if signature_base64 %}
+                            <!-- Haqiqiy imzo PNG rasmi yuklangan bo'lsa -->
+                            <img src="data:image/png;base64,{{ signature_base64 }}" class="sig-img" alt="Signature">
+                        {% else %}
+                            <!-- Rasm yo'q bo'lsa, ism qo'lyozma kalligrafiyada yoziladi -->
+                            <span class="sig-text-fallback">{{ mentor_name }}</span>
+                        {% endif %}
+                    </div>
+                    <div class="sig-line"></div>
+                    <strong style="font-size: 14px; color: #0f172a;">{{ mentor_name }}</strong><br>
+                    <span style="font-size: 12px; color: #64748b;">{{ mentor_status }}</span>
+                </div>
+
+                <!-- Markazdagi grafik bezak -->
+                <div class="illustration-box">
+                    {% if illustration_base64 %}
+                        <img src="data:image/png;base64,{{ illustration_base64 }}" class="ill-img" alt="Illustration">
+                    {% endif %}
+                </div>
+
+                <!-- O'ng tarafdagi QR va Identifikatsiya -->
+                <div class="right-meta-box">
+                    <div class="meta-text">
+                        <div><strong>Sertifikat ID:</strong> {{ code }}</div>
+                        <div><strong>Sana:</strong> {{ date }}</div>
+                        <div><strong>Tasdiqlash:</strong> {{ verify_domain }}</div>
+                    </div>
+                    <div class="qr-box">
+                        {% if qr_base64 %}
+                            <img src="data:image/png;base64,{{ qr_base64 }}" class="qr-img" alt="QR Verification">
+                        {% else %}
+                            <div style="width:28mm; height:28mm; background:#f8fafc; font-size:9px; padding-top:11mm; text-align:center; color:#ef4444; border:1px dashed #ef4444;">QR XATO</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+</body>
+</html>

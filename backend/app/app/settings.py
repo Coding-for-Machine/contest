@@ -1,3 +1,4 @@
+import os
 from pathlib import Path
 from decouple import config, Csv
 
@@ -14,6 +15,7 @@ ALLOWED_HOSTS = config('ALLOWED_HOSTS', cast=Csv())
 
 INSTALLED_APPS = [
     "unfold",
+
     "unfold.contrib.filters", # Ixtiyoriy
     "unfold.contrib.forms",   # WYSIWYG uchun bu juda muhim!
     "unfold.contrib.import_export", # Ixtiyoriy
@@ -26,7 +28,6 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'storages',  # django-storages
     'django_celery_results', 
-
     # installed
     'ninja',  # Django Ninja
     'corsheaders',
@@ -40,7 +41,46 @@ INSTALLED_APPS = [
     'courses',
     'video',
     'status',
+    'payment',
+    # md
+    'mdeditor',
+    'paytechuz.integrations.django', # pay
 ]
+
+# -------------- pay start ----------
+from .payteach import payteach
+PAYTECHUZ = payteach
+# --------------- pay end ------------
+X_FRAME_OPTIONS = 'SAMEORIGIN'
+MDEDITOR_CONFIGS = {
+    'default': {
+        'width': '100%',  
+        'height': 700,  
+        'toolbar': ["undo", "redo", "|",
+                    "bold", "del", "italic", "quote", "ucwords", "uppercase", "lowercase", "|",
+                    "h1", "h2", "h3", "h5", "h6", "|",
+                    "list-ul", "list-ol", "hr", "|",
+                    "link", "reference-link", "image", "code", "preformatted-text", "code-block", "table", "datetime",
+                    "emoji", "html-entities", "pagebreak", "goto-line", "|",
+                    "help", "info",
+                    "||", "preview", "watch", "fullscreen"],  
+        'upload_image_formats': ["jpg", "jpeg", "gif", "png", "bmp", "webp", "svg"],
+        'image_folder': 'editor',  # MinIO ichidagi papka nomi
+        'theme': 'default',  
+        'preview_theme': 'default',  
+        'editor_theme': 'default',  
+        'toolbar_autofixed': False,  
+        'search_replace': True,  
+        'emoji': True,  
+        'tex': True,  # LaTeX (TeX) ifodalari faol
+        'flow_chart': True,  
+        'sequence': True,  
+        'watch': True,  
+        'lineWrapping': True,  
+        'lineNumbers': True,  
+        'language': 'en'  
+    }
+}
 
 # celery -A your_project_name worker --loglevel=info
 CELERY_BROKER_URL = 'redis://localhost:6379/0'
@@ -103,7 +143,11 @@ ROOT_URLCONF = 'app.urls'
 TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
-        'DIRS': [BASE_DIR, "templates"],
+        'DIRS': [
+            BASE_DIR / 'templates',
+            os.path.join(BASE_DIR, 'templates'),
+        ],
+
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
@@ -162,51 +206,17 @@ TIME_ZONE = 'Asia/Tashkent'
 USE_I18N = True
 USE_TZ = True
 
-# settings.py
-from django.urls import reverse_lazy
-
-UNFOLD = {
-    "SITE_TITLE": "Kurslar",
-    "SITE_HEADER": "Admin Panel",
-    "SITE_SYMBOL": "speed", # Google Material Symbols ikonkasi
-    
-    # Login sahifasi sozlamalari
-    "LOGIN": {
-        "image": lambda request: "https://your-domain.com", # Orqa fon rasmi
-        "redirect_after_login": reverse_lazy("admin:index"),
-    },
-    
-    # Brending (Logo)
-    "SIDEBAR": {
-        "show_search": True, # Qidiruv maydoni
-        "show_all_applications": True,
-    },
-    
-    # Ranglar sxemasi (ixtiyoriy)
-    "COLORS": {
-        "primary": {
-            "50": "250 250 250",
-            "100": "244 244 245",
-            # ... ranglarni Tailwind kabi sozlash mumkin
-        },
-    },
-    "STYLES": [
-        lambda request: """
-            <style>
-                /* Agar ba'zi matnlar tarjima bo'lmasa, CSS orqali ham o'zgartirsa bo'ladi */
-                h1:contains("Welcome back to") { font-size: 0; }
-                h1:contains("Welcome back to"):before { content: "Xush kelibsiz!"; font-size: 1.5rem; }
-            </style>
-        """,
-    ],
-}
-
+from .unfold import unfold
+# UNFOLD sozlamasi
+UNFOLD = unfold()
+# DASHBOARD_CALLBACK ni qayta yoqing (endi to'g'ri ishlaydi)
+UNFOLD["DASHBOARD_CALLBACK"] = "app.dashboard.dashboard_callback"
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 
 # ─────────────────────────────────────────────
-# ✅ MinIO / S3 Sozlamalari (.env dan)
+# MinIO / S3 Sozlamalari (.env dan)
 # ─────────────────────────────────────────────
 AWS_ACCESS_KEY_ID       = config('MINIO_ROOT_USER')
 AWS_SECRET_ACCESS_KEY   = config('MINIO_ROOT_PASSWORD')
