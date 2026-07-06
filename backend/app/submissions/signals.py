@@ -1,40 +1,37 @@
+# submissions/signals.py
 from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.db import transaction
-from .models import Submission, LessonStatus
-from status.models import UserStats # UserStats qayerda bo'lsa o'sha yo'l
+from status.models import UserStats, LessonStatus
+from submissions.models import Submission
+from contests.models import ContestRegistration
+
 
 @receiver(post_save, sender=Submission)
-def handle_submission_reward(sender, instance, created, **kwargs):
-    """
-    Submission saqlanganda XP berish va LessonStatusni yangilash
-    """
-    # Faqat yangi yaratilganda va holati 'True' (Accepted) bo'lganda ishlaydi
-    if created and instance.status is True:
-        with transaction.atomic():
-            # 1. Foydalanuvchi bu masalani oldin yechganmi tekshiramiz (XP takrorlanmasligi uchun)
-            previous_success = Submission.objects.filter(
-                user=instance.user, 
-                problem=instance.problem, 
+def handle_problem_submission_reward(sender, instance, created, **kwargs):
+    if created and instance.status==True:
+        
+        has_previous_accepted = (
+            Submission.objects.filter(
+                user=instance.user,
+                problem = instance.problem,
                 status=True
-            ).exclude(pk=instance.pk).exists()
-
-            if not previous_success:
-                # 2. UserStats-ni yangilash
-                stats, _ = UserStats.objects.get_or_create(user=instance.user)
+            ).exists()
+        )
+        if has_previous_accepted:
+            return
+        duration_mins = getattr(instance, "execution_time_ms", 0)
+        UserStats.add_xp(
+            user=instance.user,
+            xp_amount=instance.problem.px,
+            duration_mins=(duration_mins/60)*10,
+        )
+        if instance.contest:
+            ContestRegistration.objects.get(contest=instance.contest, user=instance.user)
+            pass
+        if instance.lesson:
+            LessonStatus.objects.update_or_create(
                 
-                # Problem modelidagi difficulty (1,2,3,4) va points ishlatiladi
-                stats.add_progress(
-                    difficulty=instance.problem.difficulty,
-                    score_earned=instance.problem.points,
-                    duration_mins=0 # Agar submissionda vaqt bo'lsa shuni yuboring
-                )
-
-                # 3. LessonStatus-ni yangilash (Dars ichidagi masalalar progressi)
-                if instance.problem.lesson:
-                    lesson_status, _ = LessonStatus.objects.get_or_create(
-                        user=instance.user,
-                        lesson=instance.problem.lesson
-                    )
-                    lesson_status.problems.add(instance.problem)
-
+            )
+            # finished_tasks_count add
+            pass

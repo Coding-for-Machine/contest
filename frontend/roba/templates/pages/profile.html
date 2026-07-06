@@ -1,0 +1,976 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Profil | RobaContest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14',
+                        inksoft: '#5b6572',
+                        inkfaint: '#9aa3ad',
+                        line: '#e7eaee',
+                        'line-soft': '#f0f2f4',
+                        surface: '#fafafa',
+                        'surface-2': '#f4f5f6',
+                        easy: '#17924f',
+                        'easy-bg': '#eafbf1',
+                        medium: '#b5710a',
+                        'medium-bg': '#fef6e7',
+                        hard: '#d0264a',
+                        'hard-bg': '#fdeced',
+                        info: '#1d5fd6',
+                        'info-bg': '#eaf1fd',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="../../static/css/style.css">
+
+    <style>
+        .profile-container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Avatar */
+        .avatar-large {
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            font-size: 32px;
+            color: #fff;
+            background: var(--ink);
+            flex-shrink: 0;
+        }
+        .avatar-large .edit-overlay {
+            position: absolute;
+            inset: 0;
+            border-radius: 50%;
+            background: rgba(11, 15, 20, 0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+            cursor: pointer;
+        }
+        .avatar-large:hover .edit-overlay {
+            opacity: 1;
+        }
+
+        /* Heatmap */
+        .heatmap-grid {
+            display: grid;
+            grid-template-columns: repeat(53, 1fr);
+            gap: 3px;
+            width: 100%;
+        }
+        .heatmap-cell {
+            aspect-ratio: 1;
+            border-radius: 3px;
+            transition: all 0.15s ease;
+            cursor: pointer;
+            min-width: 10px;
+            min-height: 10px;
+        }
+        .heatmap-cell:hover {
+            transform: scale(1.3);
+            z-index: 1;
+        }
+        .heatmap-cell.level-0 { background: var(--surface-2); }
+        .heatmap-cell.level-1 { background: #c9ebd6; }
+        .heatmap-cell.level-2 { background: #8fd6ab; }
+        .heatmap-cell.level-3 { background: #43b877; }
+        .heatmap-cell.level-4 { background: #17924f; }
+
+        /* Stat cards */
+        .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+            transition: all 0.2s ease;
+        }
+        .stat-card:hover {
+            border-color: #d7dbe0;
+            box-shadow: var(--shadow-sm);
+        }
+        .stat-card .number {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 24px;
+            color: var(--ink);
+        }
+        .stat-card .label {
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin-top: 2px;
+        }
+        .stat-card .material-icons {
+            font-size: 28px;
+            color: var(--info);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        /* Activity item */
+        .activity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            border-bottom: 1px solid var(--line-soft);
+            transition: background 0.15s ease;
+        }
+        .activity-item:hover {
+            background: var(--surface);
+        }
+        .activity-item:last-child {
+            border-bottom: none;
+        }
+        .activity-item .icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+            font-size: 18px;
+        }
+        .activity-item .icon.solved {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .activity-item .icon.attempted {
+            background: var(--medium-bg);
+            color: var(--medium);
+        }
+        .activity-item .icon.contest {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+        .activity-item .icon.course {
+            background: var(--hard-bg);
+            color: var(--hard);
+        }
+
+        /* Level badge */
+        .level-badge {
+            padding: 4px 16px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .level-badge.beginner {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .level-badge.intermediate {
+            background: var(--medium-bg);
+            color: var(--medium);
+        }
+        .level-badge.advanced {
+            background: var(--hard-bg);
+            color: var(--hard);
+        }
+        .level-badge.pro {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        /* Tabs */
+        .profile-tab {
+            padding: 10px 20px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-soft);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .profile-tab:hover {
+            color: var(--ink);
+        }
+        .profile-tab.active {
+            color: var(--ink);
+            border-bottom-color: var(--ink);
+            font-weight: 600;
+        }
+
+        .tab-content {
+            display: none;
+            padding-top: 20px;
+        }
+        .tab-content.active {
+            display: block;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .profile-container {
+                padding: 0 16px;
+            }
+            .avatar-large {
+                width: 72px;
+                height: 72px;
+                font-size: 24px;
+            }
+            .stat-card .number {
+                font-size: 18px;
+            }
+            .stat-card .material-icons {
+                font-size: 22px;
+            }
+            .heatmap-grid {
+                gap: 2px;
+            }
+            .heatmap-cell {
+                min-width: 8px;
+                min-height: 8px;
+            }
+            .profile-tab {
+                padding: 8px 14px;
+                font-size: 12px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .avatar-large {
+                width: 60px;
+                height: 60px;
+                font-size: 20px;
+            }
+            .stat-card .number {
+                font-size: 16px;
+            }
+            .stat-card {
+                padding: 10px 12px;
+            }
+            .heatmap-cell {
+                min-width: 6px;
+                min-height: 6px;
+            }
+            .profile-tab {
+                padding: 6px 10px;
+                font-size: 11px;
+            }
+            .activity-item {
+                padding: 8px 10px;
+                font-size: 13px;
+            }
+            .activity-item .icon {
+                width: 30px;
+                height: 30px;
+                font-size: 14px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .heatmap-cell {
+                min-width: 5px;
+                min-height: 5px;
+                gap: 1px;
+            }
+            .stat-card .number {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="container-rc flex items-center justify-between h-14">
+            <div class="flex items-center gap-4 sm:gap-8">
+                <a href="/" class="flex items-center gap-2 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:20px;">code</span>
+                    </span>
+                    <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+                </a>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="/problems.html" class="nav-link">Masalalar</a>
+                    <a href="/tests.html" class="nav-link">Testlar</a>
+                    <a href="/contests.html" class="nav-link">Musobaqalar</a>
+                    <a href="/courses.html" class="nav-link">Kurslar</a>
+                    <a href="/leaderboard.html" class="nav-link">Reyting</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" aria-label="Qidirish">
+                    <span class="material-icons">search</span>
+                </button>
+                <a href="/login.html" class="btn btn-outline btn-sm btn-login hidden sm:inline-flex">Kirish</a>
+                <a href="/login.html" class="btn btn-primary btn-sm btn-signup hidden sm:inline-flex">Boshlash</a>
+                <div class="relative">
+                    <div class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">AZ</div>
+                    <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+                        <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">person</span> Profil
+                        </a>
+                        <a href="/leaderboard.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">emoji_events</span> Mening reytingim
+                        </a>
+                        <div class="h-px bg-line my-1"></div>
+                        <button onclick="Auth.logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">
+                            <span class="material-icons small mr-2">logout</span> Chiqish
+                        </button>
+                    </div>
+                </div>
+                <button class="md:hidden" onclick="document.getElementById('mobileNav').classList.toggle('hidden')" aria-label="Menyu">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+        </div>
+        <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+            <nav class="container-rc flex flex-col py-2">
+                <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">emoji_events</span> Musobaqalar
+                </a>
+                <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="py-3 text-sm font-medium">
+                    <span class="material-icons small mr-2">leaderboard</span> Reyting
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+        <div class="profile-container py-6 sm:py-10">
+
+            <!-- Breadcrumb -->
+            <div class="flex items-center gap-2 text-sm text-inksoft mb-6">
+                <span class="text-ink font-medium">Profil</span>
+            </div>
+
+            <!-- Profile Header -->
+            <div class="flex flex-col sm:flex-row items-start sm:items-center gap-6 mb-8">
+                <!-- Avatar -->
+                <div class="relative avatar-large" id="avatarContainer">
+                    <span id="avatarInitials">AZ</span>
+                    <div class="edit-overlay" onclick="document.getElementById('avatarInput').click()">
+                        <span class="material-icons text-white" style="font-size:24px;">photo_camera</span>
+                    </div>
+                    <input type="file" id="avatarInput" accept="image/*" style="display:none;" onchange="changeAvatar(event)">
+                </div>
+
+                <!-- Info -->
+                <div class="flex-1">
+                    <div class="flex flex-wrap items-center gap-3 mb-1">
+                        <h1 class="font-display font-bold text-2xl sm:text-3xl" id="profileName">Aziz Karimov</h1>
+                        <span class="level-badge pro" id="profileLevel">
+                            <span class="material-icons small" style="font-size:14px;">stars</span> Pro
+                        </span>
+                    </div>
+                    <div class="flex items-center gap-2 text-sm text-inksoft mb-2">
+                        <span class="material-icons small" style="font-size:16px;">alternate_email</span>
+                        <span id="profileUsername">@aziz_dev</span>
+                    </div>
+                    <p class="text-sm text-inksoft max-w-md" id="profileBio">Backend dasturchi, algoritmlarga qiziqaman. Har kuni kamida 1 ta masala yechishga harakat qilaman.</p>
+                    <div class="flex flex-wrap items-center gap-3 mt-3">
+                        <button class="btn btn-outline btn-sm" onclick="showToast('Profil tahrirlash ochildi', 'info')">
+                            <span class="material-icons small">edit</span> Tahrirlash
+                        </button>
+                        <button class="btn btn-outline btn-sm" onclick="showToast('Sozlamalar ochildi', 'info')">
+                            <span class="material-icons small">settings</span> Sozlamalar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Quick stats -->
+                <div class="flex gap-4 sm:gap-6 text-sm text-inksoft">
+                    <div>
+                        <div class="font-mono font-bold text-lg text-ink" id="statXp">16,210</div>
+                        <div class="text-xs">Jami XP</div>
+                    </div>
+                    <div>
+                        <div class="font-mono font-bold text-lg text-ink" id="statSolved">248</div>
+                        <div class="text-xs">Yechilgan</div>
+                    </div>
+                    <div>
+                        <div class="font-mono font-bold text-lg text-ink" id="statRank">#12</div>
+                        <div class="text-xs">Reyting</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3 mb-8">
+                <div class="stat-card">
+                    <span class="material-icons">check_circle</span>
+                    <div class="number" id="statProblemsSolved">248</div>
+                    <div class="label">Masalalar</div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">emoji_events</span>
+                    <div class="number" id="statContests">12</div>
+                    <div class="label">Musobaqalar</div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">school</span>
+                    <div class="number" id="statCourses">2</div>
+                    <div class="label">Kurslar</div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">bolt</span>
+                    <div class="number" id="statStreak">7</div>
+                    <div class="label">Kunlik streak</div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">quiz</span>
+                    <div class="number" id="statTests">18</div>
+                    <div class="label">Testlar</div>
+                </div>
+                <div class="stat-card">
+                    <span class="material-icons">star</span>
+                    <div class="number" id="statRating">4.8</div>
+                    <div class="label">O'rtacha baho</div>
+                </div>
+            </div>
+
+            <!-- Tabs -->
+            <div class="border-b border-line mb-4 overflow-x-auto">
+                <div class="flex gap-1 min-w-max">
+                    <button class="profile-tab active" data-tab="activity" onclick="switchTab('activity')">
+                        <span class="material-icons small">history</span> Faoliyat
+                    </button>
+                    <button class="profile-tab" data-tab="heatmap" onclick="switchTab('heatmap')">
+                        <span class="material-icons small">grid_view</span> Faollik xaritasi
+                    </button>
+                    <button class="profile-tab" data-tab="achievements" onclick="switchTab('achievements')">
+                        <span class="material-icons small">emoji_events</span> Yutuqlar
+                    </button>
+                    <button class="profile-tab" data-tab="settings" onclick="switchTab('settings')">
+                        <span class="material-icons small">settings</span> Sozlamalar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tab: Activity -->
+            <div class="tab-content active" id="tab-activity">
+                <div class="card overflow-hidden">
+                    <div class="px-4 py-3 border-b border-line bg-surface flex items-center justify-between">
+                        <span class="text-sm font-semibold">So'nggi faoliyat</span>
+                        <span class="text-xs text-inksoft">Oxirgi 30 kun</span>
+                    </div>
+                    <div id="activityList">
+                        <!-- Rendered by JS -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Heatmap -->
+            <div class="tab-content" id="tab-heatmap">
+                <div class="card p-4">
+                    <div class="flex items-center justify-between mb-4 flex-wrap gap-2">
+                        <div class="flex items-center gap-4">
+                            <span class="text-sm font-semibold">Faollik xaritasi</span>
+                            <span class="text-xs text-inksoft" id="heatmapTotal">312 kun faol</span>
+                        </div>
+                        <div class="flex items-center gap-1.5 text-xs text-inksoft">
+                            <span>Kam</span>
+                            <span class="heatmap-cell level-0" style="width:12px;height:12px;display:inline-block;"></span>
+                            <span class="heatmap-cell level-1" style="width:12px;height:12px;display:inline-block;"></span>
+                            <span class="heatmap-cell level-2" style="width:12px;height:12px;display:inline-block;"></span>
+                            <span class="heatmap-cell level-3" style="width:12px;height:12px;display:inline-block;"></span>
+                            <span class="heatmap-cell level-4" style="width:12px;height:12px;display:inline-block;"></span>
+                            <span>Ko'p</span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <div id="heatmapContainer" class="heatmap-grid" style="min-width:600px;">
+                            <!-- Rendered by JS -->
+                        </div>
+                    </div>
+                    <div class="flex items-center justify-between mt-4 text-xs text-inksoft">
+                        <span id="heatmapYear">2026</span>
+                        <div class="flex items-center gap-4">
+                            <span>📊 Jami: <span id="heatmapTotalActivities">0</span> ta faoliyat</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tab: Achievements -->
+            <div class="tab-content" id="tab-achievements">
+                <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4" id="achievementsList">
+                    <!-- Rendered by JS -->
+                </div>
+            </div>
+
+            <!-- Tab: Settings -->
+            <div class="tab-content" id="tab-settings">
+                <div class="card p-4 sm:p-6 max-w-lg">
+                    <h3 class="font-display font-bold text-lg mb-4">Profil sozlamalari</h3>
+
+                    <div class="space-y-4">
+                        <div>
+                            <label class="field-label">To'liq ism</label>
+                            <input type="text" class="input" value="Aziz Karimov" id="settingsName">
+                        </div>
+                        <div>
+                            <label class="field-label">Username</label>
+                            <input type="text" class="input" value="aziz_dev" id="settingsUsername">
+                        </div>
+                        <div>
+                            <label class="field-label">Bio</label>
+                            <textarea class="input" rows="3" id="settingsBio">Backend dasturchi, algoritmlarga qiziqaman. Har kuni kamida 1 ta masala yechishga harakat qilaman.</textarea>
+                        </div>
+                        <div>
+                            <label class="field-label">Email</label>
+                            <input type="email" class="input" value="aziz@example.com" id="settingsEmail">
+                        </div>
+                        <button class="btn btn-primary" onclick="saveSettings()">
+                            <span class="material-icons small">save</span> Saqlash
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="border-t border-line mt-12 sm:mt-16">
+        <div class="container-rc py-10 sm:py-14 grid grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
+            <div class="col-span-2">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-7 h-7 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:18px;">code</span>
+                    </span>
+                    <span class="font-display font-bold">RobaContest</span>
+                </div>
+                <p class="text-sm text-inksoft max-w-xs">Masalalar, testlar, musobaqalar va kurslar bitta joyda — dasturlashni sport qilib o'rgan.</p>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Platforma</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/problems.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">playlist_play</span> Masalalar
+                    </a>
+                    <a href="/tests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                    </a>
+                    <a href="/contests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">emoji_events</span> Musobaqalar
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">O'quv</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/courses.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">school</span> Kurslar
+                    </a>
+                    <a href="/leaderboard.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">leaderboard</span> Reyting
+                    </a>
+                    <a href="/profile.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">person</span> Profil
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Aloqa</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="https://t.me/robacontest" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">telegram</span> Telegram
+                    </a>
+                    <a href="mailto:info@robacontest.uz" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">email</span> info@robacontest.uz
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-line-soft">
+            <div class="container-rc py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-inkfaint">
+                <span>© 2026 RobaContest. Barcha huquqlar himoyalangan.</span>
+                <span class="font-mono">v2.0.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <!-- Global JS -->
+    <script src="../../static/js/main.js"></script>
+
+    <!-- ===== PROFILE PAGE JS ===== -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // DATA
+            // ============================================================
+            var userData = {
+                name: "Aziz Karimov",
+                username: "aziz_dev",
+                bio: "Backend dasturchi, algoritmlarga qiziqaman. Har kuni kamida 1 ta masala yechishga harakat qilaman.",
+                email: "aziz@example.com",
+                level: "pro",
+                xp: 16210,
+                solved: 248,
+                rank: 12,
+                contests: 12,
+                courses: 2,
+                streak: 7,
+                tests: 18,
+                rating: 4.8,
+                initials: "AZ"
+            };
+
+            var activities = [
+                { type: 'solved', text: 'Ikkita yig\'indi (Two Sum) masalasini yechdi', time: '2 soat oldin', problem: 'two-sum' },
+                { type: 'solved', text: 'To\'g\'ri qavslar (Valid Parentheses) masalasini yechdi', time: '5 soat oldin',
+                    problem: 'valid-parens' },
+                { type: 'attempted', text: 'LRU Cache masalasini yechishga urindi', time: '1 kun oldin', problem: 'lru-cache' },
+                { type: 'contest', text: 'Haftalik Sprint #24 musobaqasida ishtirok etdi', time: '2 kun oldin',
+                contest: 'sprint-24' },
+                { type: 'solved', text: 'Merge Intervals masalasini yechdi', time: '3 kun oldin',
+                problem: 'merge-intervals' },
+                { type: 'course', text: 'Python dasturlash asoslari kursini tugatdi', time: '5 kun oldin',
+                course: 'python-fundamentals' },
+                { type: 'solved', text: 'Binary Search masalasini yechdi', time: '1 hafta oldin',
+                problem: 'binary-search' },
+                { type: 'contest', text: 'Universitetlar Kubogi musobaqasida ishtirok etdi', time: '1 hafta oldin',
+                    contest: 'university-cup' }
+            ];
+
+            var achievements = [
+                { id: 1, title: 'Birinchi qadam', description: 'Birinchi masalani yechdi', icon: 'check_circle',
+                    earned: true, color: '#17924f' },
+                { id: 2, title: '10 ta masala', description: '10 ta masala yechdi', icon: 'emoji_events', earned: true,
+                    color: '#b5710a' },
+                { id: 3, title: '50 ta masala', description: '50 ta masala yechdi', icon: 'emoji_events', earned: true,
+                    color: '#1d5fd6' },
+                { id: 4, title: '100 ta masala', description: '100 ta masala yechdi', icon: 'stars', earned: true,
+                    color: '#d0264a' },
+                { id: 5, title: '200 ta masala', description: '200 ta masala yechdi', icon: 'military_tech', earned: true,
+                    color: '#92400e' },
+                { id: 6, title: '7 kunlik streak', description: '7 kun ketma-ket masala yechdi', icon: 'whatshot',
+                    earned: true, color: '#b5710a' },
+                { id: 7, title: '30 kunlik streak', description: '30 kun ketma-ket masala yechdi', icon: 'whatshot',
+                    earned: false, color: '#9aa3ad' },
+                { id: 8, title: 'Birinchilik', description: 'Reytingda birinchi o\'ringa chiqdi', icon: 'military_tech',
+                    earned: false, color: '#9aa3ad' },
+                { id: 9, title: 'Musobaqa g\'olibi', description: 'Musobaqada g\'olib bo\'ldi', icon: 'emoji_events',
+                    earned: false, color: '#9aa3ad' },
+                { id: 10, title: 'Kurs bitiruvchisi', description: '1 ta kursni tugatdi', icon: 'school', earned: true,
+                    color: '#17924f' },
+                { id: 11, title: '3 ta kurs', description: '3 ta kursni tugatdi', icon: 'school', earned: false,
+                    color: '#9aa3ad' },
+                { id: 12, title: 'Pro daraja', description: 'Pro darajasiga erishdi', icon: 'stars', earned: true,
+                    color: '#92400e' },
+            ];
+
+            // ============================================================
+            // DOM REFS
+            // ============================================================
+            var profileName = document.getElementById('profileName');
+            var profileUsername = document.getElementById('profileUsername');
+            var profileBio = document.getElementById('profileBio');
+            var profileLevel = document.getElementById('profileLevel');
+            var avatarInitials = document.getElementById('avatarInitials');
+
+            var statXp = document.getElementById('statXp');
+            var statSolved = document.getElementById('statSolved');
+            var statRank = document.getElementById('statRank');
+            var statProblemsSolved = document.getElementById('statProblemsSolved');
+            var statContests = document.getElementById('statContests');
+            var statCourses = document.getElementById('statCourses');
+            var statStreak = document.getElementById('statStreak');
+            var statTests = document.getElementById('statTests');
+            var statRating = document.getElementById('statRating');
+
+            var activityList = document.getElementById('activityList');
+            var heatmapContainer = document.getElementById('heatmapContainer');
+            var heatmapTotal = document.getElementById('heatmapTotal');
+            var heatmapTotalActivities = document.getElementById('heatmapTotalActivities');
+            var achievementsList = document.getElementById('achievementsList');
+
+            // Settings
+            var settingsName = document.getElementById('settingsName');
+            var settingsUsername = document.getElementById('settingsUsername');
+            var settingsBio = document.getElementById('settingsBio');
+            var settingsEmail = document.getElementById('settingsEmail');
+
+            // ============================================================
+            // HELPERS
+            // ============================================================
+            function escapeHtml(str) {
+                if (!str) return '';
+                var d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
+            }
+
+            function fmtNum(n) {
+                if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
+                if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+                return String(n);
+            }
+
+            function getLevelBadge(level) {
+                var map = {
+                    beginner: ['beginner', 'Boshlang\'ich', 'school'],
+                    intermediate: ['intermediate', 'O\'rtacha', 'auto_stories'],
+                    advanced: ['advanced', 'Murakkab', 'psychology'],
+                    pro: ['pro', 'Pro', 'stars']
+                };
+                var pair = map[level] || map.beginner;
+                return '<span class="level-badge ' + pair[0] + '"><span class="material-icons small" style="font-size:14px;">' +
+                    pair[2] + '</span> ' + pair[1] + '</span>';
+            }
+
+            // ============================================================
+            // RENDER PROFILE
+            // ============================================================
+            function renderProfile() {
+                profileName.textContent = userData.name;
+                profileUsername.textContent = '@' + userData.username;
+                profileBio.textContent = userData.bio;
+                profileLevel.innerHTML = getLevelBadge(userData.level);
+                avatarInitials.textContent = userData.initials;
+
+                statXp.textContent = fmtNum(userData.xp);
+                statSolved.textContent = userData.solved;
+                statRank.textContent = '#' + userData.rank;
+                statProblemsSolved.textContent = userData.solved;
+                statContests.textContent = userData.contests;
+                statCourses.textContent = userData.courses;
+                statStreak.textContent = userData.streak;
+                statTests.textContent = userData.tests;
+                statRating.textContent = userData.rating;
+
+                // Settings
+                settingsName.value = userData.name;
+                settingsUsername.value = userData.username;
+                settingsBio.value = userData.bio;
+                settingsEmail.value = userData.email;
+            }
+
+            // ============================================================
+            // RENDER ACTIVITIES
+            // ============================================================
+            function renderActivities() {
+                var html = '';
+                activities.forEach(function(act) {
+                    var iconMap = {
+                        solved: ['solved', 'check_circle'],
+                        attempted: ['attempted', 'pending'],
+                        contest: ['contest', 'emoji_events'],
+                        course: ['course', 'school']
+                    };
+                    var pair = iconMap[act.type] || iconMap.solved;
+
+                    var link = '';
+                    if (act.problem) {
+                        link = '/problem-detail.html?slug=' + act.problem;
+                    } else if (act.contest) {
+                        link = '/contest-detail.html?slug=' + act.contest;
+                    } else if (act.course) {
+                        link = '/course-detail.html?slug=' + act.course;
+                    }
+
+                    html += '<div class="activity-item">';
+                    html += '<span class="icon ' + pair[0] + '"><span class="material-icons">' + pair[1] + '</span></span>';
+                    html += '<div class="flex-1">';
+                    if (link) {
+                        html += '<a href="' + link + '" class="text-sm font-medium hover:text-info hover:underline">' +
+                            escapeHtml(act.text) + '</a>';
+                    } else {
+                        html += '<span class="text-sm font-medium">' + escapeHtml(act.text) + '</span>';
+                    }
+                    html += '<div class="text-xs text-inksoft">' + act.time + '</div>';
+                    html += '</div>';
+                    html += '</div>';
+                });
+                activityList.innerHTML = html;
+            }
+
+            // ============================================================
+            // RENDER HEATMAP
+            // ============================================================
+            function renderHeatmap() {
+                var cells = [];
+                var total = 0;
+
+                // Generate 365 days (53 weeks * 7 days)
+                for (var w = 0; w < 53; w++) {
+                    for (var d = 0; d < 7; d++) {
+                        var r = Math.random();
+                        var level;
+                        if (r > 0.92) { level = 4;
+                            total++; } else if (r > 0.8) { level = 3;
+                            total++; } else if (r > 0.6) { level = 2;
+                            total++; } else if (r > 0.4) { level = 1;
+                            total++; } else { level = 0; }
+                        var title = level > 0 ? level + ' ta faoliyat' : 'Faol emas';
+                        cells.push('<div class="heatmap-cell level-' + level + '" title="' + title + '"></div>');
+                    }
+                }
+
+                heatmapContainer.innerHTML = cells.join('');
+                heatmapTotal.textContent = total + ' kun faol';
+                heatmapTotalActivities.textContent = total;
+            }
+
+            // ============================================================
+            // RENDER ACHIEVEMENTS
+            // ============================================================
+            function renderAchievements() {
+                var html = '';
+                achievements.forEach(function(ach) {
+                    var earned = ach.earned;
+                    html += '<div class="card p-4 text-center' + (earned ? ' card-hover' : ' opacity-50') + '">';
+                    html += '<div class="relative inline-block">';
+                    html += '<span class="material-icons" style="font-size:40px;color:' + (earned ? ach.color :
+                        '#dfe3e7') + ';">' + ach.icon + '</span>';
+                    if (!earned) {
+                        html += '<span class="absolute top-0 right-0" style="font-size:14px;">🔒</span>';
+                    }
+                    html += '</div>';
+                    html += '<div class="font-semibold text-sm mt-2">' + ach.title + '</div>';
+                    html += '<div class="text-xs text-inksoft">' + ach.description + '</div>';
+                    if (earned) {
+                        html += '<div class="text-xs text-easy mt-1">✅ Qo\'lga kiritilgan</div>';
+                    }
+                    html += '</div>';
+                });
+                achievementsList.innerHTML = html;
+            }
+
+            // ============================================================
+            // TABS
+            // ============================================================
+            function switchTab(tab) {
+                document.querySelectorAll('.profile-tab').forEach(function(t) {
+                    t.classList.toggle('active', t.dataset.tab === tab);
+                });
+                document.querySelectorAll('.tab-content').forEach(function(tc) {
+                    tc.classList.toggle('active', tc.id === 'tab-' + tab);
+                });
+            }
+            window.switchTab = switchTab;
+
+            // ============================================================
+            // AVATAR CHANGE
+            // ============================================================
+            function changeAvatar(event) {
+                var file = event.target.files[0];
+                if (!file) return;
+
+                var reader = new FileReader();
+                reader.onload = function(e) {
+                    var container = document.getElementById('avatarContainer');
+                    var img = container.querySelector('img');
+                    if (img) {
+                        img.src = e.target.result;
+                    } else {
+                        var newImg = document.createElement('img');
+                        newImg.src = e.target.result;
+                        newImg.className = 'w-full h-full rounded-full object-cover';
+                        newImg.style.position = 'absolute';
+                        newImg.style.inset = '0';
+                        container.appendChild(newImg);
+                        document.getElementById('avatarInitials').style.display = 'none';
+                    }
+                    showToast('Avatar yangilandi!', 'success');
+                };
+                reader.readAsDataURL(file);
+            }
+            window.changeAvatar = changeAvatar;
+
+            // ============================================================
+            // SAVE SETTINGS
+            // ============================================================
+            function saveSettings() {
+                userData.name = settingsName.value.trim() || userData.name;
+                userData.username = settingsUsername.value.trim() || userData.username;
+                userData.bio = settingsBio.value.trim() || userData.bio;
+                userData.email = settingsEmail.value.trim() || userData.email;
+                userData.initials = userData.name.split(' ').slice(0, 2).map(function(w) { return w[0]; }).join('')
+                .toUpperCase();
+
+                renderProfile();
+                showToast('✅ Sozlamalar saqlandi!', 'success');
+            }
+            window.saveSettings = saveSettings;
+
+            // ============================================================
+            // INIT
+            // ============================================================
+            document.addEventListener('DOMContentLoaded', function() {
+                renderProfile();
+                renderActivities();
+                renderHeatmap();
+                renderAchievements();
+
+                setTimeout(function() {
+                    showToast('👋 Xush kelibsiz, ' + userData.name + '!', 'success', 2500);
+                }, 600);
+            });
+
+            window.userData = userData;
+
+        })();
+    </script>
+
+</body>
+</html>

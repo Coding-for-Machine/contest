@@ -1,0 +1,376 @@
+# Django Admin — O'zbek tili tarjimasi
+# Bu fayl Django admin interfeysi uchun asosiy tarjimalarni o'z ichiga oladi
+msgid ""
+msgstr ""
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: uz\n"
+"Plural-Forms: nplurals=1; plural=0;\n"
+
+# ===== LOGIN =====
+msgid "Log in"
+msgstr "Kirish"
+
+msgid "Username"
+msgstr "Foydalanuvchi nomi"
+
+msgid "Password"
+msgstr "Parol"
+
+msgid "Welcome back to"
+msgstr "Xush kelibsiz"
+
+msgid "Forgotten your password or username?"
+msgstr "Parolni unutdingizmi?"
+
+msgid "Please enter the correct %(username)s and password for a staff account. Note that both fields may be case-sensitive."
+msgstr "Xodim hisobi uchun to'g'ri %(username)s va parolni kiriting. Ikkala maydon ham katta-kichik harflarga sezgir bo'lishi mumkin."
+
+msgid "Your username and password didn't match. Please try again."
+msgstr "Foydalanuvchi nomi yoki parol noto'g'ri. Qayta urinib ko'ring."
+
+# ===== LOGOUT =====
+msgid "Logged out"
+msgstr "Tizimdan chiqildi"
+
+msgid "You have been successfully logged out from the administration"
+msgstr "Boshqaruv panelidan muvaffaqiyatli chiqdingiz"
+
+msgid "Thanks for spending some quality time with the web site today."
+msgstr "Bugun vaqt ajratganingiz uchun rahmat."
+
+msgid "Log in again"
+msgstr "Qayta kirish"
+
+# ===== DELETE ACTION (changelist dropdown) =====
+msgid "Delete selected %(verbose_name_plural)s"
+msgstr "Tanlangan %(verbose_name_plural)s ni o'chirish"
+
+msgid "Successfully deleted %(count)d %(items)s."
+msgstr "%(count)d ta %(items)s muvaffaqiyatli o'chirildi."
+
+msgid "Delete multiple objects"
+msgstr "Bir nechta ob'ektni o'chirish"
+
+msgid "Cannot delete %(name)s"
+msgstr "%(name)s ni o'chirib bo'lmaydi"
+
+# ===== DELETE CONFIRMATION PAGE =====
+msgid "Are you sure you want to delete the %(object_name)s \"%(escaped_object)s\"? All of the following related items will be deleted:"
+msgstr "Haqiqatdan ham %(object_name)s \"%(escaped_object)s\" ni o'chirib tashlamoqchimisiz? Quyidagi barcha bog'liq ma'lumotlar ham o'chib ketadi:"
+
+msgid "Deleting the %(object_name)s '%(escaped_object)s' would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
+msgstr "\"%(escaped_object)s\" ob'ektini o'chirish bog'liq ob'ektlarni ham o'chirishni talab qiladi, lekin sizning hisobingizda quyidagi turdagi ob'ektlarni o'chirish ruxsati yo'q:"
+
+msgid "Deleting the %(object_name)s '%(escaped_object)s' would require deleting the following protected related objects:"
+msgstr "\"%(escaped_object)s\" ob'ektini o'chirish quyidagi himoyalangan bog'liq ob'ektlarni ham o'chirishni talab qiladi:"
+
+msgid "Are you sure you want to delete the selected %(objects_name)s? All of the following objects and their related items will be deleted:"
+msgstr "Haqiqatdan ham tanlangan %(objects_name)s ni o'chirib tashlamoqchimisiz? Quyidagi barcha ob'ektlarax bor ularning bog'liq ma'lumotlari o'chib ketadi:"
+
+msgid "Deleting the selected %(objects_name)s would result in deleting related objects, but your account doesn't have permission to delete the following types of objects:"
+msgstr "Tanlangan %(objects_name)s ni o'chirish bog'liq ob'ektlarni ham o'chirishni talab qiladi, lekin sizning hisobingizda quyidagi turdagi ob'ektlarni o'chirish ruxsati yo'q:"
+
+msgid "Deleting the selected %(objects_name)s would require deleting the following protected related objects:"
+msgstr "Tanlangan %(objects_name)s ni o'chirish quyidagi himoyalangan bog'liq ob'ektlarni o'chirishni talab qiladi:"
+
+msgid "Objects"
+msgstr "Ob'ektlar"
+
+msgid "No, take me back"
+msgstr "Yo'q, bekor qilish"
+
+msgid "Yes, I'm sure"
+msgstr "Ha, o'chirilsin!"
+
+# ===== ACTIONS BAR =====
+msgid "Run"
+msgstr "Bajarish"
+
+msgid "Run the selected action"
+msgstr "Tanlangan amalni bajarish"
+
+msgid "Click here to select the objects across all pages"
+msgstr "Barcha sahifalar bo'yicha ob'ektlarni tanlash uchun bosing"
+
+msgid "Select all %(total_count)s %(module_name)s"
+msgstr "Barcha %(total_count)s ta %(module_name)s ni tanlash"
+
+msgid "Clear selection"
+msgstr "Tanlovni bekor qilish"
+
+msgid "%(sel)d of %(cnt)d selected"
+msgid_plural "%(sel)d of %(cnt)d selected"
+msgstr[0] "%(cnt)d tadan %(sel)d tasi tanlandi"
+
+# ===== OBJECT HISTORY =====
+msgid "History"
+msgstr "Tarix"
+
+msgid "Date/time"
+msgstr "Sana va vaqt"
+
+msgid "User"
+msgstr "Foydalanuvchi"
+
+msgid "Action"
+msgstr "Amal"
+
+msgid "This object doesn't have a change history. It probably wasn't added via this admin site."
+msgstr "Bu ob'ekt uchun o'zgarishlar tarixi mavjud emas."
+
+msgid "entry"
+msgid_plural "entries"
+msgstr[0] "ta yozuv"
+
+# ===== CHANGE LIST =====
+msgid "Add %(verbose_name)s"
+msgstr "%(verbose_name)s qo'shish"
+
+msgid "Search"
+msgstr "Qidirish"
+
+msgid "Go"
+msgstr "Bajarish"
+
+msgid "Filter"
+msgstr "Filtr"
+
+msgid "Clear all filters"
+msgstr "Barcha filtrlarni tozalash"
+
+msgid "%(count)s result"
+msgid_plural "%(count)s results"
+msgstr[0] "%(count)s ta natija"
+
+msgid "Select %(verbose_name)s to change"
+msgstr "O'zgartirish uchun %(verbose_name)s ni tanlang"
+
+msgid "Select %(verbose_name)s to view"
+msgstr "Ko'rish uchun %(verbose_name)s ni tanlang"
+
+msgid "0 of %(cnt)s selected"
+msgstr "%(cnt)s tadan 0 tasi tanlandi"
+
+# ===== CHANGE FORM =====
+msgid "Save"
+msgstr "Saqlash"
+
+msgid "Save and add another"
+msgstr "Saqlash va yana qo'shish"
+
+msgid "Save and continue editing"
+msgstr "Saqlash va tahrirlashni davom ettirish"
+
+msgid "Delete"
+msgstr "O'chirish"
+
+msgid "Close"
+msgstr "Yopish"
+
+msgid "View on site"
+msgstr "Saytda ko'rish"
+
+msgid "Add another %(verbose_name)s"
+msgstr "Yana %(verbose_name)s qo'shish"
+
+msgid "Remove"
+msgstr "Olib tashlash"
+
+# ===== PASSWORD =====
+msgid "Change password"
+msgstr "Parolni o'zgartirish"
+
+msgid "Please enter your old password, for security's sake, and then enter your new password twice so we can verify you typed it in correctly."
+msgstr "Xavfsizlik uchun eski parolingizni kiriting, so'ngra yangi parolingizni ikki marta kiriting."
+
+msgid "Old password"
+msgstr "Eski parol"
+
+msgid "New password"
+msgstr "Yangi parol"
+
+msgid "New password confirmation"
+msgstr "Yangi parolni tasdiqlash"
+
+msgid "Your password was changed."
+msgstr "Parolingiz muvaffaqiyatli o'zgartirildi."
+
+msgid "Password change"
+msgstr "Parolni o'zgartirish"
+
+msgid "Password changed successfully."
+msgstr "Parol muvaffaqiyatli o'zgartirildi."
+
+# ===== NAVIGATION =====
+msgid "Home"
+msgstr "Bosh sahifa"
+
+msgid "My actions"
+msgstr "Mening amallarim"
+
+msgid "None"
+msgstr "Yo'q"
+
+msgid "Yes"
+msgstr "Ha"
+
+msgid "No"
+msgstr "Yo'q"
+
+msgid "Unknown"
+msgstr "Noma'lum"
+
+msgid "Any date"
+msgstr "Istalgan sana"
+
+msgid "Today"
+msgstr "Bugun"
+
+msgid "Past 7 days"
+msgstr "Oxirgi 7 kun"
+
+msgid "This month"
+msgstr "Bu oy"
+
+msgid "This year"
+msgstr "Bu yil"
+
+# ===== ERRORS & SUCCESS =====
+msgid "Please correct the error below."
+msgstr "Quyidagi xatoni tuzating."
+
+msgid "Please correct the errors below."
+msgstr "Quyidagi xatolarni tuzating."
+
+msgid "This field is required."
+msgstr "Ushbu maydonni to'ldirish shart."
+
+msgid "The %(name)s \"%(obj)s\" was added successfully."
+msgstr "%(name)s \"%(obj)s\" muvaffaqiyatli qo'shildi."
+
+msgid "The %(name)s \"%(obj)s\" was changed successfully."
+msgstr "%(name)s \"%(obj)s\" muvaffaqiyatli o'zgartirildi."
+
+msgid "The %(name)s \"%(obj)s\" was deleted successfully."
+msgstr "%(name)s \"%(obj)s\" muvaffaqiyatli o'chirildi."
+
+msgid "You don't have permission to view or edit anything."
+msgstr "Sizda hech narsani ko'rish yoki tahrirlash uchun ruxsat yo'q."
+
+# ===== PAGINATION =====
+msgid "previous"
+msgstr "oldingi"
+
+msgid "next"
+msgstr "keyingi"
+
+msgid "Paginator"
+msgstr "Sahifalovchi"
+
+# ===== DJANGO UNFOLD EXTRA =====
+msgid "Search apps and models..."
+msgstr "Ilovalar va modellarni qidirish..."
+
+msgid "Light"
+msgstr "Yorqin"
+
+msgid "Dark"
+msgstr "Tungi"
+
+msgid "System"
+msgstr "Tizim"
+
+# ===== DJANGO UNFOLD FILTERS & EMPTY STATES =====
+msgid "No results found"
+msgstr "Natija topilmadi"
+
+msgid "This page yielded into no results. Create a new item or reset your filters."
+msgstr "Ushbu sahifa bo'yicha hech qanday natija topilmadi. Yangi element yarating yoki filtrlarni tozalang."
+
+msgid "Reset filters"
+msgstr "Filtrlarni tiklash"
+
+msgid "Darsqo'shish"
+msgstr "Dars qo'shish"
+
+# ===== INLINE VA TUGMALAR UCHUN =====
+msgid "Add lesson"
+msgstr "Dars qo'shish"
+
+msgid "Add another"
+msgstr "Yana bitta qo'shish"
+
+# ===== DINAMIK FILTRLAR VA QIDIRUV MATNLARI =====
+msgid "By %(name)s"
+msgstr "%(name)s bo'yicha"
+
+msgid "by %(name)s"
+msgstr "%(name)s bo'yicha"
+
+msgid "Type to search"
+msgstr "Qidirish uchun yozing..."
+
+msgid "Show"
+msgstr "Ko'rsatish"
+
+msgid "Hide"
+msgstr "Yashirish"
+
+msgid "Action:"
+msgstr "Amal:"
+
+msgid "All"
+msgstr "Hammasi"
+
+msgid "Toggle navigation"
+msgstr "Menyuni ochish/yopish"
+
+# ===== GROUPS & PERMISSIONS =====
+msgid "Authentication and Authorization"
+msgstr "Identifikatsiya va Avtorizatsiya"
+
+msgid "Group"
+msgstr "Guruh"
+
+msgid "Groups"
+msgstr "Guruhlar"
+
+msgid "User permissions"
+msgstr "Foydalanuvchi huquqlari"
+
+msgid "Permission"
+msgstr "Huquq (Ruxsatnoma)"
+
+msgid "Permissions"
+msgstr "Huquqlar (Ruxsatnomalar)"
+
+msgid "Staff status"
+msgstr "Xodim statusi (Staff)"
+
+msgid "Superuser status"
+msgstr "Superadmin statusi"
+
+msgid "Active"
+msgstr "Faol"
+
+msgid "Choose all"
+msgstr "Hammasini tanlash"
+
+msgid "Chosen %(name)s"
+msgstr "Tanlangan %(name)s"
+
+msgid "Remove all"
+msgstr "Hammasini olib tashlash"
+
+msgid "Select all"
+msgstr "Barchasini belgilash"
+
+msgid "Available %(name)s"
+msgstr "Mavjud %(name)s"
+
+msgid "This is the list of available permissions. You may choose some by selecting them in the box below and then clicking the \"Choose\" arrow between the two boxes."
+msgstr "Bu mavjud ruxsatnomalar ro'yxati. Ularni tanlash uchun pastdagi qutidan belgilang va qutilar o'rtasidagi \"Tanlash\" ko'rsatkichini bosing."
+
+msgid "This is the list of chosen permissions. You may remove some by selecting them in the box below and then clicking the \"Remove\" arrow between the two boxes."
+msgstr "Bu tanlangan ruxsatnomalar ro'yxati. Ularni olib tashlash uchun pastdagi qutidan belgilang va qutilar o'rtasidagi \"Olib tashlash\" ko'rsatkichini bosing."

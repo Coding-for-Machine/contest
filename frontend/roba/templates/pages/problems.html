@@ -1,0 +1,1049 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Masalalar | CfM Contest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14',
+                        inksoft: '#5b6572',
+                        inkfaint: '#9aa3ad',
+                        line: '#e7eaee',
+                        'line-soft': '#f0f2f4',
+                        surface: '#fafafa',
+                        'surface-2': '#f4f5f6',
+                        easy: '#17924f',
+                        'easy-bg': '#eafbf1',
+                        medium: '#b5710a',
+                        'medium-bg': '#fef6e7',
+                        hard: '#d0264a',
+                        'hard-bg': '#fdeced',
+                        info: '#1d5fd6',
+                        'info-bg': '#eaf1fd',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="../../static/css/style.css">
+
+    <style>
+        /* Problems page specific styles */
+        .problem-row {
+            transition: all 0.15s ease;
+            cursor: pointer;
+        }
+        .problem-row:hover {
+            background: var(--surface);
+            border-color: #d7dbe0;
+            box-shadow: var(--shadow-sm);
+        }
+        .problem-row .status-icon {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+        .problem-row .status-icon.solved {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .problem-row .status-icon.unsolved {
+            background: var(--surface-2);
+            color: var(--ink-faint);
+        }
+        .problem-row .status-icon.bookmarked {
+            background: var(--info-bg);
+            color: var(--info);
+        }
+
+        .filter-chip {
+            padding: 6px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1.5px solid var(--line);
+            background: #fff;
+            color: var(--ink-soft);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .filter-chip:hover {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+        .filter-chip.active {
+            background: var(--ink);
+            color: #fff;
+            border-color: var(--ink);
+        }
+        .filter-chip .count {
+            background: var(--surface-2);
+            padding: 0 6px;
+            border-radius: 99px;
+            font-size: 10px;
+            margin-left: 2px;
+        }
+        .filter-chip.active .count {
+            background: rgba(255,255,255,0.2);
+            color: #fff;
+        }
+
+        /* Scroll pagination */
+        #problemsList {
+            max-height: 600px;
+            overflow-y: auto;
+            scroll-behavior: smooth;
+        }
+        #problemsList::-webkit-scrollbar {
+            width: 6px;
+        }
+        #problemsList::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        #problemsList::-webkit-scrollbar-thumb {
+            background: #dfe3e7;
+            border-radius: 99px;
+        }
+        #problemsList::-webkit-scrollbar-thumb:hover {
+            background: #c7ccd2;
+        }
+
+        .load-more-trigger {
+            height: 60px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--ink-faint);
+            font-size: 13px;
+            font-weight: 500;
+            gap: 12px;
+        }
+        .load-more-trigger .spinner {
+            width: 24px;
+            height: 24px;
+            border: 3px solid var(--line);
+            border-top-color: var(--ink);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            display: none;
+        }
+        .load-more-trigger.loading .spinner {
+            display: block;
+        }
+        .load-more-trigger.loading .text {
+            display: none;
+        }
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        /* Difficulty filter buttons */
+        .diff-filter-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .diff-btn {
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1.5px solid var(--line);
+            background: #fff;
+            color: var(--ink-soft);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .diff-btn:hover {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+        .diff-btn.active-easy {
+            background: var(--easy-bg);
+            border-color: var(--easy);
+            color: var(--easy);
+        }
+        .diff-btn.active-medium {
+            background: var(--medium-bg);
+            border-color: var(--medium);
+            color: var(--medium);
+        }
+        .diff-btn.active-hard {
+            background: var(--hard-bg);
+            border-color: var(--hard);
+            color: var(--hard);
+        }
+        .diff-btn.active-all {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: #fff;
+        }
+
+        .status-filter-group {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .status-btn {
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1.5px solid var(--line);
+            background: #fff;
+            color: var(--ink-soft);
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .status-btn:hover {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+        .status-btn.active {
+            background: var(--ink);
+            border-color: var(--ink);
+            color: #fff;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+        }
+        .empty-state .material-icons {
+            font-size: 64px;
+            color: var(--ink-faint);
+            margin-bottom: 16px;
+        }
+        .empty-state h3 {
+            font-size: 18px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .empty-state p {
+            color: var(--ink-soft);
+            font-size: 14px;
+        }
+
+        .material-icons {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+        .material-icons.small {
+            font-size: 16px;
+        }
+        .material-icons.large {
+            font-size: 28px;
+        }
+
+        @media (max-width: 640px) {
+            #problemsList {
+                max-height: 400px;
+            }
+            .problem-row {
+                padding: 12px 16px;
+            }
+            .problem-row .problem-title {
+                font-size: 14px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="container-rc flex items-center justify-between h-14">
+            <div class="flex items-center gap-8">
+                <a href="/" class="flex items-center gap-2 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:20px;">code</span>
+                    </span>
+                    <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+                </a>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="/problems.html" class="nav-link active">Masalalar</a>
+                    <a href="/tests.html" class="nav-link">Testlar</a>
+                    <a href="/contests.html" class="nav-link">Musobaqalar</a>
+                    <a href="/courses.html" class="nav-link">Kurslar</a>
+                    <a href="/leaderboard.html" class="nav-link">Reyting</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" aria-label="Qidirish">
+                    <span class="material-icons">search</span>
+                </button>
+
+                <a href="/login.html" class="btn btn-outline btn-sm btn-login">Kirish</a>
+                <a href="/login.html" class="btn btn-primary btn-sm btn-signup">Boshlash</a>
+
+                <div class="relative">
+                    <div class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">AZ</div>
+                    <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+                        <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">person</span> Profil
+                        </a>
+                        <a href="/leaderboard.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">emoji_events</span> Mening reytingim
+                        </a>
+                        <div class="h-px bg-line my-1"></div>
+                        <button onclick="Auth.logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">
+                            <span class="material-icons small mr-2">logout</span> Chiqish
+                        </button>
+                    </div>
+                </div>
+
+                <button class="md:hidden" onclick="document.getElementById('mobileNav').classList.toggle('hidden')" aria-label="Menyu">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+        </div>
+
+        <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+            <nav class="container-rc flex flex-col py-2">
+                <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">emoji_events</span> Musobaqalar
+                </a>
+                <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="py-3 text-sm font-medium">
+                    <span class="material-icons small mr-2">leaderboard</span> Reyting
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== MAIN CONTENT ===== -->
+    <main>
+
+        <section class="container-rc py-10">
+            <!-- Header -->
+            <div class="mb-8">
+                <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
+                    <div>
+                        <h1 class="font-display font-bold text-3xl mb-2">Masalalar</h1>
+                        <p class="text-inksoft text-sm">Algoritm va ma'lumotlar tuzilmasi bo'yicha mashq qil, har biri XP beradi.</p>
+                    </div>
+                    <div class="flex items-center gap-3 text-sm text-inksoft">
+                        <span id="totalCount" class="font-mono font-bold text-ink">0</span>
+                        <span>ta masala</span>
+                        <span class="divider-dot"></span>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-easy"></span>
+                            <span id="easyCount">0</span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-medium"></span>
+                            <span id="mediumCount">0</span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="w-2 h-2 rounded-full bg-hard"></span>
+                            <span id="hardCount">0</span>
+                        </span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- FILTERS -->
+            <div class="flex flex-col gap-4 mb-6">
+                <!-- Search -->
+                <div class="relative">
+                    <span class="material-icons absolute left-4 top-1/2 -translate-y-1/2 text-inkfaint" style="font-size:20px;">search</span>
+                    <input
+                        id="searchInput"
+                        type="search"
+                        placeholder="Masala nomi, kategoriya yoki teglar bo'yicha qidirish... ( / )"
+                        class="input pl-12 text-sm"
+                    >
+                </div>
+
+                <!-- Filter chips row -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-bold uppercase tracking-wide text-inkfaint">Daraja:</span>
+                    <div class="diff-filter-group">
+                        <button class="diff-btn active-all" data-diff="all">
+                            <span class="material-icons small" style="font-size:14px;">apps</span> Barchasi
+                        </button>
+                        <button class="diff-btn" data-diff="easy">
+                            <span class="material-icons small" style="font-size:14px;">check_circle</span> Easy
+                        </button>
+                        <button class="diff-btn" data-diff="medium">
+                            <span class="material-icons small" style="font-size:14px;">warning</span> Medium
+                        </button>
+                        <button class="diff-btn" data-diff="hard">
+                            <span class="material-icons small" style="font-size:14px;">error</span> Hard
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-bold uppercase tracking-wide text-inkfaint">Holati:</span>
+                    <div class="status-filter-group">
+                        <button class="status-btn active" data-status="all">
+                            <span class="material-icons small" style="font-size:14px;">apps</span> Barchasi
+                        </button>
+                        <button class="status-btn" data-status="solved">
+                            <span class="material-icons small" style="font-size:14px;">check_circle</span> Yechilgan
+                        </button>
+                        <button class="status-btn" data-status="unsolved">
+                            <span class="material-icons small" style="font-size:14px;">hourglass_empty</span> Yechilmagan
+                        </button>
+                        <button class="status-btn" data-status="bookmarked">
+                            <span class="material-icons small" style="font-size:14px;">bookmark</span> Saqlangan
+                        </button>
+                    </div>
+                </div>
+
+                <div class="flex flex-wrap items-center gap-3">
+                    <span class="text-xs font-bold uppercase tracking-wide text-inkfaint">Kategoriya:</span>
+                    <div class="flex flex-wrap gap-1.5" id="categoryFilters">
+                        <button class="filter-chip active" data-cat="all">Barchasi <span class="count" id="catAllCount">0</span></button>
+                        <button class="filter-chip" data-cat="arrays"><span class="material-icons small" style="font-size:14px;">view_array</span> Massivlar <span class="count" id="catArraysCount">0</span></button>
+                        <button class="filter-chip" data-cat="graphs"><span class="material-icons small" style="font-size:14px;">account_tree</span> Graflar <span class="count" id="catGraphsCount">0</span></button>
+                        <button class="filter-chip" data-cat="dp"><span class="material-icons small" style="font-size:14px;">calculate</span> Dinamik dasturlash <span class="count" id="catDpCount">0</span></button>
+                        <button class="filter-chip" data-cat="stack"><span class="material-icons small" style="font-size:14px;">layers</span> Stack <span class="count" id="catStackCount">0</span></button>
+                        <button class="filter-chip" data-cat="binary-search"><span class="material-icons small" style="font-size:14px;">search</span> Binary Search <span class="count" id="catBinaryCount">0</span></button>
+                        <button class="filter-chip" data-cat="design"><span class="material-icons small" style="font-size:14px;">design_services</span> Dizayn <span class="count" id="catDesignCount">0</span></button>
+                    </div>
+                </div>
+
+                <!-- Sort & view options -->
+                <div class="flex items-center justify-between gap-3 pt-2 border-t border-line-soft">
+                    <div class="flex items-center gap-3">
+                        <span class="material-icons small text-inkfaint">sort</span>
+                        <select id="sortSelect" class="select w-auto text-xs py-1.5">
+                            <option value="newest">Eng yangi</option>
+                            <option value="oldest">Eng eski</option>
+                            <option value="xp">XP (ko'p)</option>
+                            <option value="difficulty">Qiyinlik</option>
+                        </select>
+                    </div>
+                    <div class="text-xs text-inksoft">
+                        <span id="displayCount">0</span> ta ko'rsatilmoqda
+                    </div>
+                </div>
+            </div>
+
+            <!-- PROBLEM LIST with scroll pagination -->
+            <div class="grid lg:grid-cols-[1fr_280px] gap-8">
+                <div>
+                    <!-- Column headers -->
+                    <div class="hidden sm:grid grid-cols-[44px_1fr_100px_90px_80px] gap-3 px-4 py-2.5 text-xs font-bold uppercase tracking-wide text-inkfaint border-b border-line-soft">
+                        <span></span>
+                        <span>Sarlavha</span>
+                        <span>Daraja</span>
+                        <span>Qabul %</span>
+                        <span class="text-right">XP</span>
+                    </div>
+
+                    <!-- Scrollable list -->
+                    <div id="problemsList">
+                        <!-- Problems will be rendered here -->
+                        <div class="load-more-trigger" id="loadMoreTrigger">
+                            <div class="spinner"></div>
+                            <span class="text">Yuklanmoqda...</span>
+                        </div>
+                    </div>
+
+                    <!-- Load more button (fallback) -->
+                    <div class="flex items-center justify-center mt-6">
+                        <button id="loadMoreBtn" class="btn btn-outline text-sm hidden">
+                            <span class="material-icons small">expand_more</span>
+                            Yana yuklash <span class="font-mono" id="remainingCount">0</span> ta
+                        </button>
+                    </div>
+                </div>
+
+                <!-- SIDEBAR -->
+                <aside class="hidden lg:flex flex-col gap-5">
+                    <!-- Progress -->
+                    <div class="card p-5">
+                        <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-4">Mening progressim</div>
+                        <div class="flex items-end gap-1 mb-3">
+                            <span class="stat-num text-3xl" id="sideSolved">0</span>
+                            <span class="text-inksoft text-sm mb-1">/ <span id="sideTotal">0</span> yechildi</span>
+                        </div>
+                        <div class="rate-track mb-4">
+                            <div class="rate-fill high" id="sideProgressBar" style="width:0%"></div>
+                        </div>
+                        <div class="flex flex-col gap-2 text-sm">
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-easy"></span>Easy</span>
+                                <span class="font-mono" id="sideEasy">0/0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-medium"></span>Medium</span>
+                                <span class="font-mono" id="sideMedium">0/0</span>
+                            </div>
+                            <div class="flex items-center justify-between">
+                                <span class="flex items-center gap-2"><span class="w-2 h-2 rounded-full bg-hard"></span>Hard</span>
+                                <span class="font-mono" id="sideHard">0/0</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Tags -->
+                    <div class="card p-5">
+                        <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Ommabop teglar</div>
+                        <div class="flex flex-wrap gap-1.5" id="sideTags">
+                            <span class="badge badge-neutral">#arrays</span>
+                            <span class="badge badge-neutral">#graphs</span>
+                            <span class="badge badge-neutral">#dp</span>
+                            <span class="badge badge-neutral">#stack</span>
+                            <span class="badge badge-neutral">#binary-search</span>
+                            <span class="badge badge-neutral">#design</span>
+                            <span class="badge badge-neutral">#sorting</span>
+                            <span class="badge badge-neutral">#two-pointers</span>
+                        </div>
+                    </div>
+
+                    <!-- Stats -->
+                    <div class="card p-5">
+                        <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Tez stat</div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div class="stat-chip text-center">
+                                <div class="stat-num text-lg" id="statTotal">0</div>
+                                <div class="text-xs text-inksoft">Jami</div>
+                            </div>
+                            <div class="stat-chip text-center">
+                                <div class="stat-num text-lg text-easy" id="statEasy">0</div>
+                                <div class="text-xs text-inksoft">Easy</div>
+                            </div>
+                            <div class="stat-chip text-center">
+                                <div class="stat-num text-lg text-medium" id="statMedium">0</div>
+                                <div class="text-xs text-inksoft">Medium</div>
+                            </div>
+                            <div class="stat-chip text-center">
+                                <div class="stat-num text-lg text-hard" id="statHard">0</div>
+                                <div class="text-xs text-inksoft">Hard</div>
+                            </div>
+                        </div>
+                    </div>
+                </aside>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="border-t border-line mt-24">
+        <div class="container-rc py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+            <div class="col-span-2">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-7 h-7 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:18px;">code</span>
+                    </span>
+                    <span class="font-display font-bold">RobaContest</span>
+                </div>
+                <p class="text-sm text-inksoft max-w-xs">Masalalar, testlar, musobaqalar va kurslar bitta joyda — dasturlashni sport qilib o'rgan.</p>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Platforma</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/problems.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">playlist_play</span> Masalalar
+                    </a>
+                    <a href="/tests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                    </a>
+                    <a href="/contests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">emoji_events</span> Musobaqalar
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">O'quv</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/courses.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">school</span> Kurslar
+                    </a>
+                    <a href="/leaderboard.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">leaderboard</span> Reyting
+                    </a>
+                    <a href="/profile.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">person</span> Profil
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Aloqa</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="https://t.me/robacontest" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">telegram</span> Telegram
+                    </a>
+                    <a href="mailto:info@robacontest.uz" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">email</span> info@robacontest.uz
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-line-soft">
+            <div class="container-rc py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-inkfaint">
+                <span>© 2026 RobaContest. Barcha huquqlar himoyalangan.</span>
+                <span class="font-mono">v2.0.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast container -->
+    <div id="toast-container"></div>
+
+    <!-- Global JS -->
+    <script src="../../static/js/main.js"></script>
+
+    <!-- ===== PROBLEMS PAGE SPECIFIC JS ===== -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // DATA
+            // ============================================================
+            var allProblems = [
+                { id: 1, slug: 'two-sum', title: "Ikkita yig'indi (Two Sum)", difficulty: 'easy', xp: 10, acceptance: 78, solved: true, bookmarked: true, category: 'arrays', tags: ['#arrays', '#hash-table'] },
+                { id: 2, slug: 'valid-parens', title: "To'g'ri qavslar (Valid Parentheses)", difficulty: 'easy', xp: 10, acceptance: 65, solved: true, bookmarked: false, category: 'stack', tags: ['#stack', '#string'] },
+                { id: 3, slug: 'merge-sorted', title: "Tartiblangan massivlarni birlashtirish", difficulty: 'easy', xp: 10, acceptance: 72, solved: false, bookmarked: false, category: 'arrays', tags: ['#arrays', '#two-pointers'] },
+                { id: 4, slug: 'lru-cache', title: "LRU Cache dizayni", difficulty: 'medium', xp: 25, acceptance: 41, solved: false, bookmarked: true, category: 'design', tags: ['#design', '#hash-table'] },
+                { id: 5, slug: 'course-schedule', title: "Kurs jadvali (Topological Sort)", difficulty: 'medium', xp: 25, acceptance: 38, solved: false, bookmarked: false, category: 'graphs', tags: ['#graphs', '#topological'] },
+                { id: 6, slug: 'merge-intervals', title: "Oraliqlarni birlashtirish", difficulty: 'medium', xp: 25, acceptance: 47, solved: false, bookmarked: false, category: 'arrays', tags: ['#arrays', '#sorting'] },
+                { id: 7, slug: 'median-two', title: "Ikki tartiblangan massiv medianasi", difficulty: 'hard', xp: 50, acceptance: 22, solved: false, bookmarked: false, category: 'binary-search', tags: ['#binary-search', '#arrays'] },
+                { id: 8, slug: 'word-ladder', title: "So'z zanjiri (Word Ladder)", difficulty: 'hard', xp: 50, acceptance: 19, solved: false, bookmarked: false, category: 'graphs', tags: ['#graphs', '#bfs'] },
+                { id: 9, slug: 'max-subarray', title: "Maksimal subarray yig'indisi", difficulty: 'medium', xp: 20, acceptance: 55, solved: false, bookmarked: false, category: 'dp', tags: ['#dp', '#arrays'] },
+                { id: 10, slug: 'coin-change', title: "Tangalar bilan pul yig'ish", difficulty: 'medium', xp: 25, acceptance: 33, solved: false, bookmarked: false, category: 'dp', tags: ['#dp', '#greedy'] },
+                { id: 11, slug: 'binary-tree-inorder', title: "Binary tree — inorder traversal", difficulty: 'easy', xp: 10, acceptance: 68, solved: false, bookmarked: false, category: 'stack', tags: ['#stack', '#tree'] },
+                { id: 12, slug: 'graph-cycle', title: "Graflarda siklni aniqlash", difficulty: 'hard', xp: 50, acceptance: 28, solved: false, bookmarked: false, category: 'graphs', tags: ['#graphs', '#cycle-detection'] },
+                { id: 13, slug: 'fibonacci-dp', title: "Fibonachchi sonlari (DP)", difficulty: 'easy', xp: 10, acceptance: 82, solved: false, bookmarked: false, category: 'dp', tags: ['#dp', '#math'] },
+                { id: 14, slug: 'binary-search-sqrt', title: "Kvadrat ildizni topish", difficulty: 'medium', xp: 20, acceptance: 44, solved: false, bookmarked: false, category: 'binary-search', tags: ['#binary-search', '#math'] },
+                { id: 15, slug: 'design-patterns', title: "Dizayn patternlar — Singleton", difficulty: 'medium', xp: 25, acceptance: 39, solved: false, bookmarked: false, category: 'design', tags: ['#design', '#patterns'] },
+            ];
+
+            // ============================================================
+            // STATE
+            // ============================================================
+            var state = {
+                page: 1,
+                pageSize: 10,
+                search: '',
+                difficulty: 'all',
+                status: 'all',
+                category: 'all',
+                sort: 'newest',
+                loading: false,
+                hasMore: true,
+                filtered: [],
+                displayed: [],
+            };
+
+            // ============================================================
+            // DOM REFS
+            // ============================================================
+            var container = document.getElementById('problemsList');
+            var loadMoreTrigger = document.getElementById('loadMoreTrigger');
+            var loadMoreBtn = document.getElementById('loadMoreBtn');
+            var searchInput = document.getElementById('searchInput');
+            var totalCount = document.getElementById('totalCount');
+            var displayCount = document.getElementById('displayCount');
+            var remainingCount = document.getElementById('remainingCount');
+
+            // ============================================================
+            // FILTER FUNCTIONS
+            // ============================================================
+            function getFiltered() {
+                var result = allProblems.slice();
+
+                // Search
+                if (state.search) {
+                    var s = state.search.toLowerCase();
+                    result = result.filter(function(p) {
+                        return p.title.toLowerCase().includes(s) ||
+                            p.category.toLowerCase().includes(s) ||
+                            p.tags.some(function(t) { return t.toLowerCase().includes(s); });
+                    });
+                }
+
+                // Difficulty
+                if (state.difficulty !== 'all') {
+                    result = result.filter(function(p) { return p.difficulty === state.difficulty; });
+                }
+
+                // Status
+                if (state.status === 'solved') {
+                    result = result.filter(function(p) { return p.solved; });
+                } else if (state.status === 'unsolved') {
+                    result = result.filter(function(p) { return !p.solved; });
+                } else if (state.status === 'bookmarked') {
+                    result = result.filter(function(p) { return p.bookmarked; });
+                }
+
+                // Category
+                if (state.category !== 'all') {
+                    result = result.filter(function(p) { return p.category === state.category; });
+                }
+
+                // Sort
+                if (state.sort === 'newest') {
+                    result.sort(function(a, b) { return b.id - a.id; });
+                } else if (state.sort === 'oldest') {
+                    result.sort(function(a, b) { return a.id - b.id; });
+                } else if (state.sort === 'xp') {
+                    result.sort(function(a, b) { return b.xp - a.xp; });
+                } else if (state.sort === 'difficulty') {
+                    var order = { easy: 0, medium: 1, hard: 2 };
+                    result.sort(function(a, b) { return order[a.difficulty] - order[b.difficulty]; });
+                }
+
+                return result;
+            }
+
+            // ============================================================
+            // RENDER FUNCTIONS
+            // ============================================================
+            function getStatusIcon(p) {
+                if (p.solved) {
+                    return '<span class="material-icons" style="font-size:18px;">check_circle</span>';
+                }
+                if (p.bookmarked) {
+                    return '<span class="material-icons" style="font-size:18px;">bookmark</span>';
+                }
+                return '<span class="material-icons" style="font-size:18px;">radio_button_unchecked</span>';
+            }
+
+            function renderProblem(p) {
+                var statusClass = p.solved ? 'solved' : (p.bookmarked ? 'bookmarked' : 'unsolved');
+                var statusIcon = getStatusIcon(p);
+
+                var diffMap = {
+                    easy: ['badge-easy', 'Easy'],
+                    medium: ['badge-medium', 'Medium'],
+                    hard: ['badge-hard', 'Hard']
+                };
+                var diff = diffMap[p.difficulty] || diffMap.easy;
+
+                return '<a href="/problem-detail.html?slug=' + p.slug + '" class="problem-row card accent-bar ' + p.difficulty + ' grid grid-cols-[44px_1fr] sm:grid-cols-[44px_1fr_100px_90px_80px] items-center gap-3 px-4 py-3.5 border-b border-line-soft hover:no-underline">' +
+                    '<span class="status-icon ' + statusClass + '">' + statusIcon + '</span>' +
+                    '<span class="problem-title font-medium text-[14.5px] flex items-center gap-2 min-w-0">' +
+                    '<span class="truncate">' + escapeHtml(p.title) + '</span>' +
+                    (p.bookmarked ? '<span class="material-icons text-info" style="font-size:14px;">bookmark</span>' : '') +
+                    '</span>' +
+                    '<span class="hidden sm:block"><span class="badge ' + diff[0] + '">' + diff[1] + '</span></span>' +
+                    '<span class="hidden sm:block font-mono text-sm text-inksoft">' + p.acceptance + '%</span>' +
+                    '<span class="hidden sm:block font-mono text-sm text-inksoft text-right">+' + p.xp + '</span>' +
+                    '</a>';
+            }
+
+            function renderEmpty() {
+                return '<div class="empty-state">' +
+                    '<span class="material-icons">search_off</span>' +
+                    '<h3>Hech narsa topilmadi</h3>' +
+                    '<p>Qidiruv shartlariga mos masala mavjud emas. Boshqa kalit so\'zlar bilan urinib ko\'ring.</p>' +
+                    '</div>';
+            }
+
+            function renderLoadMore() {
+                if (state.hasMore) {
+                    loadMoreTrigger.className = 'load-more-trigger';
+                    loadMoreTrigger.innerHTML = '<div class="spinner"></div><span class="text">Yuklanmoqda...</span>';
+                } else {
+                    loadMoreTrigger.className = 'load-more-trigger';
+                    loadMoreTrigger.innerHTML = '<span class="material-icons" style="font-size:18px;">check_circle</span><span class="text text-inkfaint">Barcha masalalar ko\'rsatildi</span>';
+                }
+            }
+
+            function renderStats(filtered) {
+                var total = filtered.length;
+                var easy = filtered.filter(function(p) { return p.difficulty === 'easy'; }).length;
+                var medium = filtered.filter(function(p) { return p.difficulty === 'medium'; }).length;
+                var hard = filtered.filter(function(p) { return p.difficulty === 'hard'; }).length;
+                var solved = filtered.filter(function(p) { return p.solved; }).length;
+
+                document.getElementById('totalCount').textContent = total;
+                document.getElementById('easyCount').textContent = easy;
+                document.getElementById('mediumCount').textContent = medium;
+                document.getElementById('hardCount').textContent = hard;
+
+                document.getElementById('statTotal').textContent = total;
+                document.getElementById('statEasy').textContent = easy;
+                document.getElementById('statMedium').textContent = medium;
+                document.getElementById('statHard').textContent = hard;
+
+                // Sidebar progress
+                document.getElementById('sideSolved').textContent = solved;
+                document.getElementById('sideTotal').textContent = total;
+                var progress = total > 0 ? Math.round((solved / total) * 100) : 0;
+                document.getElementById('sideProgressBar').style.width = progress + '%';
+
+                var totalByDiff = {
+                    easy: allProblems.filter(function(p) { return p.difficulty === 'easy'; }).length,
+                    medium: allProblems.filter(function(p) { return p.difficulty === 'medium'; }).length,
+                    hard: allProblems.filter(function(p) { return p.difficulty === 'hard'; }).length,
+                };
+                var solvedByDiff = {
+                    easy: allProblems.filter(function(p) { return p.difficulty === 'easy' && p.solved; }).length,
+                    medium: allProblems.filter(function(p) { return p.difficulty === 'medium' && p.solved; }).length,
+                    hard: allProblems.filter(function(p) { return p.difficulty === 'hard' && p.solved; }).length,
+                };
+                document.getElementById('sideEasy').textContent = solvedByDiff.easy + '/' + totalByDiff.easy;
+                document.getElementById('sideMedium').textContent = solvedByDiff.medium + '/' + totalByDiff.medium;
+                document.getElementById('sideHard').textContent = solvedByDiff.hard + '/' + totalByDiff.hard;
+
+                // Category counts
+                var cats = {};
+                allProblems.forEach(function(p) {
+                    cats[p.category] = (cats[p.category] || 0) + 1;
+                });
+                document.getElementById('catAllCount').textContent = allProblems.length;
+                document.getElementById('catArraysCount').textContent = cats.arrays || 0;
+                document.getElementById('catGraphsCount').textContent = cats.graphs || 0;
+                document.getElementById('catDpCount').textContent = cats.dp || 0;
+                document.getElementById('catStackCount').textContent = cats.stack || 0;
+                document.getElementById('catBinaryCount').textContent = cats['binary-search'] || 0;
+                document.getElementById('catDesignCount').textContent = cats.design || 0;
+            }
+
+            // ============================================================
+            // LOAD MORE (scroll pagination)
+            // ============================================================
+            function loadMore() {
+                if (state.loading || !state.hasMore) return;
+                state.loading = true;
+                loadMoreTrigger.className = 'load-more-trigger loading';
+
+                setTimeout(function() {
+                    var start = (state.page - 1) * state.pageSize;
+                    var end = start + state.pageSize;
+                    var chunk = state.filtered.slice(start, end);
+
+                    if (chunk.length === 0) {
+                        state.hasMore = false;
+                        state.loading = false;
+                        renderLoadMore();
+                        return;
+                    }
+
+                    var html = chunk.map(renderProblem).join('');
+                    loadMoreTrigger.insertAdjacentHTML('beforebegin', html);
+
+                    state.page++;
+                    state.loading = false;
+
+                    if (end >= state.filtered.length) {
+                        state.hasMore = false;
+                    }
+
+                    var displayed = state.page - 1;
+                    displayCount.textContent = Math.min(displayed * state.pageSize, state.filtered.length);
+                    var remaining = state.filtered.length - (displayed * state.pageSize);
+                    if (remaining < 0) remaining = 0;
+                    remainingCount.textContent = remaining;
+
+                    renderLoadMore();
+
+                    if (state.hasMore) {
+                        checkScroll();
+                    }
+
+                }, 400);
+            }
+
+            // ============================================================
+            // SCROLL DETECTION
+            // ============================================================
+            var scrollTimeout;
+
+            function checkScroll() {
+                if (scrollTimeout) clearTimeout(scrollTimeout);
+                scrollTimeout = setTimeout(function() {
+                    if (!container) return;
+                    var threshold = 200;
+                    var bottom = container.scrollTop + container.clientHeight;
+                    var total = container.scrollHeight;
+
+                    if (total - bottom < threshold && state.hasMore && !state.loading) {
+                        loadMore();
+                    }
+                }, 100);
+            }
+
+            // ============================================================
+            // RESET & REFRESH
+            // ============================================================
+            function refresh() {
+                state.page = 1;
+                state.hasMore = true;
+                state.loading = false;
+
+                var children = container.children;
+                for (var i = children.length - 1; i >= 0; i--) {
+                    if (children[i].id !== 'loadMoreTrigger') {
+                        children[i].remove();
+                    }
+                }
+
+                state.filtered = getFiltered();
+                renderStats(state.filtered);
+
+                if (state.filtered.length === 0) {
+                    var emptyHtml = renderEmpty();
+                    loadMoreTrigger.insertAdjacentHTML('beforebegin', emptyHtml);
+                    state.hasMore = false;
+                    renderLoadMore();
+                    displayCount.textContent = '0';
+                    remainingCount.textContent = '0';
+                    return;
+                }
+
+                var firstChunk = state.filtered.slice(0, state.pageSize);
+                var html = firstChunk.map(renderProblem).join('');
+                loadMoreTrigger.insertAdjacentHTML('beforebegin', html);
+
+                state.page = 2;
+
+                if (state.filtered.length <= state.pageSize) {
+                    state.hasMore = false;
+                }
+
+                var displayed = Math.min(state.pageSize, state.filtered.length);
+                displayCount.textContent = displayed;
+                var remaining = state.filtered.length - displayed;
+                remainingCount.textContent = remaining > 0 ? remaining : 0;
+
+                renderLoadMore();
+                container.scrollTop = 0;
+            }
+
+            // ============================================================
+            // EVENT LISTENERS
+            // ============================================================
+
+            searchInput.addEventListener('input', debounce(function() {
+                state.search = this.value.trim();
+                refresh();
+            }, 350));
+
+            document.querySelectorAll('.diff-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.diff-btn').forEach(function(b) {
+                        b.className = 'diff-btn';
+                    });
+                    this.classList.add('active-' + this.dataset.diff);
+                    state.difficulty = this.dataset.diff;
+                    refresh();
+                });
+            });
+
+            document.querySelectorAll('.status-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.status-btn').forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    state.status = this.dataset.status;
+                    refresh();
+                });
+            });
+
+            document.querySelectorAll('.filter-chip').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.filter-chip').forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+                    state.category = this.dataset.cat;
+                    refresh();
+                });
+            });
+
+            document.getElementById('sortSelect').addEventListener('change', function() {
+                state.sort = this.value;
+                refresh();
+            });
+
+            loadMoreBtn.addEventListener('click', function() {
+                loadMore();
+            });
+
+            container.addEventListener('scroll', function() {
+                checkScroll();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+                    var tag = document.activeElement ? document.activeElement.tagName : '';
+                    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                        e.preventDefault();
+                        searchInput.focus();
+                        searchInput.select();
+                    }
+                }
+                if (e.key === 'Escape' && document.activeElement === searchInput) {
+                    searchInput.value = '';
+                    state.search = '';
+                    refresh();
+                    searchInput.blur();
+                }
+            });
+
+            // ============================================================
+            // INIT
+            // ============================================================
+            refresh();
+            setTimeout(checkScroll, 500);
+
+            var resizeTimeout;
+            window.addEventListener('resize', function() {
+                clearTimeout(resizeTimeout);
+                resizeTimeout = setTimeout(checkScroll, 300);
+            });
+
+            window.problemsState = state;
+            window.problemsRefresh = refresh;
+
+        })();
+    </script>
+
+</body>
+</html>

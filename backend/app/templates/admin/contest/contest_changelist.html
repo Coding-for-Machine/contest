@@ -1,0 +1,402 @@
+<!-- templates/admin/contest/contest_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: rgb(var(--color-base-200, 248 250 252));
+        border-radius: 12px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    .stat-card {
+        background: rgb(var(--color-base-100, 255 255 255));
+        padding: 18px 20px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        font-family: 'Inter', sans-serif;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .stat-number {
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: 'Inter', sans-serif;
+        color: rgb(var(--color-base-content, 15 23 42));
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: rgb(var(--color-base-content, 100 116 139));
+        opacity: 0.7;
+        margin-top: 4px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .stat-icon {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .stat-color-blue .stat-number, .stat-color-blue .stat-icon { color: #3b82f6; }
+    .stat-color-blue::before { background: #3b82f6; }
+    .stat-color-green .stat-number, .stat-color-green .stat-icon { color: #22c55e; }
+    .stat-color-green::before { background: #22c55e; }
+    .stat-color-yellow .stat-number, .stat-color-yellow .stat-icon { color: #f59e0b; }
+    .stat-color-yellow::before { background: #f59e0b; }
+    .stat-color-red .stat-number, .stat-color-red .stat-icon { color: #ef4444; }
+    .stat-color-red::before { background: #ef4444; }
+    .stat-color-purple .stat-number, .stat-color-purple .stat-icon { color: #8b5cf6; }
+    .stat-color-purple::before { background: #8b5cf6; }
+    .stat-color-indigo .stat-number, .stat-color-indigo .stat-icon { color: #6366f1; }
+    .stat-color-indigo::before { background: #6366f1; }
+
+    .material-icons { font-size: 28px; vertical-align: middle; }
+
+    .custom-filter-panel {
+        background: rgb(var(--color-base-100, 255 255 255));
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        border-radius: 12px;
+        padding: 20px;
+        margin-bottom: 20px;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .filter-panel-header {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        margin-bottom: 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    .filter-panel-header .material-icons {
+        font-size: 20px;
+        color: #6366f1;
+    }
+
+    .filter-panel-header h3 {
+        font-size: 14px;
+        font-weight: 600;
+        color: rgb(var(--color-base-content, 15 23 42));
+        margin: 0;
+    }
+
+    .custom-search-box {
+        position: relative;
+        margin-bottom: 16px;
+    }
+
+    .custom-search-box .search-icon {
+        position: absolute;
+        left: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        pointer-events: none;
+        z-index: 2;
+        color: rgb(var(--color-base-content));
+        opacity: 0.45;
+    }
+
+    .custom-search-box input[type="search"] {
+        width: 100%;
+        padding: 11px 90px 11px 42px;
+        border: 1.5px solid rgb(var(--color-base-300, 226 232 240));
+        border-radius: 8px;
+        font-size: 14px;
+        font-family: 'Inter', sans-serif;
+        outline: none;
+        transition: border-color 0.2s, box-shadow 0.2s, background 0.2s;
+        box-sizing: border-box;
+        -webkit-appearance: none;
+        appearance: none;
+        background-color: rgb(var(--color-base-200)) !important;
+        color: rgb(var(--color-base-content)) !important;
+    }
+
+    .custom-search-box input[type="search"]::placeholder {
+        color: rgb(var(--color-base-content)) !important;
+        opacity: 0.4;
+    }
+
+    .custom-search-box input[type="search"]:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+        background-color: rgb(var(--color-base-100)) !important;
+        color: rgb(var(--color-base-content)) !important;
+    }
+
+    .search-shortcut {
+        position: absolute;
+        right: 12px;
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 11px;
+        background: rgb(var(--color-base-300, 226 232 240));
+        color: rgb(var(--color-base-content));
+        opacity: 0.5;
+        padding: 3px 7px;
+        border-radius: 4px;
+        font-family: monospace;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    .filter-groups {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 16px;
+    }
+
+    .filter-group {
+        flex: 1;
+        min-width: 180px;
+    }
+
+    .filter-group-label {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgb(var(--color-base-content));
+        opacity: 0.5;
+        margin-bottom: 8px;
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .filter-group-label .material-icons { font-size: 14px; }
+
+    .filter-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        text-decoration: none;
+        transition: all 0.15s ease;
+        border: 1.5px solid transparent;
+        background: rgb(var(--color-base-200, 248 250 252));
+        color: rgb(var(--color-base-content, 71 85 105));
+    }
+
+    .filter-pill:hover {
+        background: rgb(var(--color-base-300, 226 232 240));
+        color: rgb(var(--color-base-content, 15 23 42));
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    .filter-pill.active {
+        background: #6366f1;
+        color: #fff;
+        border-color: #6366f1;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .filter-pill .pill-icon { font-size: 14px; }
+
+    .filter-pill.pill-yes.active { background: #22c55e; border-color: #22c55e; box-shadow: 0 2px 8px rgba(34,197,94,0.3); }
+    .filter-pill.pill-no.active  { background: #ef4444; border-color: #ef4444; box-shadow: 0 2px 8px rgba(239,68,68,0.3); }
+
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(3, 1fr); gap: 12px; padding: 12px; }
+        .stat-number { font-size: 20px; }
+        .stat-card { padding: 14px 16px; }
+        .filter-groups { flex-direction: column; gap: 12px; }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+        .stat-number { font-size: 16px; }
+        .stat-label { font-size: 11px; }
+        .stat-card { padding: 10px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module" id="changelist">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card stat-color-blue">
+            <span class="stat-icon material-icons">emoji_events</span>
+            <div class="stat-number">{{ total_contests|default:0 }}</div>
+            <div class="stat-label">Jami Musobaqalar</div>
+        </div>
+        <div class="stat-card stat-color-green">
+            <span class="stat-icon material-icons">check_circle</span>
+            <div class="stat-number">{{ active_contests|default:0 }}</div>
+            <div class="stat-label">Faol</div>
+        </div>
+        <div class="stat-card stat-color-yellow">
+            <span class="stat-icon material-icons">schedule</span>
+            <div class="stat-number">{{ upcoming_count|default:0 }}</div>
+            <div class="stat-label">Kutilayotgan</div>
+        </div>
+        <div class="stat-card stat-color-green">
+            <span class="stat-icon material-icons">play_circle</span>
+            <div class="stat-number">{{ ongoing_count|default:0 }}</div>
+            <div class="stat-label">Davom etmoqda</div>
+        </div>
+        <div class="stat-card stat-color-red">
+            <span class="stat-icon material-icons">flag</span>
+            <div class="stat-number">{{ ended_count|default:0 }}</div>
+            <div class="stat-label">Yakunlangan</div>
+        </div>
+        <div class="stat-card stat-color-purple">
+            <span class="stat-icon material-icons">public</span>
+            <div class="stat-number">{{ open_count|default:0 }}</div>
+            <div class="stat-label">Ochiq</div>
+        </div>
+        <div class="stat-card stat-color-indigo">
+            <span class="stat-icon material-icons">lock</span>
+            <div class="stat-number">{{ private_count|default:0 }}</div>
+            <div class="stat-label">Yopiq</div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="custom-filter-panel">
+        <div class="filter-panel-header">
+            <span class="material-icons">tune</span>
+            <h3>Qidiruv va Filtrlash</h3>
+        </div>
+
+        <!-- Search -->
+        <div class="custom-search-box">
+            <span class="material-icons search-icon">search</span>
+            <input type="search" id="uz-search-input" placeholder="Musobaqa nomini kiriting..." autocomplete="off" onkeydown="if(event.key==='Enter'){uzSearch()}">
+            <span class="search-shortcut">Enter ↵</span>
+        </div>
+
+        <!-- Filters -->
+        {% if cl.has_filters %}
+        <div class="filter-groups">
+            <div class="filter-group">
+                <div class="filter-group-label">
+                    <span class="material-icons">toggle_on</span>
+                    Holati
+                </div>
+                <div class="filter-pills">
+                    <a href="?" class="filter-pill pill-all {% if not cl.params.is_active %}active{% endif %}">
+                        <span class="material-icons pill-icon">apps</span> Barchasi
+                    </a>
+                    <a href="?is_active=True" class="filter-pill pill-yes {% if cl.params.is_active == 'True' %}active{% endif %}">
+                        <span class="material-icons pill-icon">check_circle</span> Faol
+                    </a>
+                    <a href="?is_active=False" class="filter-pill pill-no {% if cl.params.is_active == 'False' %}active{% endif %}">
+                        <span class="material-icons pill-icon">cancel</span> Nofaol
+                    </a>
+                </div>
+            </div>
+            <div class="filter-group">
+                <div class="filter-group-label">
+                    <span class="material-icons">category</span>
+                    Turi
+                </div>
+                <div class="filter-pills">
+                    <a href="?" class="filter-pill {% if not cl.params.type %}active{% endif %}">
+                        <span class="material-icons pill-icon">all_inclusive</span> Hammasi
+                    </a>
+                    <a href="?type=open" class="filter-pill {% if cl.params.type == 'open' %}active{% endif %}">
+                        <span class="material-icons pill-icon">public</span> Ochiq
+                    </a>
+                    <a href="?type=private" class="filter-pill {% if cl.params.type == 'private' %}active{% endif %}">
+                        <span class="material-icons pill-icon">lock</span> Yopiq
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    {% block result_list %}{{ block.super }}{% endblock %}
+    {% block pagination %}{{ block.super }}{% endblock %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('uz-search-input');
+    const defaultSearch = document.getElementById('searchbar');
+    if (defaultSearch) {
+        const defaultForm = defaultSearch.closest('form');
+        if (defaultForm) defaultForm.style.display = 'none';
+    }
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentQ = urlParams.get('q');
+    if (currentQ && input) input.value = currentQ;
+
+    document.addEventListener('keydown', function (e) {
+        const active = document.activeElement;
+        if (e.key === '/' && active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            input.focus();
+        }
+        if (e.key === 'Escape') input.blur();
+    });
+});
+
+function uzSearch() {
+    const input = document.getElementById('uz-search-input');
+    const val = input ? input.value.trim() : '';
+    const urlParams = new URLSearchParams(window.location.search);
+    if (val) { urlParams.set('q', val); } else { urlParams.delete('q'); }
+    urlParams.delete('p');
+    window.location.search = urlParams.toString();
+}
+</script>
+{% endblock %}
+
+{% block object-tools-items %}
+<li>
+    <a href="{% url 'admin:contests_contest_add' %}" class="addlink" style="display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-icons" style="font-size:18px;">add</span>
+        Musobaqa qo'shish
+    </a>
+</li>
+{% endblock %}

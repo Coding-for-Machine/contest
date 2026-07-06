@@ -1,0 +1,160 @@
+{% load static %}<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>{% block title %}RobaContest — Dasturlashni sport qilib o'rgan{% endblock %}</title>
+<meta name="description" content="{% block description %}RobaContest — masalalar, musobaqalar, kurslar va reyting bilan dasturlashni sinab ko'r.{% endblock %}">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          ink: '#0b0f14',
+          inksoft: '#5b6572',
+          inkfaint: '#9aa3ad',
+          line: '#e7eaee',
+          'line-soft': '#f0f2f4',
+          surface: '#fafafa',
+          'surface-2': '#f4f5f6',
+          easy: '#17924f',
+          'easy-bg': '#eafbf1',
+          medium: '#b5710a',
+          'medium-bg': '#fef6e7',
+          hard: '#d0264a',
+          'hard-bg': '#fdeced',
+          info: '#1d5fd6',
+          'info-bg': '#eaf1fd',
+        },
+        fontFamily: {
+          display: ['Space Grotesk', 'Inter', 'sans-serif'],
+          sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+          mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+        },
+      }
+    }
+  }
+</script>
+
+<link rel="stylesheet" href="{% static 'css/style.css' %}">
+{% block extra_head %}{% endblock %}
+</head>
+<body class="bg-white text-ink antialiased">
+
+<a href="#main" class="sr-only focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:z-[999] focus:bg-ink focus:text-white focus:px-3 focus:py-2 focus:rounded-full focus:text-sm">Asosiy kontentga o'tish</a>
+
+<header class="topbar">
+  <div class="container-rc flex items-center justify-between h-14">
+    <div class="flex items-center gap-8">
+      <a href="/" class="flex items-center gap-2 shrink-0">
+        <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </span>
+        <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+      </a>
+      <nav class="hidden md:flex items-center gap-6">
+        <a href="/problems.html" class="nav-link">Masalalar</a>
+        <a href="/tests.html" class="nav-link">Testlar</a>
+        <a href="/contests.html" class="nav-link">Musobaqalar</a>
+        <a href="/courses.html" class="nav-link">Kurslar</a>
+        <a href="/leaderboard.html" class="nav-link">Reyting</a>
+      </nav>
+    </div>
+
+    <div class="flex items-center gap-3">
+      <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" onclick="document.getElementById('searchInput')?.focus()" aria-label="Qidirish">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      </button>
+
+      <a href="/login.html" class="btn btn-outline btn-sm btn-login">Kirish</a>
+      <a href="/login.html" class="btn btn-primary btn-sm btn-signup">Boshlash</a>
+
+      <div class="relative">
+        <div class="user-avatar" onclick="Modal.toggle('userMenu')"></div>
+        <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+          <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">Profil</a>
+          <a href="/leaderboard.html" class="block px-4 py-2 text-sm hover:bg-surface">Mening reytingim</a>
+          <div class="h-px bg-line my-1"></div>
+          <button onclick="logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">Chiqish</button>
+        </div>
+      </div>
+
+      <button class="md:hidden" onclick="Modal.toggle('mobileNav')" aria-label="Menyu">
+        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+      </button>
+    </div>
+  </div>
+
+  <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+    <nav class="container-rc flex flex-col py-2">
+      <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">Masalalar</a>
+      <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">Testlar</a>
+      <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">Musobaqalar</a>
+      <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">Kurslar</a>
+      <a href="/leaderboard.html" class="py-3 text-sm font-medium">Reyting</a>
+    </nav>
+  </div>
+</header>
+
+<main id="main">
+{% block content %}{% endblock %}
+</main>
+
+{% block footer %}
+<footer class="border-t border-line mt-24">
+  <div class="container-rc py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+    <div class="col-span-2">
+      <div class="flex items-center gap-2 mb-3">
+        <span class="w-7 h-7 rounded-lg bg-ink flex items-center justify-center">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="16 18 22 12 16 6"/><polyline points="8 6 2 12 8 18"/></svg>
+        </span>
+        <span class="font-display font-bold">RobaContest</span>
+      </div>
+      <p class="text-sm text-inksoft max-w-xs">Masalalar, testlar, musobaqalar va kurslar bitta joyda — dasturlashni sport qilib o'rgan.</p>
+    </div>
+    <div>
+      <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Platforma</div>
+      <div class="flex flex-col gap-2 text-sm text-inksoft">
+        <a href="/problems.html" class="hover:text-ink">Masalalar</a>
+        <a href="/tests.html" class="hover:text-ink">Testlar</a>
+        <a href="/contests.html" class="hover:text-ink">Musobaqalar</a>
+      </div>
+    </div>
+    <div>
+      <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">O'quv</div>
+      <div class="flex flex-col gap-2 text-sm text-inksoft">
+        <a href="/courses.html" class="hover:text-ink">Kurslar</a>
+        <a href="/leaderboard.html" class="hover:text-ink">Reyting</a>
+        <a href="/profile.html" class="hover:text-ink">Profil</a>
+      </div>
+    </div>
+    <div>
+      <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Aloqa</div>
+      <div class="flex flex-col gap-2 text-sm text-inksoft">
+        <a href="https://t.me/robacontest" class="hover:text-ink">Telegram</a>
+        <a href="mailto:info@robacontest.uz" class="hover:text-ink">info@robacontest.uz</a>
+      </div>
+    </div>
+  </div>
+  <div class="border-t border-line-soft">
+    <div class="container-rc py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-inkfaint">
+      <span>© {% now "Y" %} RobaContest. Barcha huquqlar himoyalangan.</span>
+      <span class="font-mono">v2.0.0</span>
+    </div>
+  </div>
+</footer>
+{% endblock %}
+
+<div id="toast-container"></div>
+
+<script>window.RC_API_BASE = "{% block api_base %}http://localhost:8000/api{% endblock %}";</script>
+<script src="{% static 'js/main.js' %}"></script>
+{% block extra_scripts %}{% endblock %}
+</body>
+</html>

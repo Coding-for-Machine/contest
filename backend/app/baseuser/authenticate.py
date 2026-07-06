@@ -1,122 +1,178 @@
 import jwt
 import datetime
-import traceback
-from ninja.security import HttpBearer
-from django.http import HttpRequest
-from django.conf import settings
-from .models import BaseUser
-from .services import auth_service
+from django_bolt import Request
+from django_bolt.exceptions import HTTPException
 from decouple import config
 
+from .models import BaseUser
 
-SECRET_KEY=config('AUTH_SECRET_KEY')
+SECRET_KEY = config('AUTH_SECRET_KEY')
 
+
+# ============================================================
+# YORDAMCHI FUNKSIYALAR
+# ============================================================
 """
-curl -X 'GET' \
-  'http://localhost:8000/api/me' \
-  -H 'accept: */*' \
-  -H 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzZXNzaW9uX2lkIjoxLCJ0ZWxlZ3JhbV9pZCI6NzE0MjkwODMzNCwicGhvbmVfbnVtYmVyIjoiOTk4OTc5NDM3Njc0IiwidXNlcm5hbWUiOiJDb2RpbmdfZm9yX01hY2hpbmVzIiwiZnVsbF9uYW1lIjoiQXNhZGJlayBcdWQ4M2RcdWRjM2UgXHUyNzI4Iiwic2VjcmV0X2tleSI6IklUTUM0N1FOTkNHQVJHUVdFNUs1RTdHMllOMlRHSUtJIiwiZXhwIjoxODExNDE0ODUwLCJpYXQiOjE3ODA2NTY0NTB9.jr7kJxWTBKi1ZQzDWHSr2ZRfXG8fuFbbE3rSC-S8tSY'
-  """
-class JWTAuth(HttpBearer):
-    def authenticate(self, request: HttpRequest, token: str):
-        try:
-            # 1. Token decode
-            payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+Authorization:Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0ZWxlZ3JhbV9pZCI6NzE0MjkwODMzNCwiaWF0IjoxNzgyNDYxNDcwLCJleHAiOjE4MTM5OTc0NzB9.Fbec-4_u1oICAIlnIPkKmDc2fMSPftPH6SaMxnTECEk
+"""
+def _parse_last_login(value) -> datetime.datetime | None:
+    """last_login qiymatini datetime ga o'giradi."""
+    if not value:
+        return None
+    try:
+        if isinstance(value, str):
+            return datetime.datetime.fromisoformat(value.replace("Z", "+00:00"))
+        if isinstance(value, (int, float)):
+            return datetime.datetime.fromtimestamp(value, tz=datetime.timezone.utc)
+    except Exception:
+        return None
+    return None
 
-            telegram_id = payload.get("telegram_id")
-            secret_key = payload.get("secret_key")
-            phone_number = payload.get("phone_number")
-            username = payload.get("username")
-            full_name = payload.get("full_name")
-            session_id = payload.get("session_id")
-            iat = payload.get("iat")
 
-            if not telegram_id:
-                return None
+def _extract_token(request: Request) -> str:
+    """Headerdan Bearer tokenni ajratib oladi."""
+    print("KELAYOTGAN HEADERS:", dict(request.headers)) 
+    auth_header = request.headers.get("authorization", "")
 
-            # 2. DB dan user tekshirish (SYNC ORM)
-            user = BaseUser.objects.filter(
-                telegram_id=telegram_id
-            ).first()
-            if user and not user.is_active:
-                return None
+    if not auth_header:
+        raise HTTPException(status_code=401, detail="Authorization sarlavhasi topilmadi!")
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        raise HTTPException(status_code=401, detail="Token formati noto'g'ri (Bearer <token>)!")
+    return parts[1]
 
-            if user and user.iat == iat and user.secret_key == secret_key:
-                # ok, status = auth_service.verify_token(token=token)
-                # if not ok and  status!=200:
-                #     return None
-                return user
-            # 3. Auth serverdan yangi ma'lumot olish (SYNC CALL)
-            user_data, status = auth_service.get_user_info(token)
 
-            if status != 200 or "user" not in user_data:
-                return None
+def _decode_token(token: str) -> dict:
+    try:
+        return jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    except Exception as e:
+        raise HTTPException(status_code=401, detail=f"Token yaroqsiz yoki muddati o'tgan: {e}")
 
-            u = user_data["user"]
 
-            # 4. last_login parse
-            last_login_val = u.get("last_login")
-            if last_login_val:
-                try:
-                    if isinstance(last_login_val, str):
-                        last_login_val = datetime.datetime.strptime(
-                            last_login_val, "%Y-%m-%d %H:%M:%S"
-                        )
-                    elif isinstance(last_login_val, (int, float)):
-                        last_login_val = datetime.datetime.fromtimestamp(
-                            last_login_val
-                        )
-                except Exception:
-                    last_login_val = None
+def _build_user_dict(raw: dict, telegram_id: int) -> dict:
+    """
+    Auth server response (qisqa keylar) → BaseUser maydonlari.
+      id → telegram_id
+      u  → username
+      p  → phone
+      f  → full_name
+      l  → last_login
+    """
+    return {k: v for k, v in {
+        "telegram_id": int(raw.get("id", telegram_id)),
+        "username":    raw.get("u") or "",
+        "phone":       raw.get("p") or "",
+        "full_name":   raw.get("f") or "",
+        "last_login":  _parse_last_login(raw.get("l")),
+        "is_active":   True,
+    }.items() if v is not None}
 
-            # 5. Data dictionary
-            user_data_dict = {
-                "telegram_id": int(u.get("user_id", telegram_id)),
-                "username": u.get("username", username or ""),
-                "phone": u.get("phone", phone_number or ""),
-                "full_name": u.get("full_name", full_name or ""),
-                "last_login": last_login_val,
-                "session_id": u.get("session_id", session_id),
-                "secret_key": secret_key or "",
-                "iat": iat,
-                "is_active": True,
-            }
 
-            user_data_dict = {
-                k: v for k, v in user_data_dict.items() if v is not None
-            }
+async def _save_or_update_user(user: BaseUser | None, data: dict) -> BaseUser | None:
+    """Foydalanuvchini bazaga saqlaydi yoki yangilaydi (async ORM)."""
+    if user:
+        for key, value in data.items():
+            if hasattr(user, key):
+                setattr(user, key, value)
+        await user.asave()
+        await user.arefresh_from_db()
+        return user
 
-            # 6. Update yoki create
-            if user:
-                for key, value in user_data_dict.items():
-                    if hasattr(user, key):
-                        setattr(user, key, value)
-                user.save()
-                return user
+    try:
+        new_user = await BaseUser.objects.acreate(**data)
+        await new_user.arefresh_from_db()
+        return new_user
+    except Exception:
+        # phone bo'yicha zaxira qidirish
+        existing = await BaseUser.objects.filter(phone=data.get("phone")).afirst()
+        if existing:
+            for key, value in data.items():
+                if hasattr(existing, key):
+                    setattr(existing, key, value)
+            await existing.asave()
+            await existing.arefresh_from_db()
+            return existing
+        return None
 
-            else:
-                try:
-                    user = BaseUser.objects.create(**user_data_dict)
-                    return user
-                except Exception:
-                    # Telefon orqali topish
-                    user = BaseUser.objects.filter(
-                        phone=user_data_dict.get("phone")
-                    ).first()
 
-                    if user:
-                        for key, value in user_data_dict.items():
-                            if hasattr(user, key):
-                                setattr(user, key, value)
-                        user.save()
-                        return user
+async def _fetch_from_auth_server(token: str) -> dict | None:
+    """Auth serverdan foydalanuvchi ma'lumotini oladi."""
+    from .services import auth_service
+    raw_data, status = await auth_service.get_user_info(token)
+    if status != 200:
+        return None
+    return raw_data
 
-                    return None
 
-        except jwt.ExpiredSignatureError:
-            return None
-        except jwt.InvalidTokenError:
-            return None
-        except Exception:
-            traceback.print_exc()
-            return None
+# MAJBURIY AUTH — token bo'lmasa 401
+async def get_current_user(request: Request) -> BaseUser:
+    """Token majburiy. Yaroqsiz yoki yo'q bo'lsa HTTPException ko'taradi."""
+    token       = _extract_token(request)
+    payload     = _decode_token(token)
+    telegram_id = payload.get("telegram_id")
+
+    if not telegram_id:
+        raise HTTPException(status_code=401, detail="Token ichida telegram_id yo'q!")
+
+    user = await BaseUser.objects.filter(telegram_id=telegram_id).afirst()
+
+    if user and not user.is_active:
+        raise HTTPException(status_code=403, detail="Foydalanuvchi hisobi bloklangan!")
+
+    if user:
+        return user
+
+    # Yangi foydalanuvchi → Auth serverga so'rov
+    raw_data = await _fetch_from_auth_server(token)
+    if not raw_data:
+        raise HTTPException(status_code=401, detail="Auth server tokenni tasdiqlamadi!")
+
+    final_user = await _save_or_update_user(None, _build_user_dict(raw_data, telegram_id))
+    if not final_user:
+        raise HTTPException(status_code=500, detail="Foydalanuvchini bazaga yozishda xatolik!")
+
+    return final_user
+
+
+# IXTIYORIY AUTH — token bo'lmasa None qaytaradi
+async def get_current_user_option(request: Request) -> BaseUser | None:
+    """
+    Token ixtiyoriy. Xato bo'lsa None qaytaradi.
+    Faqat bloklangan foydalanuvchi (403) uchun exception ko'taradi.
+    """
+    auth_header = request.headers.get("authorization", "")
+    if not auth_header:
+        return None
+
+    parts = auth_header.split(" ")
+    if len(parts) != 2 or parts[0].lower() != "bearer":
+        return None
+
+    token = parts[1]
+
+    try:
+        payload = jwt.decode(token, SECRET_KEY, algorithms=["HS256"])
+    except Exception:
+        return None
+
+    telegram_id = payload.get("telegram_id")
+    if not telegram_id:
+        return None
+
+    user = await BaseUser.objects.filter(telegram_id=telegram_id).afirst()
+
+    if user and not user.is_active:
+        raise HTTPException(status_code=403, detail="Foydalanuvchi hisobi bloklangan!")
+
+    if user:
+        return user
+
+    # Yangi foydalanuvchi → Auth serverga so'rov
+    raw_data = await _fetch_from_auth_server(token)
+    if not raw_data:
+        return None
+
+    try:
+        return await _save_or_update_user(None, _build_user_dict(raw_data, telegram_id))
+    except Exception:
+        return None

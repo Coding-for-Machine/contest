@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Sozlamalar | RobaContest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14',
+                        inksoft: '#5b6572',
+                        inkfaint: '#9aa3ad',
+                        line: '#e7eaee',
+                        'line-soft': '#f0f2f4',
+                        surface: '#fafafa',
+                        'surface-2': '#f4f5f6',
+                        easy: '#17924f',
+                        'easy-bg': '#eafbf1',
+                        medium: '#b5710a',
+                        'medium-bg': '#fef6e7',
+                        hard: '#d0264a',
+                        'hard-bg': '#fdeced',
+                        info: '#1d5fd6',
+                        'info-bg': '#eaf1fd',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- Global CSS -->
+    <link rel="stylesheet" href="../../static/css/style.css">
+
+    <style>
+        .settings-container { max-width: 820px; margin: 0 auto; padding: 0 20px; }
+
+        .settings-card {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            padding: 20px 24px;
+            background: #fff;
+            transition: all 0.2s ease;
+        }
+        .settings-card:hover {
+            border-color: #d7dbe0;
+        }
+
+        .settings-card .card-title {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 600;
+            font-size: 16px;
+            margin-bottom: 4px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .settings-card .card-desc {
+            font-size: 13px;
+            color: var(--ink-soft);
+            margin-bottom: 14px;
+        }
+
+        .toggle-switch {
+            position: relative;
+            width: 44px;
+            height: 24px;
+            flex-shrink: 0;
+        }
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        .toggle-switch .slider {
+            position: absolute;
+            cursor: pointer;
+            inset: 0;
+            background: var(--line);
+            border-radius: 999px;
+            transition: 0.3s;
+        }
+        .toggle-switch .slider::before {
+            content: '';
+            position: absolute;
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background: #fff;
+            border-radius: 50%;
+            transition: 0.3s;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .toggle-switch input:checked + .slider {
+            background: var(--info);
+        }
+        .toggle-switch input:checked + .slider::before {
+            transform: translateX(20px);
+        }
+
+        .settings-divider {
+            border: none;
+            border-top: 1px solid var(--line-soft);
+            margin: 20px 0;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        .input-group label {
+            font-size: 13px;
+            font-weight: 600;
+            color: var(--ink);
+        }
+        .input-group .input {
+            padding: 10px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 14px;
+            background: #fff;
+            transition: border-color 0.15s ease;
+        }
+        .input-group .input:focus {
+            border-color: var(--ink);
+            outline: none;
+        }
+        .input-group .input:disabled {
+            background: var(--surface);
+            color: var(--ink-soft);
+        }
+
+        .select-theme {
+            padding: 8px 14px;
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            font-size: 13px;
+            background: #fff;
+            cursor: pointer;
+        }
+        .select-theme:focus {
+            border-color: var(--ink);
+            outline: none;
+        }
+
+        @media (max-width: 640px) {
+            .settings-container { padding: 0 16px; }
+            .settings-card { padding: 16px 18px; }
+            .settings-card .card-title { font-size: 14px; }
+            .settings-card .card-desc { font-size: 12px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="container-rc flex items-center justify-between h-14">
+            <div class="flex items-center gap-4 sm:gap-8">
+                <a href="/" class="flex items-center gap-2 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:20px;">code</span>
+                    </span>
+                    <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+                </a>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="/problems.html" class="nav-link">Masalalar</a>
+                    <a href="/tests.html" class="nav-link">Testlar</a>
+                    <a href="/contests.html" class="nav-link">Musobaqalar</a>
+                    <a href="/courses.html" class="nav-link">Kurslar</a>
+                    <a href="/leaderboard.html" class="nav-link">Reyting</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-2 sm:gap-3">
+                <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" aria-label="Qidirish">
+                    <span class="material-icons">search</span>
+                </button>
+                <a href="/login.html" class="btn btn-outline btn-sm btn-login hidden sm:inline-flex">
+                    <span class="material-icons small">login</span> Kirish
+                </a>
+                <a href="/login.html" class="btn btn-primary btn-sm btn-signup hidden sm:inline-flex">
+                    <span class="material-icons small">person_add</span> Boshlash
+                </a>
+                <div class="relative">
+                    <div class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">AZ</div>
+                    <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+                        <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">person</span> Profil
+                        </a>
+                        <a href="/settings.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">settings</span> Sozlamalar
+                        </a>
+                        <div class="h-px bg-line my-1"></div>
+                        <button onclick="Auth.logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">
+                            <span class="material-icons small mr-2">logout</span> Chiqish
+                        </button>
+                    </div>
+                </div>
+                <button class="md:hidden" onclick="document.getElementById('mobileNav').classList.toggle('hidden')" aria-label="Menyu">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+        </div>
+        <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+            <nav class="container-rc flex flex-col py-2">
+                <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">emoji_events</span> Musobaqalar
+                </a>
+                <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="py-3 text-sm font-medium">
+                    <span class="material-icons small mr-2">leaderboard</span> Reyting
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+        <div class="settings-container py-6 sm:py-10">
+
+            <!-- Breadcrumb -->
+            <div class="flex items-center gap-2 text-sm text-inksoft mb-6 flex-wrap">
+                <a href="/profile.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">person</span> Profil
+                </a>
+                <span class="material-icons small" style="font-size:14px;">chevron_right</span>
+                <span class="text-ink font-medium">Sozlamalar</span>
+            </div>
+
+            <h1 class="font-display font-bold text-2xl sm:text-3xl mb-2">
+                <span class="material-icons" style="font-size:28px;">settings</span> Sozlamalar
+            </h1>
+            <p class="text-inksoft text-sm mb-8">Platforma sozlamalarini boshqaring.</p>
+
+            <!-- ===== SETTINGS GROUPS ===== -->
+
+            <!-- 1. Account -->
+            <div class="settings-card mb-4">
+                <div class="card-title">
+                    <span class="material-icons" style="font-size:20px;">person</span> Hisob
+                </div>
+                <div class="card-desc">Hisob ma'lumotlari va xavfsizlik sozlamalari.</div>
+
+                <div class="space-y-4">
+                    <div class="input-group">
+                        <label>Email manzil</label>
+                        <input type="email" class="input" value="aziz@example.com" disabled>
+                    </div>
+                    <div class="input-group">
+                        <label>Foydalanuvchi nomi</label>
+                        <input type="text" class="input" value="aziz_dev">
+                    </div>
+                    <button class="btn btn-outline btn-sm">
+                        <span class="material-icons small">lock</span> Parolni o'zgartirish
+                    </button>
+                </div>
+            </div>
+
+            <!-- 2. Notification -->
+            <div class="settings-card mb-4">
+                <div class="card-title">
+                    <span class="material-icons" style="font-size:20px;">notifications</span> Bildirishnomalar
+                </div>
+                <div class="card-desc">Platformadagi bildirishnomalar sozlamalari.</div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">Musobaqa eslatmalari</div>
+                            <div class="text-xs text-inksoft">Yangi musobaqalar haqida xabar olish</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">XP yangilanishlari</div>
+                            <div class="text-xs text-inksoft">XP qo'lga kiritganingizda bildirish</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">Kurs yangiliklari</div>
+                            <div class="text-xs text-inksoft">Yangi kurslar va darslar haqida</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Appearance -->
+            <div class="settings-card mb-4">
+                <div class="card-title">
+                    <span class="material-icons" style="font-size:20px;">palette</span> Ko'rinish
+                </div>
+                <div class="card-desc">Tashqi ko'rinish sozlamalari.</div>
+
+                <div class="flex flex-col sm:flex-row items-start sm:items-center gap-4">
+                    <span class="text-sm font-medium">Mavzu:</span>
+                    <select class="select-theme">
+                        <option value="light">Yorug'</option>
+                        <option value="dark">Qorong'i</option>
+                        <option value="system">Tizimga mos</option>
+                    </select>
+                    <div class="flex items-center gap-3">
+                        <span class="text-sm">Til:</span>
+                        <select class="select-theme">
+                            <option value="uz">O'zbekcha</option>
+                            <option value="ru">Русский</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Privacy -->
+            <div class="settings-card mb-4">
+                <div class="card-title">
+                    <span class="material-icons" style="font-size:20px;">privacy_tip</span> Maxfiylik
+                </div>
+                <div class="card-desc">Maxfiylik va profil ko'rinishi sozlamalari.</div>
+
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">Profilni ko'rsatish</div>
+                            <div class="text-xs text-inksoft">Boshqa foydalanuvchilar profilingizni ko'rishi</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">Faollik holati</div>
+                            <div class="text-xs text-inksoft">Qachon faol ekanligingizni ko'rsatish</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <div class="font-medium text-sm">Reytingda ko'rinish</div>
+                            <div class="text-xs text-inksoft">Reyting jadvalida ismingiz ko'rinishi</div>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. Data -->
+            <div class="settings-card mb-4">
+                <div class="card-title">
+                    <span class="material-icons" style="font-size:20px;">data_usage</span> Ma'lumotlar
+                </div>
+                <div class="card-desc">Ma'lumotlarni boshqarish va eksport qilish.</div>
+
+                <div class="flex flex-wrap gap-3">
+                    <button class="btn btn-outline btn-sm">
+                        <span class="material-icons small">download</span> Ma'lumotlarni yuklab olish
+                    </button>
+                    <button class="btn btn-outline btn-sm">
+                        <span class="material-icons small">delete</span> Hisobni o'chirish
+                    </button>
+                    <button class="btn btn-outline btn-sm">
+                        <span class="material-icons small">clear</span> Keshni tozalash
+                    </button>
+                </div>
+            </div>
+
+            <!-- Save -->
+            <div class="flex items-center justify-end gap-3 mt-6">
+                <button class="btn btn-outline">Bekor qilish</button>
+                <button class="btn btn-primary" onclick="saveSettings()">
+                    <span class="material-icons small">save</span> Saqlash
+                </button>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ===== FOOTER ===== -->
+    <footer class="border-t border-line mt-12 sm:mt-16">
+        <div class="container-rc py-10 sm:py-14 grid grid-cols-2 md:grid-cols-5 gap-6 sm:gap-8">
+            <div class="col-span-2">
+                <div class="flex items-center gap-2 mb-3">
+                    <span class="w-7 h-7 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:18px;">code</span>
+                    </span>
+                    <span class="font-display font-bold">RobaContest</span>
+                </div>
+                <p class="text-sm text-inksoft max-w-xs">Masalalar, testlar, musobaqalar va kurslar bitta joyda — dasturlashni sport qilib o'rgan.</p>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Platforma</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/problems.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">playlist_play</span> Masalalar
+                    </a>
+                    <a href="/tests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                    </a>
+                    <a href="/contests.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">emoji_events</span> Musobaqalar
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">O'quv</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="/courses.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">school</span> Kurslar
+                    </a>
+                    <a href="/leaderboard.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">leaderboard</span> Reyting
+                    </a>
+                    <a href="/profile.html" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">person</span> Profil
+                    </a>
+                </div>
+            </div>
+            <div>
+                <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Aloqa</div>
+                <div class="flex flex-col gap-2 text-sm text-inksoft">
+                    <a href="https://t.me/robacontest" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">telegram</span> Telegram
+                    </a>
+                    <a href="mailto:info@robacontest.uz" class="hover:text-ink flex items-center gap-1">
+                        <span class="material-icons small" style="font-size:14px;">email</span> info@robacontest.uz
+                    </a>
+                </div>
+            </div>
+        </div>
+        <div class="border-t border-line-soft">
+            <div class="container-rc py-4 sm:py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-inkfaint">
+                <span>© 2026 RobaContest. Barcha huquqlar himoyalangan.</span>
+                <span class="font-mono">v2.0.0</span>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <!-- Global JS -->
+    <script src="../../static/js/main.js"></script>
+
+    <script>
+        function saveSettings() {
+            showToast('✅ Sozlamalar saqlandi!', 'success', 3000);
+        }
+    </script>
+
+</body>
+</html>

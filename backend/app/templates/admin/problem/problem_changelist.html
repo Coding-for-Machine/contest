@@ -1,0 +1,935 @@
+<!-- templates/admin/problem/problem_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    /* ============================================
+       ROOT VARIABLES
+    ============================================ */
+    :root {
+        --gap-sm: 8px;
+        --gap-md: 12px;
+        --gap-lg: 16px;
+        --gap-xl: 20px;
+        --radius-sm: 6px;
+        --radius-md: 8px;
+        --radius-lg: 10px;
+        --radius-xl: 12px;
+        --font-xs: 11px;
+        --font-sm: 12px;
+        --font-md: 13px;
+        --font-lg: 14px;
+        --font-xl: 16px;
+        --font-2xl: 18px;
+        --font-3xl: 22px;
+        --font-4xl: 28px;
+        --shadow-sm: 0 1px 3px rgba(0,0,0,0.06);
+        --shadow-md: 0 4px 12px rgba(0,0,0,0.08);
+        --shadow-lg: 0 4px 16px rgba(0,0,0,0.12);
+        --transition: all 0.2s ease;
+    }
+
+    /* ============================================
+       STATS GRID - RESPONSIVE
+    ============================================ */
+    .stats-grid {
+        display: grid;
+        gap: var(--gap-md);
+        padding: var(--gap-lg);
+        margin-bottom: var(--gap-xl);
+        background: rgb(var(--color-base-200, 248 250 252));
+        border-radius: var(--radius-xl);
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        transition: var(--transition);
+    }
+
+    /* Desktop: 6 ta karta */
+    .stats-grid {
+        grid-template-columns: repeat(6, 1fr);
+    }
+
+    /* Planshet: 3 ta karta */
+    @media (max-width: 1024px) {
+        .stats-grid {
+            grid-template-columns: repeat(3, 1fr);
+            gap: var(--gap-md);
+            padding: var(--gap-md);
+        }
+    }
+
+    /* Mobil: 2 ta karta */
+    @media (max-width: 640px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: var(--gap-sm);
+            padding: var(--gap-sm);
+            margin-bottom: var(--gap-md);
+        }
+    }
+
+    /* Kichik mobil: 1 ta karta */
+    @media (max-width: 380px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+            gap: var(--gap-sm);
+        }
+    }
+
+    /* ============================================
+       STAT CARD
+    ============================================ */
+    .stat-card {
+        background: rgb(var(--color-base-100, 255 255 255));
+        padding: var(--gap-lg) var(--gap-md);
+        border-radius: var(--radius-lg);
+        text-align: center;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        font-family: 'Inter', sans-serif;
+        position: relative;
+        overflow: hidden;
+        transition: var(--transition);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: var(--shadow-md);
+    }
+
+    @media (max-width: 640px) {
+        .stat-card {
+            padding: var(--gap-md) var(--gap-sm);
+        }
+        .stat-card:hover {
+            transform: translateY(-1px);
+        }
+    }
+
+    @media (max-width: 380px) {
+        .stat-card {
+            padding: var(--gap-sm);
+        }
+    }
+
+    .stat-number {
+        font-size: var(--font-4xl);
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: 'Inter', sans-serif;
+        color: rgb(var(--color-base-content, 15 23 42));
+        transition: var(--transition);
+    }
+
+    @media (max-width: 1024px) {
+        .stat-number {
+            font-size: var(--font-3xl);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stat-number {
+            font-size: var(--font-2xl);
+        }
+    }
+
+    @media (max-width: 380px) {
+        .stat-number {
+            font-size: var(--font-xl);
+        }
+    }
+
+    .stat-label {
+        font-size: var(--font-md);
+        color: rgb(var(--color-base-content, 100 116 139));
+        opacity: 0.7;
+        margin-top: 4px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        transition: var(--transition);
+    }
+
+    @media (max-width: 640px) {
+        .stat-label {
+            font-size: var(--font-xs);
+        }
+    }
+
+    @media (max-width: 380px) {
+        .stat-label {
+            font-size: 10px;
+        }
+    }
+
+    .stat-icon {
+        font-size: var(--font-4xl);
+        display: block;
+        margin-bottom: 4px;
+        transition: var(--transition);
+    }
+
+    @media (max-width: 1024px) {
+        .stat-icon {
+            font-size: var(--font-3xl);
+        }
+    }
+
+    @media (max-width: 640px) {
+        .stat-icon {
+            font-size: var(--font-2xl);
+        }
+    }
+
+    @media (max-width: 380px) {
+        .stat-icon {
+            font-size: var(--font-xl);
+        }
+    }
+
+    /* Color variants */
+    .stat-color-blue .stat-number, .stat-color-blue .stat-icon { color: #3b82f6; }
+    .stat-color-blue::before { background: #3b82f6; }
+    .stat-color-green .stat-number, .stat-color-green .stat-icon { color: #22c55e; }
+    .stat-color-green::before { background: #22c55e; }
+    .stat-color-red .stat-number, .stat-color-red .stat-icon { color: #ef4444; }
+    .stat-color-red::before { background: #ef4444; }
+    .stat-color-yellow .stat-number, .stat-color-yellow .stat-icon { color: #f59e0b; }
+    .stat-color-yellow::before { background: #f59e0b; }
+    .stat-color-purple .stat-number, .stat-color-purple .stat-icon { color: #8b5cf6; }
+    .stat-color-purple::before { background: #8b5cf6; }
+    .stat-color-orange .stat-number, .stat-color-orange .stat-icon { color: #f97316; }
+    .stat-color-orange::before { background: #f97316; }
+
+    .material-icons {
+        font-size: var(--font-4xl);
+        vertical-align: middle;
+    }
+
+    @media (max-width: 1024px) {
+        .material-icons { font-size: var(--font-3xl); }
+    }
+    @media (max-width: 640px) {
+        .material-icons { font-size: var(--font-2xl); }
+    }
+    @media (max-width: 380px) {
+        .material-icons { font-size: var(--font-xl); }
+    }
+
+    /* ============================================
+       FILTER PANEL - RESPONSIVE
+    ============================================ */
+    .custom-filter-panel {
+        background: rgb(var(--color-base-100, 255 255 255));
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        border-radius: var(--radius-xl);
+        padding: var(--gap-xl);
+        margin-bottom: var(--gap-xl);
+        font-family: 'Inter', sans-serif;
+        transition: var(--transition);
+    }
+
+    @media (max-width: 768px) {
+        .custom-filter-panel {
+            padding: var(--gap-md);
+            margin-bottom: var(--gap-md);
+            border-radius: var(--radius-lg);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .custom-filter-panel {
+            padding: var(--gap-sm);
+            margin-bottom: var(--gap-md);
+            border-radius: var(--radius-md);
+        }
+    }
+
+    .filter-panel-header {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-sm);
+        margin-bottom: var(--gap-md);
+        padding-bottom: var(--gap-md);
+        border-bottom: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    .filter-panel-header .material-icons {
+        font-size: 20px;
+        color: #6366f1;
+    }
+
+    @media (max-width: 768px) {
+        .filter-panel-header .material-icons {
+            font-size: 18px;
+        }
+    }
+
+    .filter-panel-header h3 {
+        font-size: var(--font-lg);
+        font-weight: 600;
+        color: rgb(var(--color-base-content, 15 23 42));
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+    }
+
+    @media (max-width: 768px) {
+        .filter-panel-header h3 {
+            font-size: var(--font-md);
+        }
+    }
+
+    /* ============================================
+       SEARCH BOX - RESPONSIVE
+    ============================================ */
+    .custom-search-box {
+        position: relative;
+        margin-bottom: var(--gap-md);
+    }
+
+    .custom-search-box .search-icon {
+        position: absolute;
+        left: var(--gap-md);
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: 18px;
+        pointer-events: none;
+        z-index: 2;
+        color: rgb(var(--color-base-content));
+        opacity: 0.45;
+    }
+
+    @media (max-width: 768px) {
+        .custom-search-box .search-icon {
+            font-size: 16px;
+            left: var(--gap-sm);
+        }
+    }
+
+    .custom-search-box input[type="search"] {
+        width: 100%;
+        padding: 11px 80px 11px 42px;
+        border: 1.5px solid rgb(var(--color-base-300, 226 232 240));
+        border-radius: var(--radius-md);
+        font-size: var(--font-lg);
+        font-family: 'Inter', sans-serif;
+        outline: none;
+        transition: var(--transition);
+        box-sizing: border-box;
+        -webkit-appearance: none;
+        appearance: none;
+        background-color: rgb(var(--color-base-200)) !important;
+        color: rgb(var(--color-base-content)) !important;
+    }
+
+    @media (max-width: 768px) {
+        .custom-search-box input[type="search"] {
+            padding: 9px 60px 9px 36px;
+            font-size: var(--font-md);
+            border-radius: var(--radius-sm);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .custom-search-box input[type="search"] {
+            padding: 8px 50px 8px 32px;
+            font-size: var(--font-sm);
+        }
+    }
+
+    .custom-search-box input[type="search"]::placeholder {
+        color: rgb(var(--color-base-content)) !important;
+        opacity: 0.4;
+    }
+
+    .custom-search-box input[type="search"]:focus {
+        border-color: #6366f1 !important;
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.12) !important;
+        background-color: rgb(var(--color-base-100)) !important;
+        color: rgb(var(--color-base-content)) !important;
+    }
+
+    .search-shortcut {
+        position: absolute;
+        right: var(--gap-md);
+        top: 50%;
+        transform: translateY(-50%);
+        font-size: var(--font-xs);
+        background: rgb(var(--color-base-300, 226 232 240));
+        color: rgb(var(--color-base-content));
+        opacity: 0.5;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-family: monospace;
+        pointer-events: none;
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .search-shortcut {
+            display: none;
+        }
+    }
+
+    /* ============================================
+       FILTER GROUPS - RESPONSIVE
+    ============================================ */
+    .filter-groups {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: flex-start;
+        gap: var(--gap-xl);
+        margin-top: 4px;
+    }
+
+    @media (max-width: 768px) {
+        .filter-groups {
+            flex-direction: column;
+            gap: var(--gap-md);
+        }
+    }
+
+    .filter-group {
+        flex: 1 1 200px;
+        min-width: 160px;
+    }
+
+    @media (max-width: 768px) {
+        .filter-group {
+            flex: 1 1 100%;
+            min-width: 100%;
+        }
+    }
+
+    .filter-group-label {
+        font-size: var(--font-xs);
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: rgb(var(--color-base-content));
+        opacity: 0.5;
+        margin-bottom: var(--gap-sm);
+        display: flex;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .filter-group-label .material-icons {
+        font-size: var(--font-lg);
+    }
+
+    .filter-pills {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+    }
+
+    .filter-pill {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: var(--font-md);
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        cursor: pointer;
+        text-decoration: none;
+        transition: var(--transition);
+        border: 1.5px solid transparent;
+        background: rgb(var(--color-base-200, 248 250 252));
+        color: rgb(var(--color-base-content, 71 85 105));
+        white-space: nowrap;
+    }
+
+    @media (max-width: 768px) {
+        .filter-pill {
+            padding: 4px 10px;
+            font-size: var(--font-sm);
+            border-radius: 16px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .filter-pill {
+            padding: 3px 8px;
+            font-size: var(--font-xs);
+            border-radius: 14px;
+        }
+    }
+
+    .filter-pill:hover {
+        background: rgb(var(--color-base-300, 226 232 240));
+        color: rgb(var(--color-base-content, 15 23 42));
+        text-decoration: none;
+        transform: translateY(-1px);
+    }
+
+    .filter-pill.active {
+        background: #6366f1;
+        color: #fff;
+        border-color: #6366f1;
+        box-shadow: 0 2px 8px rgba(99, 102, 241, 0.3);
+    }
+
+    .filter-pill .pill-icon {
+        font-size: var(--font-lg);
+    }
+
+    @media (max-width: 768px) {
+        .filter-pill .pill-icon {
+            font-size: var(--font-md);
+        }
+    }
+
+    .filter-pill.pill-yes.active {
+        background: #22c55e;
+        border-color: #22c55e;
+        box-shadow: 0 2px 8px rgba(34,197,94,0.3);
+    }
+
+    .filter-pill.pill-no.active {
+        background: #ef4444;
+        border-color: #ef4444;
+        box-shadow: 0 2px 8px rgba(239,68,68,0.3);
+    }
+
+    /* ============================================
+       SEARCH RESULT INFO - RESPONSIVE
+    ============================================ */
+    .search-result-info {
+        display: flex;
+        align-items: center;
+        gap: var(--gap-sm);
+        margin-left: auto;
+        padding-top: 4px;
+        flex-shrink: 0;
+    }
+
+    @media (max-width: 768px) {
+        .search-result-info {
+            margin-left: 0;
+            margin-top: var(--gap-sm);
+            width: 100%;
+            justify-content: flex-start;
+        }
+    }
+
+    .search-result-info span {
+        font-size: var(--font-sm);
+        color: rgb(var(--color-base-content, 100 116 139));
+        opacity: 0.6;
+    }
+
+    .search-result-info .material-icons {
+        font-size: var(--font-lg);
+        vertical-align: middle;
+    }
+
+    .filter-clear {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 20px;
+        font-size: var(--font-sm);
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+        text-decoration: none;
+        transition: var(--transition);
+        background: rgb(var(--color-base-200, 248 250 252));
+        color: rgb(var(--color-base-content, 71 85 105));
+        border: 1.5px solid transparent;
+    }
+
+    .filter-clear:hover {
+        background: rgb(var(--color-base-300, 226 232 240));
+        text-decoration: none;
+    }
+
+    @media (max-width: 768px) {
+        .filter-clear {
+            padding: 3px 8px;
+            font-size: var(--font-xs);
+        }
+    }
+
+    /* ============================================
+       OBJECT TOOLS - RESPONSIVE
+    ============================================ */
+    .object-tools {
+        display: flex;
+        flex-wrap: wrap;
+        gap: var(--gap-sm);
+    }
+
+    .object-tools li {
+        list-style: none;
+    }
+
+    .addlink {
+        display: inline-flex !important;
+        align-items: center !important;
+        gap: 6px !important;
+        padding: 8px 16px !important;
+        border-radius: var(--radius-md) !important;
+        font-size: var(--font-md) !important;
+        font-weight: 500 !important;
+        font-family: 'Inter', sans-serif !important;
+        transition: var(--transition) !important;
+        background: #3b82f6 !important;
+        color: #fff !important;
+        border: none !important;
+        text-decoration: none !important;
+    }
+
+    .addlink:hover {
+        background: #2563eb !important;
+        transform: translateY(-1px) !important;
+        box-shadow: var(--shadow-md) !important;
+        color: #fff !important;
+        text-decoration: none !important;
+    }
+
+    .addlink .material-icons {
+        font-size: var(--font-2xl) !important;
+    }
+
+    @media (max-width: 768px) {
+        .addlink {
+            padding: 6px 12px !important;
+            font-size: var(--font-sm) !important;
+            border-radius: var(--radius-sm) !important;
+        }
+        .addlink .material-icons {
+            font-size: var(--font-xl) !important;
+        }
+    }
+
+    /* ============================================
+       RESPONSIVE TABLE OVERRIDES
+    ============================================ */
+    @media (max-width: 768px) {
+        #changelist .results {
+            overflow-x: auto;
+            -webkit-overflow-scrolling: touch;
+        }
+        
+        #changelist .results table {
+            min-width: 600px;
+        }
+        
+        .actions {
+            flex-wrap: wrap;
+            gap: var(--gap-sm);
+        }
+    }
+
+    @media (max-width: 480px) {
+        #changelist .actions .button {
+            padding: 4px 10px !important;
+            font-size: var(--font-xs) !important;
+        }
+        
+        #changelist .actions select {
+            padding: 4px 8px !important;
+            font-size: var(--font-xs) !important;
+            max-width: 120px !important;
+        }
+        
+        .paginator {
+            font-size: var(--font-sm) !important;
+            padding: var(--gap-sm) !important;
+        }
+        
+        .paginator .this-page {
+            padding: 4px 8px !important;
+        }
+    }
+
+    /* ============================================
+       DARK MODE SUPPORT
+    ============================================ */
+    .theme-dark .stat-card {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    .theme-dark .stat-card:hover {
+        border-color: #475569;
+    }
+
+    .theme-dark .custom-filter-panel {
+        background: #1e293b;
+        border-color: #334155;
+    }
+
+    .theme-dark .filter-panel-header {
+        border-bottom-color: #334155;
+    }
+
+    .theme-dark .filter-pill {
+        background: #0f172a;
+        color: #94a3b8;
+    }
+
+    .theme-dark .filter-pill:hover {
+        background: #334155;
+        color: #f1f5f9;
+    }
+
+    .theme-dark .filter-clear {
+        background: #0f172a;
+        color: #94a3b8;
+    }
+
+    .theme-dark .filter-clear:hover {
+        background: #334155;
+    }
+
+    .theme-dark .custom-search-box input[type="search"] {
+        background-color: #0f172a !important;
+        color: #f1f5f9 !important;
+        border-color: #334155 !important;
+    }
+
+    .theme-dark .custom-search-box input[type="search"]:focus {
+        border-color: #6366f1 !important;
+        background-color: #1e293b !important;
+    }
+
+    .theme-dark .search-shortcut {
+        background: #334155;
+        color: #94a3b8;
+    }
+
+    .theme-dark .stats-grid {
+        background: #0f172a;
+        border-color: #334155;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module" id="changelist">
+
+    <!-- Stats -->
+    <div class="stats-grid">
+        <div class="stat-card stat-color-blue">
+            <span class="stat-icon material-icons">lightbulb</span>
+            <div class="stat-number">{{ total_problems|default:0 }}</div>
+            <div class="stat-label">Jami Masalalar</div>
+        </div>
+        <div class="stat-card stat-color-green">
+            <span class="stat-icon material-icons">check_circle</span>
+            <div class="stat-number">{{ active_problems|default:0 }}</div>
+            <div class="stat-label">Faol Masalalar</div>
+        </div>
+        <div class="stat-card stat-color-red">
+            <span class="stat-icon material-icons">block</span>
+            <div class="stat-number">{{ inactive_problems|default:0 }}</div>
+            <div class="stat-label">Nofaol Masalalar</div>
+        </div>
+        <div class="stat-card stat-color-green">
+            <span class="stat-icon material-icons">sentiment_satisfied</span>
+            <div class="stat-number">{{ easy_count|default:0 }}</div>
+            <div class="stat-label">Oson</div>
+        </div>
+        <div class="stat-card stat-color-yellow">
+            <span class="stat-icon material-icons">sentiment_neutral</span>
+            <div class="stat-number">{{ medium_count|default:0 }}</div>
+            <div class="stat-label">O'rtacha</div>
+        </div>
+        <div class="stat-card stat-color-red">
+            <span class="stat-icon material-icons">sentiment_very_dissatisfied</span>
+            <div class="stat-number">{{ hard_count|default:0 }}</div>
+            <div class="stat-label">Qiyin</div>
+        </div>
+    </div>
+
+    <!-- Filter Panel -->
+    <div class="custom-filter-panel">
+        <div class="filter-panel-header">
+            <span class="material-icons">tune</span>
+            <h3>Qidiruv va Filtrlash</h3>
+        </div>
+
+        <!-- Search -->
+        {% block search %}
+        <div class="custom-search-box">
+            <span class="material-icons search-icon">search</span>
+            <input
+                type="search"
+                id="uz-search-input"
+                placeholder="Masala nomi yoki tavsifi bo'yicha qidirish..."
+                autocomplete="off"
+                onkeydown="if(event.key==='Enter'){uzSearch()}"
+            >
+            <span class="search-shortcut">Enter ↵</span>
+        </div>
+        {% endblock %}
+
+        <!-- Filters -->
+        {% if cl.has_filters %}
+        <div class="filter-groups">
+
+            <div class="filter-group">
+                <div class="filter-group-label">
+                    <span class="material-icons">toggle_on</span>
+                    Holati
+                </div>
+                <div class="filter-pills">
+                    <a href="?{% if cl.params.q %}q={{ cl.params.q }}&{% endif %}" 
+                       class="filter-pill pill-all {% if not cl.params.is_active %}active{% endif %}">
+                        <span class="material-icons pill-icon">apps</span>
+                        Barchasi
+                    </a>
+                    <a href="?is_active=True{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill pill-yes {% if cl.params.is_active == 'True' %}active{% endif %}">
+                        <span class="material-icons pill-icon">check_circle</span>
+                        Faol
+                    </a>
+                    <a href="?is_active=False{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill pill-no {% if cl.params.is_active == 'False' %}active{% endif %}">
+                        <span class="material-icons pill-icon">cancel</span>
+                        Nofaol
+                    </a>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-group-label">
+                    <span class="material-icons">signal_cellular_alt</span>
+                    Qiyinchilik
+                </div>
+                <div class="filter-pills">
+                    <a href="?{% if cl.params.q %}q={{ cl.params.q }}&{% endif %}" 
+                       class="filter-pill {% if not cl.params.difficulty %}active{% endif %}">
+                        <span class="material-icons pill-icon">all_inclusive</span>
+                        Hammasi
+                    </a>
+                    <a href="?difficulty=easy{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill {% if cl.params.difficulty == 'easy' %}active{% endif %}">
+                        <span class="material-icons pill-icon">check_circle</span>
+                        Oson
+                    </a>
+                    <a href="?difficulty=medium{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill {% if cl.params.difficulty == 'medium' %}active{% endif %}">
+                        <span class="material-icons pill-icon">remove_circle</span>
+                        O'rtacha
+                    </a>
+                    <a href="?difficulty=hard{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill {% if cl.params.difficulty == 'hard' %}active{% endif %}">
+                        <span class="material-icons pill-icon">cancel</span>
+                        Qiyin
+                    </a>
+                </div>
+            </div>
+
+            <div class="filter-group">
+                <div class="filter-group-label">
+                    <span class="material-icons">category</span>
+                    Kategoriya
+                </div>
+                <div class="filter-pills">
+                    <a href="?{% if cl.params.q %}q={{ cl.params.q }}&{% endif %}" 
+                       class="filter-pill {% if not cl.params.category %}active{% endif %}">
+                        <span class="material-icons pill-icon">all_inclusive</span>
+                        Hammasi
+                    </a>
+                    {% for category in categories %}
+                    <a href="?category={{ category.id }}{% if cl.params.q %}&q={{ cl.params.q }}{% endif %}" 
+                       class="filter-pill {% if cl.params.category == category.id|stringformat:'s' %}active{% endif %}">
+                        <span class="material-icons pill-icon">folder</span>
+                        {{ category.name|truncatechars:15 }}
+                    </a>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Qidiruv natijasi bo'lsa -->
+            {% if cl.params.q %}
+            <div class="search-result-info">
+                <span>
+                    <span class="material-icons">search</span>
+                    "{{ cl.params.q }}" bo'yicha qidiruv
+                </span>
+                <a href="?" class="filter-clear">
+                    <span class="material-icons" style="font-size: 14px;">close</span>
+                    Tozalash
+                </a>
+            </div>
+            {% endif %}
+
+        </div>
+        {% endif %}
+    </div>
+
+    {% block result_list %}{{ block.super }}{% endblock %}
+    {% block pagination %}{{ block.super }}{% endblock %}
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const input = document.getElementById('uz-search-input');
+
+    // Django default search ni yashir
+    const defaultSearch = document.getElementById('searchbar');
+    if (defaultSearch) {
+        const defaultForm = defaultSearch.closest('form');
+        if (defaultForm) defaultForm.style.display = 'none';
+    }
+
+    // URL dagi mavjud q ni inputga qo'y
+    const urlParams = new URLSearchParams(window.location.search);
+    const currentQ = urlParams.get('q');
+    if (currentQ && input) input.value = currentQ;
+
+    // / bosganda focus
+    document.addEventListener('keydown', function (e) {
+        const active = document.activeElement;
+        if (e.key === '/' && active.tagName !== 'INPUT' && active.tagName !== 'TEXTAREA') {
+            e.preventDefault();
+            input.focus();
+        }
+        if (e.key === 'Escape') input.blur();
+    });
+});
+
+function uzSearch() {
+    const input = document.getElementById('uz-search-input');
+    const val = input ? input.value.trim() : '';
+    const urlParams = new URLSearchParams(window.location.search);
+    if (val) {
+        urlParams.set('q', val);
+    } else {
+        urlParams.delete('q');
+    }
+    urlParams.delete('p');
+    window.location.search = urlParams.toString();
+}
+</script>
+{% endblock %}
+
+<!-- ============================================
+     OBJECT TOOLS - FAQAT MASALA QO'SHISH
+     ============================================ -->
+{% block object-tools-items %}
+<li>
+    <a href="{% url 'admin:problems_problem_add' %}" class="addlink">
+        <span class="material-icons" style="font-size:18px;">add_circle</span>
+        Masala qo'shish
+    </a>
+</li>
+{% endblock %}

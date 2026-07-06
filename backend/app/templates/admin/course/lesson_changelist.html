@@ -1,0 +1,102 @@
+<!-- templates/admin/course/lesson_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 16px;
+        margin-bottom: 30px;
+        padding: 20px;
+        background: #f8fafc;
+        border-radius: 12px;
+        border: 1px solid #e2e8f0;
+    }
+    
+    .stat-card {
+        background: white;
+        padding: 20px;
+        border-radius: 10px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+        text-align: center;
+        transition: all 0.2s;
+        border: 1px solid #f1f5f9;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        border-color: #e2e8f0;
+    }
+    
+    .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .stat-label {
+        font-size: 13px;
+        color: #64748b;
+        margin-top: 4px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+    }
+    
+    .stat-icon {
+        font-size: 32px;
+        display: block;
+        margin-bottom: 6px;
+        color: #475569;
+    }
+    
+    .stat-color-blue .stat-number { color: #3b82f6; }
+    .stat-color-blue .stat-icon { color: #3b82f6; }
+    
+    .material-icons {
+        font-size: 32px;
+        vertical-align: middle;
+    }
+    
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px; }
+        .stat-number { font-size: 22px; }
+        .material-icons { font-size: 28px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module" id="changelist">
+    <div class="stats-grid">
+        <div class="stat-card stat-color-blue">
+            <span class="stat-icon material-icons">description</span>
+            <div class="stat-number">{{ cl.result_count|default:0 }}</div>
+            <div class="stat-label">Jami Darslar</div>
+        </div>
+    </div>
+    
+    {% block search %}<div class="search-container">{{ block.super }}</div>{% endblock %}
+    {% block filters %}{% if cl.has_filters %}<div id="changelist-filter">{% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}</div>{% endif %}{% endblock %}
+    {% block result_list %}{{ block.super }}{% endblock %}
+    {% block pagination %}{{ block.super }}{% endblock %}
+</div>
+{% endblock %}
+
+{% block object-tools-items %}
+{{ block.super }}
+<li>
+    <a href="{% url 'admin:courses_lesson_add' %}" class="addlink">
+        <span class="material-icons" style="font-size: 18px; vertical-align: middle;">add</span>
+        {% translate "Add lesson" %}
+    </a>
+</li>
+{% endblock %}

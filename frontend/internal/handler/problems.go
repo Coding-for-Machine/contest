@@ -1,109 +1,83 @@
 package handler
 
 import (
-	"bytes" // bytesWriter o'rniga standart bytes.Buffer ishlatish tavsiya etiladi
-	"encoding/json"
-	"fmt"
-	"io"
-	"log"
+	"bytes"
 	"net/http"
-	"strings"
-	"webserver/internal/cache"
 	"webserver/internal/config"
 )
 
-type ProblemsHandler struct {
-	Cache *cache.Cache
-}
-
-func NewProblemsHandler(c *cache.Cache) *ProblemsHandler {
-	return &ProblemsHandler{Cache: c}
-}
-
-// GetProblems - Ham ro'yxatni, ham dinamik sluglarni bitta joyda xavfsiz boshqaradi
-func (h *ProblemsHandler) GetProblems(w http.ResponseWriter, r *http.Request) {
-	slug := strings.TrimPrefix(r.URL.Path, "/problems/")
-	slug = strings.TrimSpace(slug)
-	slug = strings.TrimSuffix(slug, "/")
-
-	var cacheKey string
-	var templateName string
-	var apiURL string
-	var title string
-
-	if slug == "" || r.URL.Path == "/problems" {
-		cacheKey = "html:problems_list"
-		templateName = "pages/problems"
-		apiURL = config.BackendBaseURL + "/problems"
-		title = "Barcha Dasturlash Masalalari - CFM"
-	} else {
-		if strings.Contains(slug, "/") {
-			NotFound(w, r)
-			return
-		}
-		cacheKey = fmt.Sprintf("html:problem:%s", slug)
-		templateName = "pages/problem-detail"
-		apiURL = fmt.Sprintf("%s/problems/%s", config.BackendBaseURL, slug)
-		title = config.SlugToTitle(slug) + " - CFM Masala"
+// 1. Faqat umumiy masalalar ro'yxati sahifasi (/problems)
+func (a *App) GetProblems(w http.ResponseWriter, r *http.Request) {
+	// Aniq /problems bo'lishi shart, noto'g'ri URL kelishini oldini olamiz
+	if r.URL.Path != "/problems" {
+		http.NotFound(w, r)
+		return
 	}
 
-	// QADAM 1: Keshni tekshirish
-	if cachedHTML, err := h.Cache.Memory.Get(cacheKey); err == nil {
+	if cached, err := a.Cache.GetString("page_problems_list"); err == nil {
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		w.Header().Set("X-Cache", "HIT")
-		w.Write(cachedHTML)
+		w.Write([]byte(cached))
 		return
 	}
 
-	// QADAM 2: Backend API dan ma'lumotni yuklash (Xato bo'lsa ham sahifa o'lmaydi)
-	var backendData interface{}
-	resp, err := http.Get(apiURL)
-
-	if err == nil && resp.StatusCode == http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		_ = json.Unmarshal(body, &backendData)
-		resp.Body.Close()
-	} else {
-		// Backend o'chiq bo'lsa konsolga ogohlantirish yozadi, lekin sayt ishlayveradi
-		log.Printf("⚠️ Backend API bilan aloqa yo'q yoki xato (%s). Sahifa bo'sh ma'lumot bilan render bo'lmoqda.", apiURL)
-		if resp != nil {
-			resp.Body.Close()
-		}
-	}
-
-	seo := config.SEOContext{
-		Title:       title,
-		Description: "Dasturlash bilimingizni CFM algoritmik masalalari bilan oshiring.",
-		URL:         "https://yourdomain.com" + r.URL.Path,
-		H1Title:     title,
-		Data:        backendData, // Agar backend ishlamasa, bu ichi bo'sh (nil) ketadi
-	}
-
-	// QADAM 3: Shablon borligini tekshirish
-	tmpl, exists := config.Templates[templateName]
+	tmpl, exists := config.GetTemplate("pages/problems/problems")
 	if !exists {
-		log.Printf("❌ %s shabloni yuklangan shablonlar ichidan topilmadi!", templateName)
-		NotFound(w, r)
+		http.Error(w, "Masalalar ro'yxati shabloni topilmadi", http.StatusInternalServerError)
 		return
 	}
 
-	// HTML-ni keshga xavfsiz olish uchun buffer
+	seoData := config.SEOContext{
+		Title:       "Algoritmik Masalalar To'plami - CFM Contest",
+		Description: "Dasturlash va matematika bo'yicha darajalangan mukammal masalalar.",
+		URL:         "https://cfm.uz",
+		H1Title:     "Olimpiada Masalalari",
+	}
+
 	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, seoData); err != nil {
+		http.Error(w, "Shablonni generatsiya qilishda xatolik", http.StatusInternalServerError)
+		return
+	}
+
+	// DIQQAT: Agar SetString faqat 2 ta argument olsa, 300 ni olib tashlang.
+	// Agar 3 ta argument olsa, pastdagi GetProblemDetail funksiyasiga ham vaqt qo'shing.
+	_ = a.Cache.SetString("page_problems_list", buf.String())
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.Header().Set("X-Cache", "MISS")
+	w.Write(buf.Bytes())
+}
 
-	// Shablonda xato bo'lsa brauzer oq sahifa ko'rsatmasligi uchun avval bufferga render qilamiz
-	err = tmpl.Execute(&buf, seo)
-	if err != nil {
-		log.Printf("❌ Problems shablon xatosi: %v", err)
-		http.Error(w, "Ichki server xatoligi", http.StatusInternalServerError)
+// 2. Dinamik individual masala sahifasi (/problem/{slug})
+func (a *App) GetProblemDetail(w http.ResponseWriter, r *http.Request) {
+	// Agar shablon bitta bo'lsa, kesh kaliti ham bitta bo'ladi
+	cacheKey := "page_problem_detail_template"
+	if cached, err := a.Cache.GetString(cacheKey); err == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(cached))
 		return
 	}
 
-	// Bufferni brauzerga yuboramiz
-	_, _ = w.Write(buf.Bytes())
+	tmpl, exists := config.GetTemplate("pages/problems/problem-detail")
+	if !exists {
+		http.Error(w, "Masala tafsiloti shabloni topilmadi", http.StatusInternalServerError)
+		return
+	}
 
-	// QADAM 4: Kelajakda keladigan so'rovlar uchun keshga yozish
-	_ = h.Cache.Memory.Set(cacheKey, buf.Bytes())
+	seoData := config.SEOContext{
+		Title:       "Masala Sharti va Yechimi - CFM Contest",
+		Description: "Masalaning kirish-chiqish formatlari, cheklovlari va testlari.",
+		URL:         "https://cfm.uz",
+		H1Title:     "Masala Tafsiloti",
+	}
+
+	var buf bytes.Buffer
+	if err := tmpl.Execute(&buf, seoData); err != nil {
+		http.Error(w, "Shablonni generatsiya qilishda xatolik", http.StatusInternalServerError)
+		return
+	}
+
+	_ = a.Cache.SetString(cacheKey, buf.String())
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
 }

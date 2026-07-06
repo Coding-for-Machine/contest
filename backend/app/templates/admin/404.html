@@ -1,0 +1,30 @@
+{% extends "admin/base_site.html" %}
+{% load i18n %}
+
+{% block title %}{% trans "Sahifa topilmadi" %} | {{ site_title|default:_("Django sayt admini") }}{% endblock %}
+
+{% block content %}
+<div class="flex min-h-[60vh] items-center justify-center p-4 lg:p-8">
+    <div class="text-center">
+        <div class="mx-auto mb-6 flex h-24 w-24 items-center justify-center rounded-full
+                    bg-zinc-100 dark:bg-zinc-800">
+            <span class="text-4xl font-black text-zinc-300 dark:text-zinc-600">404</span>
+        </div>
+        <h1 class="mb-2 text-2xl font-bold text-gray-900 dark:text-zinc-100">
+            {% trans "Sahifa topilmadi" %}
+        </h1>
+        <p class="mb-8 text-sm text-gray-500 dark:text-zinc-400">
+            {% trans "Siz qidirayotgan sahifa mavjud emas yoki ko'chirilgan." %}
+        </p>
+        <a href="{% url 'admin:index' %}"
+           class="inline-flex items-center gap-2 rounded-xl bg-primary-600 px-5 py-2.5
+                  text-sm font-semibold text-white shadow-sm hover:bg-primary-500
+                  transition-all duration-150 dark:bg-primary-700 dark:hover:bg-primary-600">
+            <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 12l8.954-8.955c.44-.439 1.152-.439 1.591 0L21.75 12M4.5 9.75v10.125c0 .621.504 1.125 1.125 1.125H9.75v-4.875c0-.621.504-1.125 1.125-1.125h2.25c.621 0 1.125.504 1.125 1.125V21h4.125c.621 0 1.125-.504 1.125-1.125V9.75M8.25 21h8.25"/>
+            </svg>
+            {% trans "Bosh sahifaga qaytish" %}
+        </a>
+    </div>
+</div>
+{% endblock %}

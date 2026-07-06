@@ -5,12 +5,19 @@ ENV PYTHONUNBUFFERED=1
 
 WORKDIR /app
 
+# System dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    libpq-dev \
+    curl \
+    ffmpeg \
+    && rm -rf /var/lib/apt/lists/*
+
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-# Expose the port the Django app will run on
 EXPOSE 8000
 
-CMD ["uvicorn", "app.asgi:application", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["python", "manage.py", "runbolt", "--processes", "4", "--workers", "2"]

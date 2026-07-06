@@ -1,68 +1,86 @@
 package config
 
 import (
+	"html/template"
 	"log"
+	"os"
 	"path/filepath"
 	"strings"
-	"text/template" // 🛠️ FIKS: html/template o'rniga text/template ishlatiladi
+	"sync"
 )
 
+// SEOContext - Google va boshqa qidiruv botlari (SEO) uchun mukammal ma'lumot uzatish strukturasi
 type SEOContext struct {
-	Title       string
-	Description string
-	URL         string
-	H1Title     string
-	Data        interface{}
+	Title       string      `json:"title"`
+	Description string      `json:"description"`
+	URL         string      `json:"url"`
+	H1Title     string      `json:"h1_title"`
+	Data        interface{} `json:"data"`
 }
 
-// Global shablonlar xaritasi (Endi text/template turi bilan)
-var Templates = make(map[string]*template.Template)
+var (
+	Templates   = make(map[string]*template.Template)
+	templatesMu sync.RWMutex
+)
 
-const BackendBaseURL = "http://localhost:3000/api"
-
-// LoadTemplates - Shablonlarni har birini alohida (Layoutsiz) yuklash
 func LoadTemplates(wd string) {
-	// 1. index.html sahifasini alohida yuklash
-	indexPath := filepath.Join(wd, "templates", "index.html")
-	tmplIndex, err := template.ParseFiles(indexPath)
-	if err != nil {
-		log.Printf("❌ Xatolik: index.html yuklanmadi: %v", err)
-	} else {
-		Templates["index"] = tmplIndex
-		log.Println("✅ index.html muvaffaqiyatli yuklandi (Layoutsiz)")
-	}
+	templatesMu.Lock()
+	defer templatesMu.Unlock()
 
-	// 2. login.html sahifasini alohida yuklash
-	loginPath := filepath.Join(wd, "templates", "login.html")
-	tmplLogin, err := template.ParseFiles(loginPath)
-	if err != nil {
-		log.Printf("❌ Xatolik: login.html yuklanmadi: %v", err)
-	} else {
-		Templates["login"] = tmplLogin
-		log.Println("✅ login.html muvaffaqiyatli yuklandi (Layoutsiz)")
-	}
+	// Loyihangiz tuzilmasiga ko'ra asosiy templates papkasi manzili
+	baseDir := filepath.Join(wd, "templates")
 
-	// 3. Ichki sahifalarni (pages/*.html) avtomat yuklash
-	pages, err := filepath.Glob(filepath.Join(wd, "templates", "pages", "*.html"))
-	if err != nil {
-		log.Printf("❌ Xatolik: Pages papkasini o'qishda xato: %v", err)
-		return
-	}
-
-	for _, page := range pages {
-		name := strings.TrimSuffix(filepath.Base(page), ".html")
-
-		tmpl, err := template.ParseFiles(page)
+	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			log.Printf("❌ Xatolik: [%s.html] shablonida sintaksis xato bor: %v", name, err)
-			continue
+			return err
 		}
-		Templates["pages/"+name] = tmpl
-		log.Printf("✅ pages/%s.html muvaffaqiyatli yuklandi (Layoutsiz)", name)
+
+		// Faqat .html kengaytmali fayllarni olamiz
+		if !info.IsDir() && strings.HasSuffix(info.Name(), ".html") {
+
+			// Faylning nisbiy yo'lini aniqlaymiz (Masalan: templates/pages/tests/exam.html -> pages/tests/exam.html)
+			relPath, err := filepath.Rel(baseDir, path)
+			if err != nil {
+				return err
+			}
+
+			// Kesh xaritasi (Map Key) uchun chiroyli nom yasaymiz (Masalan: pages/tests/exam)
+			templateKey := strings.TrimSuffix(relPath, ".html")
+
+			// HTML shablonini Parse qilamiz (Xavfsiz html/template paketi orqali)
+			tmpl, err := template.ParseFiles(path)
+			if err != nil {
+				log.Printf("Sintaksis xato: [%s] shablonida xatolik aniqlandi: %v", relPath, err)
+				return nil // Bitta fayldagi xato butun serverni to'xtatib qo'ymasligi uchun davom etamiz
+			}
+
+			// Keshga saqlaymiz
+			Templates[templateKey] = tmpl
+			log.Printf("[%s] shabloni RAM keshiga yuklandi. Kalit: \"%s\"", relPath, templateKey)
+		}
+		return nil
+	})
+
+	if err != nil {
+		log.Printf("Kritik xatolik: Shablonlar papkasini skanerlashda xato: %v", err)
 	}
 }
 
+// GetTemplate - Xaritadan shablonni parallel oqimlarda xavfsiz o'qish funksiyasi
+func GetTemplate(key string) (*template.Template, bool) {
+	templatesMu.RLock()
+	defer templatesMu.RUnlock()
+	tmpl, exists := Templates[key]
+	return tmpl, exists
+}
+
+// SlugToTitle - URL'dagi 'contest-detail' matnini 'Contest Detail' ko'rinishiga keltiruvchi SEO yordamchisi
 func SlugToTitle(slug string) string {
+	slug = strings.TrimSpace(slug)
+	if slug == "" {
+		return ""
+	}
+
 	words := strings.Split(slug, "-")
 	for i, word := range words {
 		if len(word) > 0 {

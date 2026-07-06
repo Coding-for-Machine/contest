@@ -1,0 +1,783 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Masalalar | CfM Contest</title>
+    <meta name="description" content="CfM Contest platformasidagi algoritm va ma'lumotlar tuzilmasi bo'yicha masalalar to'plami.">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="https://cfmcontest.uz/problems">
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Masalalar | CfM Contest">
+    <meta property="og:description" content="Algoritm va ma'lumotlar tuzilmasi bo'yicha mashq qilish uchun masalalar to'plami.">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://cfmcontest.uz/problems">
+    <meta property="og:image" content="https://cfmcontest.uz/static/img/og-image.jpg">
+    <meta property="og:locale" content="uz_UZ">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="Masalalar | CfM Contest">
+    <meta name="twitter:description" content="Algoritm va ma'lumotlar tuzilmasi bo'yicha mashq qilish uchun masalalar to'plami.">
+    <meta name="twitter:image" content="https://cfmcontest.uz/static/img/og-image.jpg">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+
+    <!-- Preconnect -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        brand: '#6a3df5',
+                        'brand-bg': '#f2eefe',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- GLOBAL CSS -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+    <style>
+        /* ─── Custom Styles ─── */
+        .filter-dropdown { position: relative; min-width: 160px; }
+
+        .filter-dropdown-btn {
+            display: flex; align-items: center; justify-content: space-between;
+            width: 100%; padding: 8px 14px; border: 1.5px solid #e7eaee; border-radius: 12px;
+            background: white; color: #0b0f14; font-size: 13px; font-weight: 500;
+            font-family: 'Inter', sans-serif; cursor: pointer; transition: all 0.2s ease; gap: 8px;
+        }
+        .filter-dropdown-btn:hover { background: #fafafa; border-color: #d7dbe0; }
+        .filter-dropdown-btn:focus { outline: none; border-color: #6a3df5; box-shadow: 0 0 0 3px rgba(106, 61, 245, 0.1); }
+        .filter-dropdown-btn .badge-count {
+            background: #f4f5f6; color: #5b6572; padding: 0 8px; border-radius: 999px;
+            font-size: 10px; font-weight: 700; min-width: 20px; height: 18px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+
+        .filter-dropdown-menu {
+            position: absolute; top: calc(100% + 6px); left: 0; right: 0; min-width: 200px;
+            background: white; border: 1.5px solid #e7eaee; border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08); padding: 6px 0; z-index: 50;
+            opacity: 0; visibility: hidden; transform: translateY(-4px) scale(0.98);
+            transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1); max-height: 260px; overflow-y: auto;
+        }
+        .filter-dropdown-menu::-webkit-scrollbar { width: 4px; }
+        .filter-dropdown-menu::-webkit-scrollbar-track { background: transparent; }
+        .filter-dropdown-menu::-webkit-scrollbar-thumb { background: #e7eaee; border-radius: 4px; }
+
+        .filter-dropdown.open .filter-dropdown-menu {
+            opacity: 1; visibility: visible; transform: translateY(0) scale(1);
+        }
+
+        .filter-dropdown-menu .dropdown-item {
+            display: flex; align-items: center; gap: 8px; padding: 8px 14px; font-size: 13px;
+            font-weight: 500; color: #5b6572; cursor: pointer; transition: all 0.15s ease;
+            font-family: 'Inter', sans-serif;
+        }
+        .filter-dropdown-menu .dropdown-item:hover { background: #f4f5f6; color: #0b0f14; }
+        .filter-dropdown-menu .dropdown-item.active { background: #f2eefe; color: #6a3df5; }
+        .filter-dropdown-menu .dropdown-item .dot { width: 6px; height: 6px; border-radius: 50%; display: inline-block; flex-shrink: 0; }
+        .filter-dropdown-menu .dropdown-item .item-count {
+            margin-left: auto; background: #f4f5f6; color: #5b6572; padding: 0 6px; border-radius: 999px;
+            font-size: 10px; font-weight: 700; min-width: 18px; height: 16px;
+            display: inline-flex; align-items: center; justify-content: center;
+        }
+        .filter-dropdown-menu .dropdown-item.active .item-count { background: rgba(106, 61, 245, 0.15); color: #6a3df5; }
+        .filter-dropdown-menu .dropdown-item.category-item .color-dot { width: 10px; height: 10px; border-radius: 4px; flex-shrink: 0; }
+
+        .dot.easy { background: #17924f; }
+        .dot.medium { background: #b5710a; }
+        .dot.hard { background: #d0264a; }
+
+        .badge {
+            display: inline-flex; align-items: center; gap: 5px; font-size: 11.5px; font-weight: 700;
+            padding: 3px 10px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em;
+        }
+        .badge-easy { background: #eafbf1; color: #17924f; }
+        .badge-medium { background: #fef6e7; color: #b5710a; }
+        .badge-hard { background: #fdeced; color: #d0264a; }
+        .badge-neutral { background: #f4f5f6; color: #5b6572; }
+
+        .status-icon {
+            width: 30px; height: 30px; border-radius: 50%; display: inline-flex; align-items: center;
+            justify-content: center; font-size: 14px; border: none; background: transparent; cursor: pointer;
+            transition: all 0.2s ease;
+        }
+        .status-icon:hover { transform: scale(1.1); }
+        .status-icon.solved { background: #eafbf1; color: #17924f; }
+        .status-icon.unsolved { background: #f4f5f6; color: #9aa3ad; }
+        .status-icon.bookmarked { background: #eaf1fd; color: #1d5fd6; }
+
+        .tag-pill {
+            display: inline-flex; align-items: center; padding: 2px 8px; border-radius: 999px;
+            background: #f4f5f6; color: #5b6572; font-size: 10px; font-weight: 600;
+            white-space: nowrap; transition: all 0.2s ease; border: 1px solid transparent; cursor: pointer;
+        }
+        .tag-pill:hover { background: #e7eaee; color: #0b0f14; }
+        .tag-pill.active { background: #f2eefe; color: #6a3df5; border-color: #ddd0fb; }
+
+        .problem-mobile-card {
+            display: none; padding: 14px 16px; border-bottom: 1px solid #f0f2f4; background: #fff;
+            cursor: pointer; transition: all 0.2s ease;
+        }
+        .problem-mobile-card:last-child { border-bottom: none; }
+        .problem-mobile-card:hover { background: #fafafa; }
+        .problem-mobile-card .bottom-row {
+            display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; padding-left: 42px;
+        }
+
+        .empty-state { text-align: center; padding: 48px 20px; }
+        .empty-state .material-icons { font-size: 56px; color: #9aa3ad; margin-bottom: 12px; }
+        .empty-state h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+        .empty-state p { margin: 0; color: #5b6572; font-size: 13px; }
+
+        .load-more-trigger {
+            padding: 16px 0; display: flex; align-items: center; justify-content: center;
+            color: #9aa3ad; font-size: 13px; font-weight: 500; gap: 12px; border-top: 1px solid #f0f2f4;
+        }
+        .spinner {
+            width: 20px; height: 20px; border: 2.5px solid #e7eaee; border-top-color: #0b0f14;
+            border-radius: 50%; animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .stat-chip { padding: 10px 12px; border-radius: 12px; background: #fafafa; text-align: center; border: 1px solid #f0f2f4; transition: all 0.2s ease; }
+        .stat-chip:hover { border-color: #e7eaee; }
+        .stat-chip .num { font-family: 'JetBrains Mono', monospace; font-size: 20px; font-weight: 700; }
+        .stat-chip .num.easy { color: #17924f; }
+        .stat-chip .num.medium { color: #b5710a; }
+        .stat-chip .num.hard { color: #d0264a; }
+        .stat-chip .label { font-size: 11px; color: #5b6572; }
+
+        /* progress mini-bars */
+        .diff-progress-row + .diff-progress-row { margin-top: 10px; }
+        .diff-progress-track { height: 5px; border-radius: 999px; background: #f0f2f4; overflow: hidden; }
+        .diff-progress-fill { height: 100%; border-radius: 999px; transition: width .5s ease; }
+
+        @media (max-width: 767px) {
+            .filters-row { flex-direction: column; }
+            .filter-dropdown { min-width: 100%; }
+            .filter-dropdown-menu { min-width: 100%; }
+            .problem-table thead, .problem-table tbody { display: none; }
+            .problem-mobile-card { display: block; }
+        }
+        @media (max-width: 1023px) {
+            .sidebar-col { display: none; }
+            .grid { grid-template-columns: 1fr; }
+        }
+
+        .hidden { display: none !important; }
+        [x-cloak] { display: none !important; }
+    </style>
+</head>
+<body>
+    <!-- ============================================================
+    NAVBAR — main.js dagi injectNavbar() orqali to'ldiriladi.
+    Hamma sahifada aynan shu bitta qator bo'lsa bo'ldi.
+    ============================================================ -->
+    <header id="navbar" class="topbar" role="banner"></header>
+
+    <!-- ============================================================
+    MAIN — Alpine.js bilan boshqariladi
+    ============================================================ -->
+    <main class="max-w-[1180px] mx-auto px-5" x-data="problemsApp()" x-init="init()">
+
+        <!-- PAGE HEADER -->
+        <section class="py-[22px] border-b border-[#e7eaee]">
+            <h1 class="text-[26px] font-bold tracking-[-0.02em] font-display flex items-center gap-2.5 mb-1.5">
+                <span class="material-icons text-[28px] text-[#6a3df5]">playlist_play</span>
+                Masalalar
+            </h1>
+            <p class="text-[#5b6572] text-sm flex items-center gap-1.5">
+                <span class="material-icons text-[16px] text-[#9aa3ad]">lightbulb</span>
+                Algoritm va ma'lumotlar tuzilmasi bo'yicha mashq qil
+            </p>
+            <div class="flex flex-wrap items-center gap-2.5 mt-3">
+                <span class="flex items-center gap-1.5 text-[13px] text-[#5b6572] bg-[#fafafa] px-3 py-1 rounded-full border border-[#f0f2f4]">
+                    <span class="font-mono font-bold text-[#0b0f14]" x-text="allProblems.length">0</span> ta masala
+                </span>
+                <span class="flex items-center gap-1.5 text-[13px] text-[#5b6572] bg-[#fafafa] px-3 py-1 rounded-full border border-[#f0f2f4]">
+                    <span class="dot easy"></span><span x-text="countByDifficulty('easy')">0</span>
+                </span>
+                <span class="flex items-center gap-1.5 text-[13px] text-[#5b6572] bg-[#fafafa] px-3 py-1 rounded-full border border-[#f0f2f4]">
+                    <span class="dot medium"></span><span x-text="countByDifficulty('medium')">0</span>
+                </span>
+                <span class="flex items-center gap-1.5 text-[13px] text-[#5b6572] bg-[#fafafa] px-3 py-1 rounded-full border border-[#f0f2f4]">
+                    <span class="dot hard"></span><span x-text="countByDifficulty('hard')">0</span>
+                </span>
+            </div>
+        </section>
+
+        <!-- FILTERS SECTION -->
+        <div class="pb-1">
+            <!-- Search -->
+            <div class="flex items-center gap-3 px-4 py-3 border border-[#e7eaee] rounded-2xl bg-white mt-4 transition-all focus-within:border-[#6a3df5] focus-within:shadow-[0_0_0_3px_rgba(106,61,245,0.1)]">
+                <span class="material-icons text-[#9aa3ad] text-xl">search</span>
+                <input id="searchInput" type="search" x-model.debounce.300ms="search"
+                       placeholder="Masala nomi, kategoriya yoki teglar bo'yicha qidirish..."
+                       class="flex-1 border-none outline-none text-sm font-sans bg-transparent text-[#0b0f14] min-w-0 placeholder:text-[#9aa3ad]">
+                <span class="text-[11px] text-[#9aa3ad] bg-[#f4f5f6] px-2.5 py-0.5 rounded-md font-mono font-semibold">/</span>
+            </div>
+
+            <!-- Filters Row -->
+            <div class="filters-row flex flex-wrap gap-3 mt-3 p-3.5 bg-[#fafafa] rounded-2xl border border-[#e7eaee]">
+
+                <!-- Difficulty Dropdown -->
+                <div class="filter-dropdown" :class="{ open: difficultyOpen }" @click.outside="difficultyOpen = false">
+                    <button class="filter-dropdown-btn" type="button" @click="difficultyOpen = !difficultyOpen">
+                        <span class="flex items-center gap-2">
+                            <span class="material-icons text-[#9aa3ad] text-[18px]">signal_cellular_alt</span>
+                            <span x-text="difficultyLabel">Daraja</span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="badge-count" x-text="allProblems.length">0</span>
+                            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-[#9aa3ad]">
+                                <path d="M9 6L5 2L1 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M1 10L5 14L9 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <div class="filter-dropdown-menu">
+                        <div class="dropdown-item" :class="{ active: difficulty === 'all' }" @click="setDifficulty('all')">
+                            <span>Barchasi</span>
+                            <span class="item-count" x-text="allProblems.length">0</span>
+                        </div>
+                        <div class="dropdown-item" :class="{ active: difficulty === 'easy' }" @click="setDifficulty('easy')">
+                            <span class="dot easy"></span><span>Easy</span>
+                            <span class="item-count" x-text="countByDifficulty('easy')">0</span>
+                        </div>
+                        <div class="dropdown-item" :class="{ active: difficulty === 'medium' }" @click="setDifficulty('medium')">
+                            <span class="dot medium"></span><span>Medium</span>
+                            <span class="item-count" x-text="countByDifficulty('medium')">0</span>
+                        </div>
+                        <div class="dropdown-item" :class="{ active: difficulty === 'hard' }" @click="setDifficulty('hard')">
+                            <span class="dot hard"></span><span>Hard</span>
+                            <span class="item-count" x-text="countByDifficulty('hard')">0</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Status Dropdown -->
+                <div class="filter-dropdown" :class="{ open: statusOpen }" @click.outside="statusOpen = false">
+                    <button class="filter-dropdown-btn" type="button" @click="statusOpen = !statusOpen">
+                        <span class="flex items-center gap-2">
+                            <span class="material-icons text-[#9aa3ad] text-[18px]">checklist</span>
+                            <span x-text="statusLabel">Holati</span>
+                        </span>
+                        <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-[#9aa3ad]">
+                            <path d="M9 6L5 2L1 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            <path d="M1 10L5 14L9 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                        </svg>
+                    </button>
+                    <div class="filter-dropdown-menu">
+                        <div class="dropdown-item" :class="{ active: status === 'all' }" @click="setStatus('all')">
+                            <span>Barchasi</span>
+                        </div>
+                        <div class="dropdown-item" :class="{ active: status === 'solved' }" @click="setStatus('solved')">
+                            <span class="material-icons text-[16px] text-[#17924f]">check_circle</span><span>Yechilgan</span>
+                        </div>
+                        <div class="dropdown-item" :class="{ active: status === 'unsolved' }" @click="setStatus('unsolved')">
+                            <span class="material-icons text-[16px] text-[#b5710a]">hourglass_empty</span><span>Yechilmagan</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Category Dropdown -->
+                <div class="filter-dropdown flex-1 min-w-[140px]" :class="{ open: categoryOpen }" @click.outside="categoryOpen = false">
+                    <button class="filter-dropdown-btn" type="button" @click="categoryOpen = !categoryOpen">
+                        <span class="flex items-center gap-2">
+                            <span class="material-icons text-[#9aa3ad] text-[18px]">folder</span>
+                            <span x-text="categoryLabel">Kategoriya</span>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="badge-count" x-text="allProblems.length">0</span>
+                            <svg width="10" height="16" viewBox="0 0 10 16" fill="none" xmlns="http://www.w3.org/2000/svg" class="text-[#9aa3ad]">
+                                <path d="M9 6L5 2L1 6" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                                <path d="M1 10L5 14L9 10" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+                            </svg>
+                        </span>
+                    </button>
+                    <div class="filter-dropdown-menu">
+                        <div class="dropdown-item" :class="{ active: category === 'all' }" @click="setCategory('all')">
+                            <span>Barchasi</span>
+                            <span class="item-count" x-text="allProblems.length">0</span>
+                        </div>
+                        <template x-for="item in categoriesWithCount" :key="item.cat.id">
+                            <div class="dropdown-item category-item" :class="{ active: category === item.cat.slug }" @click="setCategory(item.cat.slug)">
+                                <span class="color-dot" :style="{ background: categoryColor(item.cat.id) }"></span>
+                                <span x-text="item.cat.name"></span>
+                                <span class="item-count" x-text="item.count"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sort Row -->
+            <div class="flex flex-wrap items-center justify-between gap-3 pt-2.5 mt-2 border-t border-[#f0f2f4]">
+                <div class="flex items-center gap-2">
+                    <span class="material-icons text-[#9aa3ad] text-lg">sort</span>
+                    <select x-model="sort"
+                            class="py-1.5 px-3.5 border border-[#e7eaee] rounded-xl text-xs font-medium bg-white text-[#0b0f14] outline-none cursor-pointer font-sans transition-all appearance-none pr-8 bg-no-repeat bg-[right_10px_center] focus:border-[#6a3df5] focus:shadow-[0_0_0_3px_rgba(106,61,245,0.1)]">
+                        <option value="newest">Eng yangi</option>
+                        <option value="oldest">Eng eski</option>
+                        <option value="xp">XP (ko'p)</option>
+                        <option value="difficulty">Qiyinlik</option>
+                    </select>
+                </div>
+                <div class="text-xs text-[#5b6572] bg-[#fafafa] px-3.5 py-1 rounded-full border border-[#f0f2f4]">
+                    <strong class="text-[#0b0f14]" x-text="visible.length">0</strong> /
+                    <span x-text="filtered.length">0</span> ta ko'rsatilmoqda
+                </div>
+            </div>
+
+            <!-- MENING HOLATIM — umumiy va daraja bo'yicha yechilganlik (backend'dan) -->
+            <div class="mt-3 p-4 sm:p-5 border border-[#e7eaee] rounded-2xl bg-white shadow-sm">
+                <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                    <div class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad] flex items-center gap-1.5">
+                        <span class="material-icons text-[16px]">military_tech</span>
+                        Mening holatim
+                    </div>
+                    <div class="text-xs text-[#5b6572]">
+                        <span class="font-mono font-bold text-[#0b0f14]" x-text="solvedCount">0</span> /
+                        <span class="font-mono" x-text="allProblems.length">0</span> yechildi
+                        <span class="font-semibold text-[#6a3df5]" x-text="'(' + overallPct + '%)'"></span>
+                    </div>
+                </div>
+
+                <div class="h-1.5 rounded-full bg-[#f0f2f4] overflow-hidden mb-4">
+                    <div class="h-full rounded-full bg-[#17924f] transition-all duration-500" :style="{ width: overallPct + '%' }"></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2 sm:gap-3">
+                    <template x-for="d in ['easy','medium','hard']" :key="'stat-' + d">
+                        <div class="rounded-xl border border-[#f0f2f4] bg-[#fafafa] p-2.5 sm:p-3 text-center">
+                            <div class="flex items-center justify-center gap-1.5 mb-1">
+                                <span class="dot" :class="d"></span>
+                                <span class="text-[10.5px] sm:text-xs font-semibold text-[#5b6572]" x-text="diffLabel(d)"></span>
+                            </div>
+                            <div class="font-mono font-bold text-[15px] sm:text-lg leading-tight" :style="{ color: diffColor(d) }">
+                                <span x-text="solvedByDiff(d)"></span><span class="text-[#9aa3ad] font-normal">/</span><span x-text="countByDifficulty(d)"></span>
+                            </div>
+                            <div class="h-1 rounded-full bg-[#e7eaee] overflow-hidden mt-1.5">
+                                <div class="h-full rounded-full transition-all duration-500" :style="{ width: diffPct(d) + '%', background: diffColor(d) }"></div>
+                            </div>
+                            <div class="text-[10px] text-[#9aa3ad] mt-1" x-text="diffPct(d) + '%'"></div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- TEGLAR — har doim ko'rinadi (sidebar'ga qarab yashirilmaydi), bosilganda ro'yxatni filterlaydi -->
+            <div class="mt-3 p-4 sm:p-5 border border-[#e7eaee] rounded-2xl bg-white shadow-sm">
+                <div class="flex items-center justify-between flex-wrap gap-2 mb-3">
+                    <div class="text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad] flex items-center gap-1.5">
+                        <span class="material-icons text-[16px]">sell</span>
+                        Teglar
+                    </div>
+                    <button x-show="search" @click="search = ''" class="text-[11px] text-[#6a3df5] font-semibold hover:underline">
+                        Tozalash
+                    </button>
+                </div>
+                <div class="flex flex-wrap gap-1.5">
+                    <template x-for="item in tagsWithCount" :key="'inline-tag-' + item.tag.id">
+                        <button class="tag-pill" :class="{ active: search === item.tag.name }" @click="toggleTagSearch(item.tag.name)">
+                            <span x-text="item.tag.name"></span>
+                            <span style="opacity:.55; margin-left:4px;" x-text="item.count"></span>
+                        </button>
+                    </template>
+                    <template x-if="!tagsWithCount.length">
+                        <span class="text-[#9aa3ad] text-xs">Teglar topilmadi</span>
+                    </template>
+                </div>
+            </div>
+        </div>
+
+        <!-- GRID -->
+        <section class="pb-12 mt-4">
+            <!-- Main Table -->
+            <div>
+                <div class="border border-[#e7eaee] rounded-2xl overflow-hidden bg-white shadow-sm">
+
+                    <!-- Loading skeleton -->
+                    <template x-if="loading">
+                        <div class="p-6 flex flex-col gap-3">
+                            <template x-for="i in 6" :key="i">
+                                <div class="skeleton h-12 w-full"></div>
+                            </template>
+                        </div>
+                    </template>
+
+                    <!-- Error -->
+                    <template x-if="!loading && error">
+                        <div class="empty-state">
+                            <span class="material-icons">error</span>
+                            <h3>Xatolik yuz berdi</h3>
+                            <p>Ma'lumotlarni yuklashda muammo bo'ldi. Sahifani yangilab ko'ring.</p>
+                        </div>
+                    </template>
+
+                    <template x-if="!loading && !error">
+                        <div>
+                            <!-- Empty state -->
+                            <template x-if="filtered.length === 0">
+                                <div class="empty-state">
+                                    <span class="material-icons">search_off</span>
+                                    <h3>Hech narsa topilmadi</h3>
+                                    <p>Qidiruv shartlariga mos masala mavjud emas.</p>
+                                </div>
+                            </template>
+
+                            <!-- Desktop table -->
+                            <template x-if="filtered.length > 0">
+                                <table class="w-full border-collapse text-sm problem-table">
+                                    <thead>
+                                        <tr class="bg-[#fafafa] border-b border-[#e7eaee]">
+                                            <th class="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad] w-9"></th>
+                                            <th class="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad]">Masala</th>
+                                            <th class="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad]">Kategoriya</th>
+                                            <th class="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad]">Teglar</th>
+                                            <th class="px-3.5 py-2.5 text-left text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad]">Daraja</th>
+                                            <th class="px-3.5 py-2.5 text-center text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad] w-20">Qabul %</th>
+                                            <th class="px-3.5 py-2.5 text-right text-[11px] font-bold uppercase tracking-[0.04em] text-[#9aa3ad] w-12">XP</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <template x-for="p in visible" :key="p.id">
+                                            <tr class="border-b border-[#f0f2f4] hover:bg-[#fafafa] cursor-pointer transition-colors"
+                                                @click="window.location.href = '/problem/' + p.slug + '/'">
+                                                <td class="px-3.5 py-2.5 align-middle">
+                                                    <button class="status-icon" :class="statusClass(p)"
+                                                            @click.stop="toggleBookmark(p.id)"
+                                                            :title="p.bookmarked ? 'Saqlashdan olib tashlash' : 'Saqlash'">
+                                                        <span class="material-icons text-[14px]" x-text="statusIcon(p)"></span>
+                                                    </button>
+                                                </td>
+                                                <td class="px-3.5 py-2.5 align-middle">
+                                                    <div class="flex flex-col gap-1">
+                                                        <a class="font-semibold text-[#0b0f14] hover:text-[#6a3df5] transition-colors no-underline"
+                                                           :href="'/problem/' + p.slug + '/'" x-text="p.title" @click.stop></a>
+                                                        <div class="flex flex-wrap gap-2 text-[11px] text-[#9aa3ad]">
+                                                            <span x-text="'ID: #' + p.id"></span>
+                                                            <span :class="p.solved ? 'text-[#17924f] font-semibold' : 'text-[#b5710a] font-semibold'"
+                                                                  x-text="p.solved ? 'Yechilgan' : 'Yechilmagan'"></span>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td class="px-3.5 py-2.5 align-middle">
+                                                    <span class="badge badge-neutral" x-text="p.category || '—'"></span>
+                                                </td>
+                                                <td class="px-3.5 py-2.5 align-middle">
+                                                    <div class="flex flex-wrap gap-1">
+                                                        <template x-for="t in p.tags" :key="t">
+                                                            <span class="tag-pill" x-text="t"></span>
+                                                        </template>
+                                                        <template x-if="!p.tags || !p.tags.length">
+                                                            <span class="text-[#9aa3ad] text-xs">—</span>
+                                                        </template>
+                                                    </div>
+                                                </td>
+                                                <td class="px-3.5 py-2.5 align-middle">
+                                                    <span class="badge" :class="'badge-' + p.difficulty" x-text="diffLabel(p.difficulty)"></span>
+                                                </td>
+                                                <td class="px-3.5 py-2.5 align-middle text-center font-mono" x-text="(p.acceptance ?? 0) + '%'"></td>
+                                                <td class="px-3.5 py-2.5 align-middle text-right font-mono font-semibold" x-text="p.xp ?? 0"></td>
+                                            </tr>
+                                        </template>
+                                    </tbody>
+                                </table>
+                            </template>
+
+                            <!-- Mobile cards -->
+                            <template x-if="filtered.length > 0">
+                                <div>
+                                    <template x-for="p in visible" :key="'m' + p.id">
+                                        <div class="problem-mobile-card" @click="window.location.href = '/problem/' + p.slug + '/'">
+                                            <div class="flex items-center gap-3">
+                                                <button class="status-icon" :class="statusClass(p)" @click.stop="toggleBookmark(p.id)">
+                                                    <span class="material-icons text-[14px]" x-text="statusIcon(p)"></span>
+                                                </button>
+                                                <span class="flex-1 font-semibold text-sm truncate" x-text="p.title"></span>
+                                                <span class="font-mono text-[13px] text-[#5b6572]" x-text="p.xp ?? 0"></span>
+                                            </div>
+                                            <div class="bottom-row">
+                                                <span class="badge" :class="'badge-' + p.difficulty" x-text="diffLabel(p.difficulty)"></span>
+                                                <span class="badge badge-neutral" x-text="p.category || '—'"></span>
+                                                <span class="badge badge-neutral" x-text="(p.tags || []).join(' ') || '—'"></span>
+                                                <span class="badge badge-neutral" x-text="(p.acceptance ?? 0) + '%'"></span>
+                                            </div>
+                                        </div>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <!-- Load more / infinite scroll sentinel -->
+                            <div class="load-more-trigger" x-ref="loadMoreTrigger" x-show="filtered.length > 0">
+                                <div class="spinner" x-show="hasMore"></div>
+                                <span class="material-icons text-[18px] text-[#17924f]" x-show="!hasMore">check_circle</span>
+                                <span class="text" x-text="hasMore ? 'Yuklanmoqda...' : 'Barcha masalalar ko‘rsatildi'"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <div id="toast-container"></div>
+
+    <!-- ============================================================
+    GLOBAL JS (navbar inject, auth, toast...)
+    ============================================================ -->
+    <script src="/assets/js/main.js"></script>
+
+    <!-- ============================================================
+    SAHIFAGA XOS: Alpine komponenti — Alpine yuklanishidan OLDIN aniqlanadi
+    ============================================================ -->
+    <script>
+        function problemsApp() {
+            return {
+                // ─── holat ───
+                loading: true,
+                error: false,
+                allProblems: [],
+                categories: [],
+                tags: [],
+                progress: null, // { total, solved, by_difficulty: { easy:{total,solved}, medium:{...}, hard:{...} } } — /stats/ dan
+
+                search: '',
+                difficulty: 'all',
+                status: 'all',
+                category: 'all',
+                sort: 'newest',
+
+                difficultyOpen: false,
+                statusOpen: false,
+                categoryOpen: false,
+
+                page: 1,
+                limit: 10,
+
+                _bmKey: 'cfm_bookmarked_problems',
+                _catColors: ['#6a3df5', '#e11d48', '#0d9488', '#f59e0b', '#0891b2', '#7c3aed', '#059669', '#dc2626', '#d946ef', '#f97316'],
+                _diffLabels: { easy: 'Oson', medium: "O'rtacha", hard: 'Qiyin' },
+                _diffColors: { easy: '#17924f', medium: '#b5710a', hard: '#d0264a' },
+
+                // ─── init: kategoriya, teg va BARCHA masalalarni yuklaydi ───
+                async init() {
+                    var base = window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1';
+                    var token = window.Auth ? Auth.getToken() : (localStorage.getItem('cfm_auth_token') || null);
+                    var headers = { Accept: 'application/json' };
+                    if (token) headers.Authorization = 'Bearer ' + token;
+
+                    try {
+                        var self = this;
+
+                        var catsPromise = fetch(base + '/problems/categories/', { headers })
+                            .then(function(r) { return r.json(); }).catch(function() { return []; });
+                        var tagsPromise = fetch(base + '/problems/tags/', { headers })
+                            .then(function(r) { return r.json(); }).catch(function() { return []; });
+                        var statsPromise = fetch(base + '/problems/stats/', { headers })
+                            .then(function(r) { return r.json(); }).catch(function() { return null; });
+
+                        var results = await Promise.all([catsPromise, tagsPromise, statsPromise]);
+                        this.categories = results[0] || [];
+                        this.tags = results[1] || [];
+                        this.progress = results[2] || null;
+
+                        // Masalalarni sahifalab, hammasini yig'ib olamiz
+                        // (filter/sort/qidiruv butunlay frontendda, backend faqat ma'lumot beradi)
+                        var chunkSize = 100, offset = 0, total = Infinity, collected = [];
+                        while (collected.length < total) {
+                            var res = await fetch(base + '/problems/?limit=' + chunkSize + '&offset=' + offset, { headers })
+                                .then(function(r) { return r.json(); });
+                            total = res.count || 0;
+                            var chunk = (res.data || []).map(function(p) {
+                                return {
+                                    id: p.id, slug: p.slug, title: p.title, difficulty: p.difficulty,
+                                    xp: p.xp, acceptance: p.acceptance || 0, category: p.category || '',
+                                    tags: p.tags || [], solved: !!p.solved,
+                                    bookmarked: self.isBookmarked(p.id)
+                                };
+                            });
+                            collected = collected.concat(chunk);
+                            offset += chunkSize;
+                            if (!chunk.length) break;
+                        }
+                        this.allProblems = collected;
+                        this.loading = false;
+
+                        this.$nextTick(function() { self.setupInfiniteScroll(); });
+                    } catch (e) {
+                        console.error('Masalalarni yuklashda xatolik:', e);
+                        this.error = true;
+                        this.loading = false;
+                        if (window.showToast) showToast("Ma'lumotlarni yuklashda xatolik yuz berdi", 'error');
+                    }
+                },
+
+                setupInfiniteScroll() {
+                    var trigger = this.$refs.loadMoreTrigger;
+                    if (!trigger) return;
+                    var self = this;
+                    var observer = new IntersectionObserver(function(entries) {
+                        if (entries[0].isIntersecting && self.hasMore) self.page++;
+                    }, { rootMargin: '0px 0px 150px 0px' });
+                    observer.observe(trigger);
+                },
+
+                // ─── bookmarklar (localStorage) ───
+                getBookmarks() {
+                    try { return JSON.parse(localStorage.getItem(this._bmKey) || '[]'); } catch (e) { return []; }
+                },
+                isBookmarked(id) { return this.getBookmarks().indexOf(id) !== -1; },
+                toggleBookmark(id) {
+                    var list = this.getBookmarks();
+                    var idx = list.indexOf(id);
+                    if (idx === -1) list.push(id); else list.splice(idx, 1);
+                    localStorage.setItem(this._bmKey, JSON.stringify(list));
+                    var p = this.allProblems.find(function(x) { return x.id === id; });
+                    if (p) p.bookmarked = idx === -1;
+                },
+
+                // ─── kichik yordamchilar ───
+                diffLabel(d) { return this._diffLabels[d] || d || '—'; },
+                diffColor(d) { return this._diffColors[d] || '#9aa3ad'; },
+                categoryColor(catId) { return this._catColors[catId % this._catColors.length]; },
+
+                countByDifficulty(d) {
+                    if (this.progress && this.progress.by_difficulty[d]) return this.progress.by_difficulty[d].total;
+                    return this.allProblems.filter(function(p) { return p.difficulty === d; }).length;
+                },
+                solvedByDiff(d) {
+                    if (this.progress && this.progress.by_difficulty[d]) return this.progress.by_difficulty[d].solved;
+                    return this.allProblems.filter(function(p) { return p.difficulty === d && p.solved; }).length;
+                },
+                diffPct(d) {
+                    var total = this.countByDifficulty(d);
+                    return total ? Math.round(this.solvedByDiff(d) / total * 100) : 0;
+                },
+
+                get solvedCount() {
+                    if (this.progress) return this.progress.solved;
+                    return this.allProblems.filter(function(p) { return p.solved; }).length;
+                },
+                get overallPct() {
+                    var total = this.progress ? this.progress.total : this.allProblems.length;
+                    return total ? Math.round(this.solvedCount / total * 100) : 0;
+                },
+
+                setDifficulty(d) { this.difficulty = d; this.page = 1; this.difficultyOpen = false; },
+                setStatus(s) { this.status = s; this.page = 1; this.statusOpen = false; },
+                setCategory(c) { this.category = c; this.page = 1; this.categoryOpen = false; },
+
+                get difficultyLabel() {
+                    return this.difficulty === 'all' ? 'Daraja' : this.diffLabel(this.difficulty);
+                },
+                get statusLabel() {
+                    if (this.status === 'all') return 'Holati';
+                    return this.status === 'solved' ? 'Yechilgan' : 'Yechilmagan';
+                },
+                get categoryLabel() {
+                    if (this.category === 'all') return 'Kategoriya';
+                    var cat = this.categories.find(function(c) { return c.slug === this.category; }, this);
+                    return cat ? cat.name : 'Kategoriya';
+                },
+
+                get categoriesWithCount() {
+                    var self = this;
+                    return this.categories
+                        .map(function(cat) {
+                            var count = self.allProblems.filter(function(p) {
+                                return p.category === cat.name || p.category === cat.slug;
+                            }).length;
+                            return { cat: cat, count: count };
+                        })
+                        .filter(function(x) { return x.count > 0; })
+                        .sort(function(a, b) { return b.count - a.count; });
+                },
+
+                get tagsWithCount() {
+                    var self = this;
+                    return this.tags
+                        .map(function(tag) {
+                            var count = self.allProblems.filter(function(p) {
+                                return (p.tags || []).some(function(t) {
+                                    return String(t).toLowerCase().indexOf(String(tag.name).toLowerCase()) !== -1;
+                                });
+                            }).length;
+                            return { tag: tag, count: count };
+                        })
+                        .filter(function(x) { return x.count > 0; })
+                        .sort(function(a, b) { return b.count - a.count; });
+                },
+
+                toggleTagSearch(name) {
+                    this.search = (this.search === name) ? '' : name;
+                    this.page = 1;
+                },
+
+                get filtered() {
+                    var self = this;
+                    var result = this.allProblems.slice();
+
+                    if (this.difficulty !== 'all') {
+                        result = result.filter(function(p) { return p.difficulty === self.difficulty; });
+                    }
+                    if (this.status === 'solved') result = result.filter(function(p) { return p.solved; });
+                    else if (this.status === 'unsolved') result = result.filter(function(p) { return !p.solved; });
+
+                    if (this.category !== 'all') {
+                        var cat = this.categories.find(function(c) { return c.slug === self.category; });
+                        if (cat) result = result.filter(function(p) { return p.category === cat.name; });
+                    }
+
+                    if (this.search) {
+                        var q = this.search.toLowerCase();
+                        result = result.filter(function(p) {
+                            return p.title.toLowerCase().indexOf(q) !== -1 ||
+                                (p.category || '').toLowerCase().indexOf(q) !== -1 ||
+                                (p.tags || []).some(function(t) { return String(t).toLowerCase().indexOf(q) !== -1; });
+                        });
+                    }
+
+                    if (this.sort === 'newest') result.sort(function(a, b) { return b.id - a.id; });
+                    else if (this.sort === 'oldest') result.sort(function(a, b) { return a.id - b.id; });
+                    else if (this.sort === 'xp') result.sort(function(a, b) { return (b.xp || 0) - (a.xp || 0); });
+                    else if (this.sort === 'difficulty') {
+                        var order = { easy: 0, medium: 1, hard: 2 };
+                        result.sort(function(a, b) { return (order[a.difficulty] ?? 9) - (order[b.difficulty] ?? 9); });
+                    }
+
+                    return result;
+                },
+
+                get visible() { return this.filtered.slice(0, this.page * this.limit); },
+                get hasMore() { return this.visible.length < this.filtered.length; },
+
+                statusClass(p) { return p.solved ? 'solved' : (p.bookmarked ? 'bookmarked' : 'unsolved'); },
+                statusIcon(p) { return p.solved ? 'check_circle' : (p.bookmarked ? 'bookmark' : 'radio_button_unchecked'); }
+            };
+        }
+    </script>
+
+    <!-- Alpine.js — komponent yuqorida allaqachon aniqlangan bo'lishi kerak -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+</body>
+</html>

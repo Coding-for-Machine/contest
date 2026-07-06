@@ -1,132 +1,77 @@
-# app/quizs/signals.py
-import logging
-import base64
-import io
-import qrcode
-from django.db import models
-from django.db.models import Sum
+# quiz/signals.py
+import os
+
+from django.db.models import F
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.utils import timezone
-from django.conf import settings
+from django.db import transaction
 
-from .models import TestSession, Test, CertificateTemplate, Certificate
+from .models import Question, UserResponse
+from status.models import UserStats, LessonStatus
 
-logger = logging.getLogger(__name__)
+@receiver(post_save, sender=UserResponse)
+def handle_user_response(sender, instance, created, **kwargs):
+    """Talaba dars savoliga birinchi marta to'g'ri javob berganida dars counterini oshiradi
 
-
-def calculate_percentage(session: TestSession) -> float:
-    """Sessiyaning foiz natijasini hisoblaydi: (score / max_mumkin_ball) * 100."""
-    total_possible = session.test.questions.aggregate(total=Sum('xp'))['total'] or 0
-    if total_possible <= 0:
-        return 0.0
-    return (session.score / total_possible) * 100
-
-
-def _issue_independent_test_certificate(session: TestSession, percentage: float) -> Certificate | None:
-    """Mustaqil (kursga bog'lanmagan) test uchun sertifikat berish."""
-    test = session.test
-    user = session.user
-
-    # O'tish foizini testning o'zidan tekshiramiz
-    if percentage < test.min_pass_percentage:
-        logger.info(
-            "❌ Ball yetarli emas: %.1f%% < %s%% (test='%s', user=%s)",
-            percentage, test.min_pass_percentage, test.title, user.id
-        )
-        return None
-
-    # ⚡️ YANGI TOZA ARXITEKTURA: 'template' maydoni defaults ichidan olib tashlandi
-    certificate, created = Certificate.objects.get_or_create(
-        user=user,
-        test_session=session,
-        test=test,
-    )
-    if created:
-        logger.info("🎉 Mustaqil test sertifikati yaratildi: %s (user=%s)", certificate.certificate_code, user.id)
-    return certificate if created else None
-
-
-def _all_course_tests_passed(user, course) -> bool:
-    """Foydalanuvchi kursdagi BARCHA faol testlarni muvaffaqiyatli o'tganmi tekshiradi."""
-    course_tests = Test.objects.filter(lesson__modul__course=course, is_active=True)
-    total_tests = course_tests.count()
-
-    if total_tests == 0:
-        return False
-
-    for test_item in course_tests:
-        max_score = test_item.questions.aggregate(total=Sum('xp'))['total'] or 0
-        if max_score <= 0:
-            return False
-
-        best_session = (
-            TestSession.objects
-            .filter(user=user, test=test_item, status=TestSession.Status.COMPLETED)
-            .order_by('-score')
-            .first()
-        )
-        if best_session is None:
-            return False
-
-        test_percentage = (best_session.score / max_score) * 100
-        if test_percentage < test_item.min_pass_percentage:
-            return False
-
-    return True
-
-
-def _issue_course_certificate(session: TestSession) -> Certificate | None:
-    """Kursdagi barcha testlarni yopganda, kurs uchun to'g'ridan-to'g'ri sertifikat berish."""
-    test = session.test
-    user = session.user
-    lesson = test.lesson
-
-    if not lesson or not lesson.modul or not lesson.modul.course:
-        logger.warning(
-            "⚠️ Test '%s' lesson/modul/course bog'lanishi to'liq emas, kurs sertifikati tekshirilmadi.",
-            test.title,
-        )
-        return None
-
-    course = lesson.modul.course
-
-    # Barcha testlarni topshirganini tekshirish
-    if not _all_course_tests_passed(user, course):
-        logger.info("ℹ️ Kursdagi barcha testlar hali o'tilmagan: kurs='%s', user=%s", course.title, user.id)
-        return None
-
-    # ⚡️ YANGI TOZA ARXITEKTURA: 'template' maydoni defaults ichidan olib tashlandi
-    certificate, created = Certificate.objects.get_or_create(
-        user=user,
-        course=course,
-        test_session=session,
-    )
-    if created:
-        logger.info("🎉 Kurs sertifikati yaratildi: %s (user=%s, kurs='%s')", certificate.certificate_code, user.id, course.title)
-    return certificate if created else None
-
-
-@receiver(post_save, sender=TestSession)
-def handle_test_session_completion(sender, instance: TestSession, created: bool, **kwargs):
-    """🎯 TEST SESSIYASI 'completed' holatiga o'tganda ishlaydigan signal."""
-    # Faqat yakunlangan sessiyalar uchun ishlaymiz
-    if instance.status != TestSession.Status.COMPLETED:
+    va unga faqat bir marta ball (XP) beradi. Qayta javob berilganda (yangi row
+    yaratilganda) dublikat ball berishni to'liq bloklaydi.
+    """
+    # Faqat yangi javob yozilganda (yangi row qo'shilganda) ishlaydi
+    if not created:
         return
 
-    if not instance.test:
+    # Savolning darsga tegishli ekanligi va uning bazaviy ballini (xp) bitta so'rovda olamiz
+    question_data = (
+        Question.objects.filter(id=instance.question_id)
+        .values("lesson_id", "xp")
+        .first()
+    )
+
+    if not question_data:
         return
 
-    user = instance.user
-    logger.info("📊 Sessiya qayta ishlanmoqda: id=%s, user=%s", instance.id, user.id)
+    lesson_id = question_data.get("lesson_id")
+    question_xp = question_data.get("xp") or 0
 
-    percentage = calculate_percentage(instance)
-    logger.info("   📈 Natija: score=%.2f -> %.1f%%", instance.score, percentage)
+    # Hozirgi berilgan javob Choice modeli bo'yicha to'g'riligini tekshiramiz
+    is_current_correct = (
+        instance.choice.is_correct if instance.choice else False
+    )
 
-    try:
-        if instance.test.lesson:
-            _issue_course_certificate(instance)
-        else:
-            _issue_independent_test_certificate(instance, percentage)
-    except Exception:
-        logger.exception("❌ Sertifikat yaratishda xatolik: session=%s, user=%s", instance.id, user.id)
+    # AGAR SAVOL DARSLIKKA TEGISHLI BO'LSA VA HOZIRGI JAVOB TO'G'RI BO'LSA
+    if lesson_id and is_current_correct:
+
+        # Foydalanuvchi aynan shu savolga ESKI JAVOBLARI ICHIDA to'g'ri javob berganmi?
+        already_solved_correctly = (
+            UserResponse.objects.filter(
+                user_id=instance.user_id,
+                question_id=instance.question_id,
+                choice__is_correct=True,
+            )
+            .exclude(id=instance.id)  # Hozirgi yangi yaratilgan javobni hisobga olmaymiz
+            .exists()
+        )
+
+        # Agar talaba bu savolni o'tmishda umuman to'g'ri topmagan bo'lsa (bu birinchi to'g'ri javob bo'lsa):
+        if not already_solved_correctly:
+            with transaction.atomic():
+                # 1. Darsdagi bajarilgan vazifalar sonini bazada 1 taga oshiramiz
+                LessonStatus.objects.update_or_create(
+                    user_id=instance.user_id,
+                    lesson_id=lesson_id,
+                    defaults={
+                        "finished_tasks_count": F("finished_tasks_count") + 1
+                    },
+                )
+
+                # 2. Foydalanuvchining global profiliga savolning XP ballini qo'shamiz
+                if question_xp > 0:
+                    # select_for_update() poyga holatida ballar ko'payib ketishini bloklaydi
+                    stats, _ = (
+                        UserStats.objects.select_for_update().get_or_create(
+                            user_id=instance.user_id
+                        )
+                    )
+                    stats.xp += question_xp
+                    stats.level = stats.compute_level()
+                    stats.save(update_fields=["xp", "level", "updated_at"])

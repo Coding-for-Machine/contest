@@ -1,5 +1,11 @@
+# submissions/apps.py
 from django.apps import AppConfig
 
 
 class SubmissionsConfig(AppConfig):
-    name = 'submissions'
+    default_auto_field = "django.db.models.BigAutoField"
+    name = "submissions"
+    verbose_name = "📤 Submission'lar"
+
+    def ready(self):
+        import submissions.signals  # noqa: F401 — signallarni ro'yxatdan o'tkazish

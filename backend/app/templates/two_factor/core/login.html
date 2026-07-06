@@ -1,0 +1,220 @@
+{% extends 'unfold/layouts/unauthenticated.html' %}
+{% load i18n static unfold %}
+
+{% block extrahead %}
+    {{ block.super }}
+    <!-- Google Material Icons -->
+    <link rel="stylesheet" href="https://googleapis.com" />
+    
+    <style>
+        /* ============================================================
+           MUKAMMAL ADAPTIV LOGIN INTERFEYSI (UNFOLD THEME FIX)
+           ============================================================ */
+        
+        /* 1. GLOBAL FON: Unfold data-theme holatiga qarab oq yoki to'q qora bo'ladi */
+        body.login {
+            background-color: #f8fafc !important; /* Standart Oq fon */
+            background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.04), transparent 50%) !important;
+            min-height: 100vh !important;
+            transition: background-color 0.3s ease !important;
+        }
+        
+        /* 🔴 ENG MUHIM JOYI: Unfold Dark Mode Atributi */
+        html[data-theme="dark"] body.login,
+        .dark body.login {
+            background-color: #09090b !important; /* Toza tungi qora fon */
+            background-image: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.09), transparent 50%) !important;
+        }
+
+        /* 2. Unfold Grid tizimini markazlashtirish */
+        main, .grid, div[class*="grid-cols"], div[class*="md:grid-cols"] {
+            display: flex !important;
+            flex-direction: column !important;
+            align-items: center !important;
+            justify-content: center !important;
+            min-height: 85vh !important;
+            width: 100% !important;
+        }
+        
+        main > div:first-child:not(.w-full) {
+            display: none !important;
+            width: 0 !important;
+            opacity: 0 !important;
+        }
+
+        /* 3. ASOSIY KARTA: Ikkala rejimda ham foni silliq almashadi */
+        div.w-full.max-w-md,
+        div[class*="bg-white"][class*="shadow"] {
+            background-color: #ffffff !important; /* Oq rejim foni */
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.03) !important;
+            border-radius: 24px !important;
+            padding: 2.5rem !important;
+            margin: auto !important;
+            max-width: 420px !important;
+            width: 100% !important;
+            transition: background-color 0.3s ease, border-color 0.3s ease !important;
+        }
+        
+        /* 🔴 Dark rejimda kartaning foni va ramkasi yorishadi */
+        html[data-theme="dark"] div.w-full.max-w-md,
+        html[data-theme="dark"] div[class*="bg-white"][class*="shadow"],
+        .dark div.w-full.max-w-md {
+            background-color: #18181b !important; /* To'q kulrang Premium Zinc fon */
+            border-color: #27272a !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.6) !important;
+        }
+
+        /* 4. Tepadagi Ikonka Qutisi */
+        .premium-logo-box {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 3.5rem !important;
+            height: 3.5rem !important;
+            border-radius: 1rem !important;
+            background: #eff6ff !important;
+            color: #2563eb !important;
+        }
+        html[data-theme="dark"] .premium-logo-box,
+        .dark .premium-logo-box {
+            background: rgba(59, 130, 246, 0.18) !important;
+            color: #60a5fa !important;
+        }
+
+        /* 5. INPUTLAR: Ichidagi matnlar va fonlar daxshatli uyg'unlashadi */
+        input[type="text"], input[type="password"] {
+            border-radius: 12px !important;
+            border-width: 2px !important;
+            border-color: #e2e8f0 !important;
+            background-color: #f8fafc !important;
+            padding: 0.75rem 1rem !important;
+            font-size: 0.95rem !important;
+            color: #0f172a !important; /* Oq rejimda to'q kulrang text */
+            width: 100% !important;
+        }
+        html[data-theme="dark"] input[type="text"], 
+        html[data-theme="dark"] input[type="password"],
+        .dark input[type="text"], .dark input[type="password"] {
+            background-color: #27272a !important;
+            border-color: #3f3f46 !important;
+            color: #f1f5f9 !important; /* Tungi rejimda oppoq yorqin yozuv */
+        }
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: #3b82f6 !important;
+            background-color: #ffffff !important;
+        }
+        html[data-theme="dark"] input[type="text"]:focus, 
+        html[data-theme="dark"] input[type="password"]:focus {
+            background-color: #18181b !important;
+            border-color: #60a5fa !important;
+        }
+
+        /* INPUT LABELLARI: Tepe qismidagi sarlavha yozuvlari */
+        main label, .w-full.max-w-md label, form label {
+            color: #334155 !important;
+            font-weight: 600 !important;
+        }
+        html[data-theme="dark"] main label, 
+        html[data-theme="dark"] form label,
+        .dark label {
+            color: #cbd5e1 !important; /* Tungi rejimda yorqin och kulrang label */
+        }
+
+        /* 6. Kirish Tugmasi */
+        .submit-row-btn {
+            background-color: #0284c7 !important;
+            color: #ffffff !important;
+            transition: all 0.2s ease-in-out !important;
+        }
+        .submit-row-btn:hover {
+            background-color: #0369a1 !important;
+        }
+
+        /* Erorr Alert Silkiniş Animatsiyasi */
+        .premium-login-error {
+            animation: shakeErrorAlert 0.4s cubic-bezier(.36,.07,.19,.97) both !important;
+            border-left-width: 4px !important;
+        }
+        @keyframes shakeErrorAlert {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+{% endblock %}
+
+{% block content %}
+    <!-- ── ASOSIY ADAPTIV SARLAVHA ── -->
+    <div class="text-center mb-6 select-none">
+        <div class="premium-logo-box mb-3">
+            <span class="material-symbols-outlined text-[26px] font-bold">lock_open</span>
+        </div>
+        <!-- Unfold HTML tokenlariga mos sarlavha matnlari -->
+        <h1 class="text-2xl font-black tracking-tight text-gray-900 dark:text-zinc-100">
+            {{ site_title|default:"CfM Contest" }}
+        </h1>
+        <p class="mt-1 text-xs font-semibold text-gray-400 dark:text-zinc-400">
+            {% trans "Boshqaruv paneliga xush kelibsiz!" %}
+        </p>
+    </div>
+
+    {% include "unfold/helpers/messages.html" %}
+
+    <!-- ── SHAKE ANIMATSIYALI ERORR BANNER (100% ADAPTIV) ── -->
+    {% if form.errors or form.non_field_errors %}
+        <div class="premium-login-error mb-5 flex items-center gap-3 rounded-xl border border-red-200 bg-red-50 p-4 border-l-red-500 dark:border-red-950/40 dark:bg-red-950/20">
+            <div class="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-red-100 text-red-600 dark:bg-red-500/20 dark:text-red-400">
+                <span class="material-symbols-outlined text-[20px] font-bold">gpp_maybe</span>
+            </div>
+            <div class="flex-1 min-w-0">
+                <h5 class="text-xs font-bold text-red-900 dark:text-red-400">
+                    {% trans "Foydalanuvchi nomi, email yoki parol noto'g'ri!" %}
+                </h5>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- ── FORMA (FETCH OVERRIDE VA NATIVE REDIRECT) ── -->
+    <form action="{% url 'admin_login' %}" method="post" id="login-form" class="space-y-4 w-full">
+        {% csrf_token %}
+
+        <div class="relative group w-full text-gray-700 dark:text-zinc-300">
+            {% include "unfold/helpers/field.html" with field=form.username %}
+        </div>
+
+        <div class="relative group w-full text-gray-700 dark:text-zinc-300">
+            {% include "unfold/helpers/field.html" with field=form.password %}
+        </div>
+
+        <div class="flex flex-col gap-3 mt-6">
+            {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row-btn w-full flex items-center justify-center gap-2 py-3 font-bold rounded-xl shadow-md active:scale-[0.99]" %}
+                {% trans "Tizimga kirish" %} 
+                <span class="material-symbols-outlined arrow-icon text-[18px] font-bold transition-transform duration-200">arrow_forward</span>
+            {% endcomponent %}
+        </div>
+    </form>
+
+    <!-- FETCH STOP PROPAGATION PATCH -->
+    <script>
+        (function() {
+            'use strict';
+            document.addEventListener("DOMContentLoaded", function() {
+                const loginForm = document.getElementById('login-form');
+                if (loginForm) {
+                    loginForm.addEventListener('submit', function(e) {
+                        e.stopPropagation();
+                    });
+                }
+            });
+        })();
+    </script>
+    
+    <!-- FOOTER -->
+    <div class="mt-8 border-t border-gray-100 pt-4 text-center dark:border-zinc-800 w-full">
+        <p class="text-[10px] font-bold tracking-wider text-gray-300 dark:text-zinc-600 uppercase">
+            {{ site_title|default:"CfM Contest" }} © 2026
+        </p>
+    </div>
+{% endblock %}

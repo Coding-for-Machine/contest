@@ -1,86 +1,123 @@
 package handler
 
 import (
-	"encoding/json"
-	"fmt"
-	"io"
-	"log"
+	"bytes"
 	"net/http"
 	"strings"
-	"webserver/internal/cache"
 	"webserver/internal/config"
 )
 
-type ContestHandler struct {
-	Cache *cache.Cache
-}
-
-func NewContestHandler(c *cache.Cache) *ContestHandler {
-	return &ContestHandler{Cache: c}
-}
-
-func (h *ContestHandler) GetContests(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	slug := strings.TrimPrefix(r.URL.Path, "/contests/")
-	slug = strings.TrimSpace(slug)
-
-	var cacheKey string
-	var templateName string
-	var apiURL string
-	var title string
-
-	if slug == "" || slug == "contests" {
-		cacheKey = "html:contests_list"
-		templateName = "pages/contests"
-		apiURL = config.BackendBaseURL + "/contests"
-		title = "Onlayn Dasturlash Musobaqalari - CFM"
-	} else {
-		cacheKey = fmt.Sprintf("html:contest:%s", slug)
-		templateName = "pages/contest-detail"
-		apiURL = fmt.Sprintf("%s/contests/%s", config.BackendBaseURL, slug)
-		title = config.SlugToTitle(slug) + " - CFM Musobaqa"
-	}
-
-	if cachedHTML, err := h.Cache.Memory.Get(cacheKey); err == nil {
-		w.Header().Set("X-Cache", "HIT")
-		w.Write(cachedHTML)
+func (a *App) GetContests(w http.ResponseWriter, r *http.Request) {
+	// Musobaqa ichidagi masala sahifasi (/contest/olimpiada/problem/A)
+	if strings.Contains(r.URL.Path, "/problem/") {
+		a.getContestProblem(w, r)
 		return
 	}
 
-	w.Header().Set("X-Cache", "MISS")
-
-	resp, err := http.Get(apiURL)
-	var backendData interface{}
-	if err == nil && resp.StatusCode == http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		_ = json.Unmarshal(body, &backendData)
-		resp.Body.Close()
+	// Alohida musobaqa sahifasi (/contest/olimpiada)
+	if strings.HasPrefix(r.URL.Path, "/contest/") {
+		slug := strings.TrimPrefix(r.URL.Path, "/contest/")
+		if slug == "" {
+			http.Redirect(w, r, "/contests", http.StatusSeeOther)
+			return
+		}
+		a.getContestDetail(w, r, slug)
+		return
 	}
 
-	seo := config.SEOContext{
-		Title:       title,
-		Description: "CFM onlayn algoritmlar musobaqasida qatnashing va o'z darajangizni tekshiring.",
-		URL:         "https://yourdomain.com" + r.URL.Path,
-		H1Title:     title,
-		Data:        backendData,
+	// Umumiy ro'yxat (/contests)
+	if cached, err := a.Cache.GetString("page_contests_list"); err == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(cached))
+		return
 	}
 
-	tmpl, exists := config.Templates[templateName]
+	tmpl, exists := config.GetTemplate("pages/contests/contests")
 	if !exists {
-		NotFound(w, r)
+		http.Error(w, "Musobaqalar ro'yxati shabloni topilmadi", http.StatusInternalServerError)
 		return
 	}
 
-	var buf []byte
-	wBuffer := &bytesWriter{w: w, buf: &buf}
+	seoData := config.SEOContext{
+		Title:       "Onlayn Dasturlash Musobaqalari - CFM Contest",
+		Description: "Algoritmik va matematik jonli olimpiadalar. Qatnashing va reytingingizni oshiring.",
+		URL:         "https://cfm.uz",
+		H1Title:     "Jonli va Kutilayotgan Musobaqalar",
+	}
 
-	err = tmpl.Execute(wBuffer, seo)
-	if err != nil {
-		log.Printf("❌ Contests shablon xatosi: %v", err)
-		http.Error(w, "Ichki server xatoligi", http.StatusInternalServerError)
+	var buf bytes.Buffer
+	_ = tmpl.Execute(&buf, seoData)
+	_ = a.Cache.SetString("page_contests_list", buf.String())
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
+}
+
+func (a *App) getContestDetail(w http.ResponseWriter, r *http.Request, slug string) {
+	cacheKey := "page_contest_detail_" + slug
+	if cached, err := a.Cache.GetString(cacheKey); err == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(cached))
 		return
 	}
 
-	_ = h.Cache.Memory.Set(cacheKey, buf)
+	tmpl, exists := config.GetTemplate("pages/contests/contest-detail")
+	if !exists {
+		http.NotFound(w, r)
+		return
+	}
+
+	contestTitle := config.SlugToTitle(slug)
+	seoData := config.SEOContext{
+		Title:       contestTitle + " - Musobaqa Masalalari",
+		Description: contestTitle + " musobaqasining jonli monitoringi va vaqt cheklovlari.",
+		URL:         "https://cfm.uz" + slug,
+		H1Title:     contestTitle,
+	}
+
+	var buf bytes.Buffer
+	_ = tmpl.Execute(&buf, seoData)
+	_ = a.Cache.SetString(cacheKey, buf.String())
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
+}
+
+func (a *App) getContestProblem(w http.ResponseWriter, r *http.Request) {
+	pathParts := strings.Split(strings.Trim(r.URL.Path, "/"), "/")
+	if len(pathParts) < 4 {
+		http.NotFound(w, r)
+		return
+	}
+
+	contestSlug := pathParts[1]
+	problemLetter := pathParts[3]
+	cacheKey := "page_contest_" + contestSlug + "_prob_" + problemLetter
+
+	if cached, err := a.Cache.GetString(cacheKey); err == nil {
+		w.Header().Set("Content-Type", "text/html; charset=utf-8")
+		w.Write([]byte(cached))
+		return
+	}
+
+	tmpl, exists := config.GetTemplate("pages/contests/contest-problem")
+	if !exists {
+		http.Error(w, "Musobaqa masala shabloni topilmadi", http.StatusInternalServerError)
+		return
+	}
+
+	contestTitle := config.SlugToTitle(contestSlug)
+	seoData := config.SEOContext{
+		Title:       "Masala " + strings.ToUpper(problemLetter) + " | " + contestTitle + " - CFM",
+		Description: contestTitle + " musobaqasidagi " + strings.ToUpper(problemLetter) + "-masala sharti.",
+		URL:         "https://cfm.uz" + r.URL.Path,
+		H1Title:     "Masala " + strings.ToUpper(problemLetter),
+	}
+
+	var buf bytes.Buffer
+	_ = tmpl.Execute(&buf, seoData)
+	_ = a.Cache.SetString(cacheKey, buf.String())
+
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	w.Write(buf.Bytes())
 }

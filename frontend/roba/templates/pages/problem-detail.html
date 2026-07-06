@@ -1,0 +1,1733 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Ikki son yig'indisi | RobaContest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- CodeMirror - Light Theme -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/theme/eclipse.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.css">
+
+    <!-- Markdown & MathJax -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14',
+                        inksoft: '#5b6572',
+                        inkfaint: '#9aa3ad',
+                        line: '#e7eaee',
+                        'line-soft': '#f0f2f4',
+                        surface: '#fafafa',
+                        'surface-2': '#f4f5f6',
+                        easy: '#17924f',
+                        'easy-bg': '#eafbf1',
+                        medium: '#b5710a',
+                        'medium-bg': '#fef6e7',
+                        hard: '#d0264a',
+                        'hard-bg': '#fdeced',
+                        info: '#1d5fd6',
+                        'info-bg': '#eaf1fd',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+    <link rel="stylesheet" href="../../static/css/style.css">
+
+    <style>
+        /* ============================================================
+           PROBLEM DETAIL PAGE - LIGHT THEME
+           ============================================================ */
+
+        #workspace {
+            display: flex;
+            height: calc(100vh - 57px);
+            overflow: hidden;
+            background: #ffffff;
+        }
+
+        #splitLeft {
+            width: 46%;
+            min-width: 380px;
+            overflow-y: auto;
+            border-right: 1px solid var(--line);
+            background: #ffffff;
+        }
+
+        #splitDrag {
+            width: 5px;
+            cursor: col-resize;
+            background: var(--line-soft);
+            flex-shrink: 0;
+            transition: background .15s ease;
+            position: relative;
+        }
+        #splitDrag:hover,
+        #splitDrag:active {
+            background: var(--ink-faint);
+        }
+
+        .split-right {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            min-width: 0;
+            background: #ffffff;
+        }
+
+        .markdown-body {
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+            line-height: 1.7;
+            color: var(--ink);
+            background: transparent;
+        }
+        .markdown-body pre {
+            background: #f6f8fa;
+            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1px solid var(--line-soft);
+        }
+        .markdown-body code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .markdown-body table td,
+        .markdown-body table th {
+            border: 1px solid var(--line);
+            padding: 6px 12px;
+        }
+        .markdown-body .math {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+        }
+        .markdown-body h1 {
+            font-size: 1.8em;
+        }
+        .markdown-body h2 {
+            font-size: 1.5em;
+        }
+        .markdown-body h3 {
+            font-size: 1.25em;
+        }
+
+        .tab-btn {
+            padding: 10px 16px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--ink-soft);
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: transparent;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .tab-btn:hover {
+            color: var(--ink);
+        }
+        .tab-btn.active {
+            color: var(--ink);
+            border-bottom-color: var(--ink);
+            font-weight: 600;
+        }
+
+        .CodeMirror {
+            height: 100% !important;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13.5px;
+            line-height: 1.7;
+            background: #ffffff;
+            color: #0b0f14;
+        }
+        .CodeMirror-gutters {
+            background: #f8f9fa;
+            border-right: 1px solid var(--line);
+        }
+        .CodeMirror-linenumber {
+            color: #9aa3ad;
+        }
+        .CodeMirror-cursor {
+            border-left: 2px solid #0b0f14;
+        }
+        .CodeMirror-selected {
+            background: rgba(11, 15, 20, 0.08);
+        }
+
+        #bottomZone {
+            border-top: 1px solid var(--line);
+            overflow-y: auto;
+            flex-shrink: 0;
+            background: #ffffff;
+            color: var(--ink);
+            height: 220px;
+        }
+        #bottomResize {
+            height: 5px;
+            cursor: row-resize;
+            background: var(--line-soft);
+        }
+        #bottomResize:hover {
+            background: var(--ink-faint);
+        }
+
+        .test-case-btn {
+            padding: 4px 14px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            border: 1px solid var(--line);
+            background: #ffffff;
+            color: var(--ink-soft);
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .test-case-btn:hover {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+        .test-case-btn.active {
+            background: var(--ink);
+            color: #ffffff;
+            border-color: var(--ink);
+        }
+        .test-case-btn.passed {
+            border-color: var(--easy);
+            color: var(--easy);
+            background: var(--easy-bg);
+        }
+        .test-case-btn.failed {
+            border-color: var(--hard);
+            color: var(--hard);
+            background: var(--hard-bg);
+        }
+
+        .result-output {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 8px;
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            color: var(--ink);
+            white-space: pre-wrap;
+            word-break: break-all;
+            min-height: 60px;
+        }
+        .result-output .error {
+            color: var(--hard);
+        }
+        .result-output .success {
+            color: var(--easy);
+        }
+        .result-output .info {
+            color: var(--info);
+        }
+        .result-output .warning {
+            color: var(--medium);
+        }
+
+        .input-output-box {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--ink);
+            word-break: break-all;
+        }
+
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+            padding: 2px 10px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        .status-badge.solved {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .status-badge.unsolved {
+            background: var(--surface-2);
+            color: var(--ink-soft);
+        }
+
+        .solved-section {
+            background: var(--easy-bg);
+            border: 1px solid var(--easy);
+            border-radius: 12px;
+            padding: 16px 20px;
+            margin-top: 16px;
+        }
+        .solved-section .video-placeholder {
+            background: #d4edda;
+            border-radius: 8px;
+            padding: 20px;
+            text-align: center;
+            border: 1px dashed var(--easy);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .solved-section .video-placeholder:hover {
+            background: #c3e6cb;
+        }
+        .solved-section .video-placeholder .material-icons {
+            font-size: 48px;
+            color: var(--easy);
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 6px 0;
+            border-bottom: 1px solid var(--line-soft);
+        }
+        .stat-item:last-child {
+            border-bottom: none;
+        }
+        .stat-item .label {
+            color: var(--ink-soft);
+            font-size: 13px;
+        }
+        .stat-item .value {
+            font-weight: 600;
+            font-size: 14px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .material-icons {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+        .material-icons.small {
+            font-size: 16px;
+        }
+
+        .badge-easy {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .badge-medium {
+            background: var(--medium-bg);
+            color: var(--medium);
+        }
+        .badge-hard {
+            background: var(--hard-bg);
+            color: var(--hard);
+        }
+
+        /* ===== SOUND TOGGLE - TOP BAR ===== */
+        .sound-toggle-top {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            padding: 4px 10px;
+            border-radius: 999px;
+            border: 1px solid var(--line);
+            background: #fff;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            font-size: 12px;
+            color: var(--ink-soft);
+        }
+        .sound-toggle-top:hover {
+            border-color: var(--ink);
+            color: var(--ink);
+        }
+        .sound-toggle-top.muted {
+            background: var(--surface-2);
+        }
+        .sound-toggle-top.muted .icon-on { display: none; }
+        .sound-toggle-top:not(.muted) .icon-off { display: none; }
+        .sound-toggle-top .material-icons { font-size: 18px; }
+
+        /* ===== CONFETTI CANVAS ===== */
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 9999;
+        }
+
+        /* ===== ACCEPT MODAL ===== */
+        #resultModal .modal-box {
+            position: relative;
+            overflow: visible;
+        }
+        .accept-glow {
+            animation: acceptPulse 1.4s ease-in-out infinite;
+        }
+        @keyframes acceptPulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(23, 146, 79, 0.35); }
+            50% { box-shadow: 0 0 0 14px rgba(23, 146, 79, 0); }
+        }
+
+        @media (max-width: 860px) {
+            #workspace {
+                flex-direction: column;
+                height: auto;
+            }
+            #splitLeft {
+                width: 100% !important;
+                min-width: 0;
+                border-right: none;
+                border-bottom: 1px solid var(--line);
+                max-height: 500px;
+            }
+            #splitDrag {
+                display: none;
+            }
+            .split-right {
+                min-height: 450px;
+            }
+            .sound-toggle-top {
+                font-size: 10px;
+                padding: 2px 8px;
+            }
+            .sound-toggle-top .material-icons { font-size: 16px; }
+        }
+
+        @media (max-width: 400px) {
+            #splitLeft {
+                max-height: 350px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="container-rc flex items-center justify-between h-14">
+            <div class="flex items-center gap-8">
+                <a href="/" class="flex items-center gap-2 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:20px;">code</span>
+                    </span>
+                    <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+                </a>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="/problems.html" class="nav-link active">Masalalar</a>
+                    <a href="/tests.html" class="nav-link">Testlar</a>
+                    <a href="/contests.html" class="nav-link">Musobaqalar</a>
+                    <a href="/courses.html" class="nav-link">Kurslar</a>
+                    <a href="/leaderboard.html" class="nav-link">Reyting</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" aria-label="Qidirish">
+                    <span class="material-icons">search</span>
+                </button>
+
+                <!-- SOUND TOGGLE - TOP BAR -->
+                <button class="sound-toggle-top" id="soundToggle" title="Ovozni yoqish/o'chirish">
+                    <span class="material-icons icon-on">volume_up</span>
+                    <span class="material-icons icon-off">volume_off</span>
+                    <span class="hidden sm:inline" id="soundLabel">Ovoz</span>
+                </button>
+
+                <a href="/login.html" class="btn btn-outline btn-sm btn-login">Kirish</a>
+                <a href="/login.html" class="btn btn-primary btn-sm btn-signup">Boshlash</a>
+                <div class="relative">
+                    <div class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">AZ</div>
+                    <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+                        <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">person</span> Profil
+                        </a>
+                        <a href="/leaderboard.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">emoji_events</span> Mening reytingim
+                        </a>
+                        <div class="h-px bg-line my-1"></div>
+                        <button onclick="Auth.logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">
+                            <span class="material-icons small mr-2">logout</span> Chiqish
+                        </button>
+                    </div>
+                </div>
+                <button class="md:hidden" onclick="document.getElementById('mobileNav').classList.toggle('hidden')" aria-label="Menyu">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+        </div>
+        <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+            <nav class="container-rc flex flex-col py-2">
+                <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">emoji_events</span> Musobaqalar
+                </a>
+                <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="py-3 text-sm font-medium">
+                    <span class="material-icons small mr-2">leaderboard</span> Reyting
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== CONFETTI CANVAS ===== -->
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- ===== MAIN WORKSPACE ===== -->
+    <main>
+        <div id="workspace">
+
+            <!-- ===== LEFT: Description ===== -->
+            <section id="splitLeft" class="flex flex-col">
+                <!-- Tabs -->
+                <div class="flex items-center gap-1 px-5 pt-4 border-b border-line">
+                    <button class="tab-btn active" data-tab="description">
+                        <span class="material-icons small">description</span> Tavsif
+                    </button>
+                    <button class="tab-btn" data-tab="hints">
+                        <span class="material-icons small">lightbulb</span> Maslahatlar
+                    </button>
+                    <button class="tab-btn" data-tab="challenges">
+                        <span class="material-icons small">flag</span> Vazifalar
+                    </button>
+                    <button class="tab-btn" data-tab="solutions">
+                        <span class="material-icons small">code</span> Yechimlar
+                    </button>
+                    <button class="ml-auto btn btn-ghost btn-sm" data-bookmark="ikki-son-yigindisi" title="Saqlash">
+                        <span class="material-icons" id="bookmarkIcon">bookmark_border</span>
+                    </button>
+                </div>
+
+                <!-- Content -->
+                <div class="px-5 py-5 overflow-y-auto flex-1" id="tabContent">
+
+                    <!-- ===== DESCRIPTION TAB ===== -->
+                    <div id="tab-description">
+                        <!-- Header -->
+                        <div class="flex items-start justify-between gap-4 mb-3">
+                            <div>
+                                <h1 class="font-display font-bold text-xl" id="pTitle">Ikki son yig'indisi</h1>
+                                <div class="flex items-center gap-2 mt-1">
+                                    <span class="status-badge unsolved" id="pStatus">
+                                        <span class="material-icons small" style="font-size:14px;">hourglass_empty</span> Yechilmagan
+                                    </span>
+                                </div>
+                            </div>
+                            <span class="badge badge-medium" id="pDiff">Medium</span>
+                        </div>
+
+                        <!-- Meta -->
+                        <div class="flex items-center flex-wrap gap-4 mb-5 text-sm text-inksoft">
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons small">bolt</span>
+                                <span class="font-mono" id="pXp">+10 XP</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons small">check_circle</span>
+                                <span id="pAccept">78% qabul</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons small">label</span>
+                                <span id="pCategory">mathematika</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons small">timer</span>
+                                <span class="font-mono" id="pTimeLimit">2000ms</span>
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons small">memory</span>
+                                <span class="font-mono" id="pMemoryLimit">256MB</span>
+                            </span>
+                        </div>
+
+                        <!-- Tags -->
+                        <div class="flex flex-wrap gap-1.5 mb-5" id="pTags">
+                            <span class="badge badge-neutral">#Array</span>
+                        </div>
+
+                        <!-- Description (Markdown) -->
+                        <div class="markdown-body" id="pDescription">
+                            <p>Berilgan butun sonlar massivi <code>nums</code> va butun son <code>target</code>. Massivdagi ikkita sonning yig'indisi <code>target</code> ga teng bo'ladigan indekslarini qaytaring.</p>
+                            <p>Har bir kirishda aynan bitta yechim bor deb taxmin qilishingiz mumkin va siz bir xil elementni ikki marta ishlata olmaysiz.</p>
+                            <p>Javobni istalgan tartibda qaytarishingiz mumkin.</p>
+
+                            <h3>Example 1:</h3>
+                            <pre><code>Input: nums = [2,7,11,15], target = 9
+        Output: [0,1]
+        Explanation: 2 + 7 = 9, shuning uchun [0,1] qaytaramiz.</code></pre>
+
+                            <h3>Example 2:</h3>
+                            <pre><code>Input: nums = [3,2,4], target = 6
+        Output: [1,2]</code></pre>
+
+                            <h3>Example 3:</h3>
+                            <pre><code>Input: nums = [3,3], target = 6
+        Output: [0,1]</code></pre>
+
+                            <h3>Cheklovlar:</h3>
+                            <ul>
+                                <li>$2 \leq nums.length \leq 10^4$</li>
+                                <li>$-10^9 \leq nums[i] \leq 10^9$</li>
+                                <li>$-10^9 \leq target \leq 10^9$</li>
+                            </ul>
+                            <p>Faqat bitta to'g'ri javob mavjud</p>
+                        </div>
+
+                        <!-- ===== SOLVED SECTION ===== -->
+                        <div id="solvedSection" class="solved-section hidden">
+                            <div class="flex items-center gap-2 mb-3">
+                                <span class="material-icons text-easy">check_circle</span>
+                                <span class="font-bold text-easy">Masala yechildi! 🎉</span>
+                            </div>
+                            <p class="text-sm text-inksoft mb-3">Siz ushbu masalani muvaffaqiyatli yechdingiz. Quyida to'g'ri yechim va tushuntirish video mavjud.</p>
+
+                            <div class="bg-white border border-line rounded-lg p-4 mb-3">
+                                <div class="flex items-center justify-between mb-2">
+                                    <span class="text-xs font-bold uppercase text-inkfaint">To'g'ri yechim</span>
+                                    <button onclick="copySolution()" class="text-xs text-info hover:underline flex items-center gap-1">
+                                        <span class="material-icons small" style="font-size:14px;">content_copy</span> Nusxalash
+                                    </button>
+                                </div>
+                                <pre class="font-mono text-sm bg-surface p-3 rounded border border-line-soft overflow-x-auto" id="solutionCode">def two_sum(nums, target):
+        seen = {}
+        for i, num in enumerate(nums):
+            complement = target - num
+            if complement in seen:
+                return [seen[complement], i]
+            seen[num] = i
+        return []</pre>
+                            </div>
+
+                            <div class="video-placeholder" onclick="playSolutionVideo()">
+                                <span class="material-icons">play_circle_filled</span>
+                                <p class="text-sm font-medium mt-2">Masala yechimi bo'yicha video darslik</p>
+                                <p class="text-xs text-inksoft">Yechimni bosqichma-bosqich tushuntirish</p>
+                            </div>
+
+                            <div id="videoContainer" class="hidden mt-3">
+                                <div class="relative" style="padding-bottom: 56.25%; height: 0;">
+                                    <iframe id="solutionVideo" class="absolute top-0 left-0 w-full h-full rounded-lg"
+                                    src="https://www.youtube.com/embed/dQw4w9WgXcQ"
+                                    title="Solution video"
+                                    frameborder="0"
+                                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                                    allowfullscreen>
+                                </iframe>
+                            </div>
+                            <button onclick="closeVideo()" class="text-xs text-inksoft hover:text-ink mt-2 flex items-center gap-1">
+                                <span class="material-icons small" style="font-size:14px;">close</span> Videoni yopish
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="mt-6 pt-5 border-t border-line flex items-center flex-wrap gap-5 text-sm">
+                        <button class="flex items-center gap-1.5 text-inksoft hover:text-easy transition" onclick="copyLink()">
+                            <span class="material-icons small">link</span> Ulashish
+                        </button>
+                        <button class="flex items-center gap-1.5 text-inksoft hover:text-easy transition" id="likeBtn">
+                            <span class="material-icons small" id="likeIcon">thumb_up_off_alt</span>
+                            <span id="likesCount">124</span>
+                        </button>
+                        <button class="flex items-center gap-1.5 text-inksoft hover:text-easy transition">
+                            <span class="material-icons small">flag</span> Xabar berish
+                        </button>
+                        <span class="text-xs text-inkfaint ml-auto" id="pDifficultyLabel">Qiyinlik: O'rtacha</span>
+                    </div>
+                </div>
+
+                <!-- ===== HINTS TAB ===== -->
+                <div id="tab-hints" class="hidden">
+                    <h3 class="font-display font-bold text-lg mb-4">💡 Maslahatlar</h3>
+                    <div class="flex flex-col gap-3" id="hintsList">
+                        <div class="card p-4 bg-surface border-line">
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-info-bg text-info flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                <div>
+                                    <div class="font-medium text-sm">Bunday masalani yechish uchun matematikadagi ikki son yig'indisini eslang</div>
+                                    <div class="text-xs text-inksoft mt-1">Array va hash map dan foydalaning</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== CHALLENGES TAB ===== -->
+                <div id="tab-challenges" class="hidden">
+                    <h3 class="font-display font-bold text-lg mb-4">🎯 Vazifalar</h3>
+                    <div class="flex flex-col gap-3" id="challengesList">
+                        <div class="card p-4 bg-surface border-line">
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-easy-bg text-easy flex items-center justify-center text-xs font-bold shrink-0">1</span>
+                                <div>
+                                    <div class="font-medium text-sm">Birinchi navbatda funksiya yozing</div>
+                                    <div class="text-xs text-inksoft mt-1">def two_sum(nums, target):</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card p-4 bg-surface border-line">
+                            <div class="flex items-start gap-3">
+                                <span class="w-6 h-6 rounded-full bg-easy-bg text-easy flex items-center justify-center text-xs font-bold shrink-0">2</span>
+                                <div>
+                                    <div class="font-medium text-sm">Keyin ikki parametr yig'indisini qaytaring</div>
+                                    <div class="text-xs text-inksoft mt-1">return [i, j]</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ===== SOLUTIONS TAB ===== -->
+                <div id="tab-solutions" class="hidden">
+                    <div class="text-center py-12 text-inksoft">
+                        <span class="material-icons" style="font-size:48px;">code</span>
+                        <p class="mt-3 font-medium">Yechimlar hali qo'shilmagan</p>
+                        <p class="text-sm">Birinchi bo'lib yechim qo'shing!</p>
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- ===== DRAG HANDLE ===== -->
+        <div id="splitDrag"></div>
+
+        <!-- ===== RIGHT: Code Editor ===== -->
+        <section class="split-right">
+            <!-- Editor toolbar -->
+            <div class="flex items-center justify-between px-4 py-2.5 border-b border-line">
+                <div class="flex items-center gap-2">
+                    <span class="material-icons small text-inkfaint">code</span>
+                    <select id="langSelect" class="select w-auto text-xs py-1.5">
+                        <option value="python">Python (3.10.0)</option>
+                        <option value="cpp">C++ (17)</option>
+                        <option value="java">Java (17)</option>
+                        <option value="javascript">JavaScript (ES2022)</option>
+                    </select>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="btn-ghost btn btn-sm text-inksoft hover:text-ink" title="To'liq ekran" onclick="toggleFullscreen(document.getElementById('workspace'))">
+                        <span class="material-icons small">fullscreen</span>
+                    </button>
+                    <button class="btn btn-outline btn-sm" id="runBtn">
+                        <span class="material-icons small">play_arrow</span> Ishga tushirish
+                    </button>
+                    <button class="btn btn-primary btn-sm" id="submitBtn">
+                        <span class="material-icons small">send</span> Yuborish
+                    </button>
+                </div>
+            </div>
+
+            <!-- Code editor -->
+            <div class="flex-1 min-h-0 relative">
+                <textarea id="codeArea" spellcheck="false" class="w-full h-full p-5 font-mono text-[13.5px] leading-relaxed resize-none outline-none border-0" style="background:#ffffff; color:#0b0f14; tab-size:4; display:none;">def two_sum(nums, target):
+        pass</textarea>
+            </div>
+
+            <!-- Bottom resize handle -->
+            <div id="bottomResize"></div>
+
+            <!-- Bottom zone -->
+            <div id="bottomZone">
+                <div class="flex items-center gap-1 px-4 pt-3">
+                    <button class="px-3 py-2 text-sm font-semibold border-b-2 border-ink -mb-px" style="color:var(--ink); border-color:var(--ink);" onclick="switchBottomTab('testcases')">
+                        <span class="material-icons small">fact_check</span> Test kase'lar
+                    </button>
+                    <button class="px-3 py-2 text-sm font-medium text-inksoft" onclick="switchBottomTab('result')">
+                        <span class="material-icons small">analytics</span> Natija
+                    </button>
+                    <button class="px-3 py-2 text-sm font-medium text-inksoft" onclick="switchBottomTab('console')">
+                        <span class="material-icons small">terminal</span> Console
+                    </button>
+                </div>
+
+                <!-- Test cases -->
+                <div id="bottom-testcases" class="px-4 py-3 flex flex-col gap-3">
+                    <div class="flex flex-wrap gap-2">
+                        <button class="test-case-btn active" data-tc="0" onclick="selectTestCase(0)">Kase 1</button>
+                        <button class="test-case-btn" data-tc="1" onclick="selectTestCase(1)">Kase 2</button>
+                        <button class="test-case-btn" data-tc="2" onclick="selectTestCase(2)">Kase 3</button>
+                    </div>
+                    <div class="grid sm:grid-cols-2 gap-3 text-xs font-mono">
+                        <div>
+                            <div class="text-inkfaint mb-1 uppercase text-[10px] font-sans font-bold">Kirish</div>
+                            <div class="input-output-box" id="testInput">nums = [2,7,11,15], target = 9</div>
+                        </div>
+                        <div>
+                            <div class="text-inkfaint mb-1 uppercase text-[10px] font-sans font-bold">Kutilgan chiqish</div>
+                            <div class="input-output-box" id="testOutput">[0,1]</div>
+                        </div>
+                    </div>
+                    <div class="text-xs text-inksoft">
+                        <span class="font-medium text-ink">Izoh:</span>
+                        <span id="testExplanation">nums[0] + nums[1] = 2 + 7 = 9</span>
+                    </div>
+                </div>
+
+                <!-- Result -->
+                <div id="bottom-result" class="hidden px-4 py-3">
+                    <div class="result-output" id="resultOutput">
+                        <span class="info">▶ Testlar bajarilmoqda...</span>
+                    </div>
+                </div>
+
+                <!-- Console -->
+                <div id="bottom-console" class="hidden px-4 py-3">
+                    <div class="result-output" id="consoleOutput">
+                        <span class="info">$ Ready</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </div>
+</main>
+
+<!-- ===== MODALS ===== -->
+<div class="modal-overlay" id="resultModal">
+    <div class="modal-box max-w-sm text-center">
+        <div class="w-14 h-14 rounded-full bg-easy-bg flex items-center justify-center mx-auto mb-4 accept-glow" id="acceptIconWrap">
+            <span class="material-icons text-easy" style="font-size:32px;">check_circle</span>
+        </div>
+        <h3 class="font-display font-bold text-xl mb-1">Accepted ✓</h3>
+        <p class="text-sm text-inksoft mb-5">Barcha test kase'laridan muvaffaqiyatli o'tdingiz.</p>
+        <div class="grid grid-cols-2 gap-3 mb-6 text-left">
+            <div class="stat-chip">
+                <div class="text-xs text-inksoft mb-1">Vaqt</div>
+                <div class="font-mono font-bold" id="resultTime">42ms</div>
+            </div>
+            <div class="stat-chip">
+                <div class="text-xs text-inksoft mb-1">Xotira</div>
+                <div class="font-mono font-bold" id="resultMemory">14.2MB</div>
+            </div>
+        </div>
+        <button onclick="Modal.close('resultModal')" class="btn btn-primary btn-block">Yopish</button>
+    </div>
+</div>
+
+<div class="modal-overlay" id="errorModal">
+    <div class="modal-box max-w-sm text-center">
+        <div class="w-14 h-14 rounded-full bg-hard-bg flex items-center justify-center mx-auto mb-4">
+            <span class="material-icons text-hard" style="font-size:32px;">error</span>
+        </div>
+        <h3 class="font-display font-bold text-xl mb-1">Xatolik</h3>
+        <p class="text-sm text-inksoft mb-5" id="errorMessage">Test kase'laridan o'ta olmadingiz. Qayta urinib ko'ring.</p>
+        <button onclick="Modal.close('errorModal')" class="btn btn-primary btn-block">Yopish</button>
+    </div>
+</div>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- ===== SCRIPTS ===== -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/codemirror.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/python/python.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/clike/clike.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/mode/javascript/javascript.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/foldgutter.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/brace-fold.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.16/addon/fold/indent-fold.min.js"></script>
+
+<!-- Global JS -->
+<script src="../../static/js/main.js"></script>
+
+<!-- ===== PAGE SPECIFIC JS ===== -->
+<script>
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // PROBLEM DATA
+        // ============================================================
+        var problem = {
+            id: 1,
+            title: "Ikki son yig'indisi",
+            slug: "ikki-son-yigindisi",
+            description: "Berilgan butun sonlar massivi nums va butun son target. Massivdagi ikkita sonning yig'indisi target ga teng bo'ladigan indekslarini qaytaring.\n\nHar bir kirishda aynan bitta yechim bor deb taxmin qilishingiz mumkin va siz bir xil elementni ikki marta ishlata olmaysiz.\n\nJavobni istalgan tartibda qaytarishingiz mumkin.\n\n**Example 1:**\n\n    Input: nums = [2,7,11,15], target = 9\n    Output: [0,1]\n    Explanation: 2 + 7 = 9, shuning uchun [0,1] qaytaramiz.\n\n**Example 2:**\n\n    Input: nums = [3,2,4], target = 6\n    Output: [1,2]\n\n**Example 3:**\n\n    Input: nums = [3,3], target = 6\n    Output: [0,1]\n\n**Cheklovlar:**\n\n- $2 \\leq nums.length \\leq 10^4$\n- $-10^9 \\leq nums[i] \\leq 10^9$\n- $-10^9 \\leq target \\leq 10^9$\n\nFaqat bitta to'g'ri javob mavjud",
+            difficulty: "medium",
+            xp: 10,
+            time_limit: 2000,
+            memory_limit: 256,
+            category_name: "mathematika",
+            tags: [{ id: 1, name: "Array" }],
+            hints: [{ id: 1, text: "Bunday masalani yechish uchun matematikadagi ikki son yig'indisini eslang" }],
+            challenges: [
+                { id: 1, text: "Birinchi navbatda funksiya yozing" },
+                { id: 2, text: "Keyin ikki parametr yig'indisini qaytaring" }
+            ],
+            defaultCode: {
+                python: 'def two_sum(nums, target):\n    pass',
+                cpp: '#include <vector>\n#include <unordered_map>\nusing namespace std;\n\nvector<int> twoSum(vector<int>& nums, int target) {\n    // Your code here\n}',
+                java: 'import java.util.*;\n\nclass Solution {\n    public int[] twoSum(int[] nums, int target) {\n        // Your code here\n    }\n}',
+                javascript: '/**\n * @param {number[]} nums\n * @param {number} target\n * @return {number[]}\n */\nvar twoSum = function(nums, target) {\n    // Your code here\n};'
+            },
+            testCases: [
+                { input: 'nums = [2,7,11,15], target = 9', output: '[0,1]', explanation: 'nums[0] + nums[1] = 2 + 7 = 9' },
+                { input: 'nums = [3,2,4], target = 6', output: '[1,2]', explanation: 'nums[1] + nums[2] = 2 + 4 = 6' },
+                { input: 'nums = [3,3], target = 6', output: '[0,1]', explanation: 'nums[0] + nums[1] = 3 + 3 = 6' }
+            ],
+            solved: false,
+            bookmarked: false,
+            likes: 124,
+            isLiked: false,
+            solutionCode: 'def two_sum(nums, target):\n    seen = {}\n    for i, num in enumerate(nums):\n        complement = target - num\n        if complement in seen:\n            return [seen[complement], i]\n        seen[num] = i\n    return []',
+            videoUrl: 'https://www.youtube.com/embed/dQw4w9WgXcQ'
+        };
+
+        // ============================================================
+        // STATE
+        // ============================================================
+        var state = {
+            currentTab: 'description',
+            currentTestCase: 0,
+            bottomTab: 'testcases',
+            language: 'python',
+            code: problem.defaultCode.python,
+            isBookmarked: problem.bookmarked || false,
+            isSolved: problem.solved || false,
+            likes: problem.likes || 0,
+            isLiked: problem.isLiked || false,
+            editor: null,
+            videoVisible: false,
+            soundEnabled: true
+        };
+
+        // Ovoz sozlamasini eslab qolish
+        try {
+            var savedSound = localStorage.getItem('rc_sound_enabled');
+            if (savedSound !== null) state.soundEnabled = savedSound === '1';
+        } catch (e) {}
+
+        // ============================================================
+        // DOM REFS
+        // ============================================================
+        var codeArea = document.getElementById('codeArea');
+        var soundToggle = document.getElementById('soundToggle');
+        var soundLabel = document.getElementById('soundLabel');
+        var confettiCanvas = document.getElementById('confettiCanvas');
+
+        // ============================================================
+        // SOUND — Web Audio API
+        // ============================================================
+        var audioCtx = null;
+
+        function getAudioCtx() {
+            if (!state.soundEnabled) return null;
+            if (!audioCtx) {
+                try {
+                    audioCtx = new(window.AudioContext || window.webkitAudioContext)();
+                } catch (e) {
+                    console.warn('Web Audio qo\'llab-quvvatlanmaydi:', e);
+                    return null;
+                }
+            }
+            if (audioCtx.state === 'suspended') {
+                audioCtx.resume();
+            }
+            return audioCtx;
+        }
+
+        function playTone(freq, startTime, duration, type, gainPeak) {
+            var ctx = getAudioCtx();
+            if (!ctx) return;
+            var osc = ctx.createOscillator();
+            var gain = ctx.createGain();
+            osc.type = type || 'sine';
+            osc.frequency.setValueAtTime(freq, ctx.currentTime + startTime);
+            gain.gain.setValueAtTime(0, ctx.currentTime + startTime);
+            gain.gain.linearRampToValueAtTime(gainPeak || 0.2, ctx.currentTime + startTime + 0.015);
+            gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + startTime + duration);
+            osc.connect(gain);
+            gain.connect(ctx.destination);
+            osc.start(ctx.currentTime + startTime);
+            osc.stop(ctx.currentTime + startTime + duration + 0.05);
+        }
+
+        function playErrorSound() {
+            playTone(220, 0, 0.15, 'sawtooth', 0.14);
+            playTone(174, 0.12, 0.22, 'sawtooth', 0.14);
+        }
+
+        function playClickSound() {
+            playTone(880, 0, 0.07, 'sine', 0.1);
+        }
+
+        function playVictoryFanfare() {
+            var ctx = getAudioCtx();
+            if (!ctx) return;
+
+            var melody = [
+                { f: 523.25, t: 0.00, d: 0.14 },
+                { f: 659.25, t: 0.13, d: 0.14 },
+                { f: 783.99, t: 0.26, d: 0.14 },
+                { f: 1046.50, t: 0.39, d: 0.22 },
+                { f: 783.99, t: 0.60, d: 0.10 },
+                { f: 1046.50, t: 0.70, d: 0.40 }
+            ];
+            melody.forEach(function(note) {
+                playTone(note.f, note.t, note.d, 'triangle', 0.22);
+                playTone(note.f / 2, note.t, note.d, 'sine', 0.1);
+            });
+
+            playTone(523.25, 0.85, 0.5, 'sine', 0.12);
+            playTone(659.25, 0.85, 0.5, 'sine', 0.1);
+            playTone(783.99, 0.85, 0.5, 'sine', 0.1);
+
+            var shimmer = [1567.98, 1760.00, 2093.00];
+            shimmer.forEach(function(f, i) {
+                playTone(f, 0.95 + i * 0.06, 0.15, 'sine', 0.08);
+            });
+        }
+
+        function updateSoundToggleUI() {
+            if (!soundToggle) return;
+            soundToggle.classList.toggle('muted', !state.soundEnabled);
+            if (soundLabel) {
+                soundLabel.textContent = state.soundEnabled ? 'Ovoz' : 'Ovoz o\'chirilgan';
+            }
+        }
+
+        if (soundToggle) {
+            updateSoundToggleUI();
+            soundToggle.addEventListener('click', function() {
+                state.soundEnabled = !state.soundEnabled;
+                updateSoundToggleUI();
+                try { localStorage.setItem('rc_sound_enabled', state.soundEnabled ? '1' : '0'); } catch (e) {}
+                if (state.soundEnabled) {
+                    getAudioCtx();
+                    playClickSound();
+                    showToast('🔊 Ovoz yoqildi', 'info', 1200);
+                } else {
+                    showToast('🔇 Ovoz o\'chirildi', 'info', 1200);
+                }
+            });
+        }
+
+        // ============================================================
+        // CONFETTI
+        // ============================================================
+        var confettiCtx = confettiCanvas ? confettiCanvas.getContext('2d') : null;
+        var confettiParticles = [];
+        var confettiAnimId = null;
+        var confettiColors = ['#17924f', '#b5710a', '#d0264a', '#1d5fd6', '#f2b705', '#8e44ad', '#0b0f14'];
+
+        function resizeConfettiCanvas() {
+            if (!confettiCanvas) return;
+            confettiCanvas.width = window.innerWidth;
+            confettiCanvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeConfettiCanvas);
+        resizeConfettiCanvas();
+
+        function createConfettiParticle(originX) {
+            var shapeType = Math.random() > 0.5 ? 'rect' : 'circle';
+            return {
+                x: originX + (Math.random() - 0.5) * window.innerWidth * 0.4,
+                y: -20 - Math.random() * 100,
+                w: 6 + Math.random() * 6,
+                h: 8 + Math.random() * 10,
+                color: confettiColors[Math.floor(Math.random() * confettiColors.length)],
+                speedY: 2 + Math.random() * 3,
+                speedX: (Math.random() - 0.5) * 2.4,
+                rotation: Math.random() * 360,
+                rotationSpeed: (Math.random() - 0.5) * 10,
+                shape: shapeType,
+                opacity: 1,
+                sway: Math.random() * Math.PI * 2
+            };
+        }
+
+        function launchConfetti() {
+            if (!confettiCtx) return;
+            resizeConfettiCanvas();
+            var count = 140;
+            var centerX = window.innerWidth / 2;
+            for (var i = 0; i < count; i++) {
+                confettiParticles.push(createConfettiParticle(centerX));
+            }
+            if (!confettiAnimId) {
+                confettiAnimId = requestAnimationFrame(animateConfetti);
+            }
+        }
+
+        function animateConfetti() {
+            if (!confettiCtx) return;
+            confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+
+            for (var i = confettiParticles.length - 1; i >= 0; i--) {
+                var p = confettiParticles[i];
+                p.sway += 0.05;
+                p.y += p.speedY;
+                p.x += p.speedX + Math.sin(p.sway) * 0.8;
+                p.rotation += p.rotationSpeed;
+
+                if (p.y > window.innerHeight * 0.75) {
+                    p.opacity -= 0.02;
+                }
+
+                if (p.y > window.innerHeight + 30 || p.opacity <= 0) {
+                    confettiParticles.splice(i, 1);
+                    continue;
+                }
+
+                confettiCtx.save();
+                confettiCtx.globalAlpha = Math.max(p.opacity, 0);
+                confettiCtx.translate(p.x, p.y);
+                confettiCtx.rotate(p.rotation * Math.PI / 180);
+                confettiCtx.fillStyle = p.color;
+                if (p.shape === 'rect') {
+                    confettiCtx.fillRect(-p.w / 2, -p.h / 2, p.w, p.h);
+                } else {
+                    confettiCtx.beginPath();
+                    confettiCtx.arc(0, 0, p.w / 2, 0, Math.PI * 2);
+                    confettiCtx.fill();
+                }
+                confettiCtx.restore();
+            }
+
+            if (confettiParticles.length > 0) {
+                confettiAnimId = requestAnimationFrame(animateConfetti);
+            } else {
+                confettiAnimId = null;
+                confettiCtx.clearRect(0, 0, confettiCanvas.width, confettiCanvas.height);
+            }
+        }
+
+        function celebrateAccept() {
+            launchConfetti();
+            setTimeout(launchConfetti, 350);
+            try { playVictoryFanfare(); } catch (e) { console.warn('Fanfare xato:', e); }
+        }
+
+        // ============================================================
+        // INIT EDITOR
+        // ============================================================
+        function initEditor() {
+            if (!codeArea) return;
+
+            state.editor = CodeMirror.fromTextArea(codeArea, {
+                mode: 'python',
+                theme: 'eclipse',
+                lineNumbers: true,
+                lineWrapping: false,
+                indentUnit: 4,
+                tabSize: 4,
+                autoCloseBrackets: true,
+                matchBrackets: true,
+                foldGutter: true,
+                gutters: ['CodeMirror-linenumbers', 'CodeMirror-foldgutter'],
+                extraKeys: {
+                    'Ctrl-S': function() { saveCode(); },
+                    'Cmd-S': function() { saveCode(); },
+                    'Ctrl-Enter': function() { runCode(); },
+                    'Cmd-Enter': function() { runCode(); },
+                    'Shift-Ctrl-Enter': function() { submitCode(); },
+                    'Shift-Cmd-Enter': function() { submitCode(); }
+                }
+            });
+
+            state.editor.setValue(state.code);
+            setTimeout(function() { state.editor.refresh(); }, 300);
+        }
+
+        function saveCode() {
+            state.code = state.editor.getValue();
+            showToast('Kod saqlandi', 'success', 1500);
+        }
+
+        function changeLanguage(lang) {
+            state.language = lang;
+            var modeMap = {
+                python: 'python',
+                cpp: 'text/x-c++src',
+                java: 'text/x-java',
+                javascript: 'javascript'
+            };
+            state.editor.setOption('mode', modeMap[lang] || 'python');
+            var defaultCode = problem.defaultCode[lang] || problem.defaultCode.python;
+            state.editor.setValue(defaultCode);
+            state.code = state.editor.getValue();
+            state.editor.refresh();
+            showToast('Til o\'zgartirildi: ' + lang, 'info', 1500);
+        }
+
+        // ============================================================
+        // RENDER PROBLEM DATA
+        // ============================================================
+        function renderProblem() {
+            document.getElementById('pTitle').textContent = problem.title;
+
+            var diffMap = {
+                easy: ['badge-easy', 'Easy'],
+                medium: ['badge-medium', 'Medium'],
+                hard: ['badge-hard', 'Hard']
+            };
+            var diff = diffMap[problem.difficulty] || diffMap.medium;
+            document.getElementById('pDiff').textContent = diff[1];
+            document.getElementById('pDiff').className = 'badge ' + diff[0];
+
+            document.getElementById('pXp').textContent = '+' + problem.xp + ' XP';
+            document.getElementById('pCategory').textContent = problem.category_name || 'No category';
+            document.getElementById('pTimeLimit').textContent = problem.time_limit + 'ms';
+            document.getElementById('pMemoryLimit').textContent = problem.memory_limit + 'MB';
+
+            var tagsHtml = '';
+            if (problem.tags && problem.tags.length) {
+                problem.tags.forEach(function(tag) {
+                    tagsHtml += '<span class="badge badge-neutral">#' + escapeHtml(tag.name) + '</span>';
+                });
+            }
+            document.getElementById('pTags').innerHTML = tagsHtml;
+
+            if (problem.description) {
+                var descHtml = marked.parse(problem.description);
+                document.getElementById('pDescription').innerHTML = descHtml;
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise().catch(function() {});
+                }
+            }
+
+            var hintsHtml = '';
+            if (problem.hints && problem.hints.length) {
+                problem.hints.forEach(function(hint, idx) {
+                    hintsHtml += `
+                            <div class="card p-4 bg-surface border-line">
+                                <div class="flex items-start gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-info-bg text-info flex items-center justify-center text-xs font-bold shrink-0">${idx + 1}</span>
+                                    <div>
+                                        <div class="font-medium text-sm">${escapeHtml(hint.text)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                });
+            } else {
+                hintsHtml = '<div class="text-center py-8 text-inksoft"><span class="material-icons" style="font-size:32px;">lightbulb_outline</span><p class="mt-2">Maslahatlar mavjud emas</p></div>';
+            }
+            document.getElementById('hintsList').innerHTML = hintsHtml;
+
+            var challengesHtml = '';
+            if (problem.challenges && problem.challenges.length) {
+                problem.challenges.forEach(function(challenge, idx) {
+                    challengesHtml += `
+                            <div class="card p-4 bg-surface border-line">
+                                <div class="flex items-start gap-3">
+                                    <span class="w-6 h-6 rounded-full bg-easy-bg text-easy flex items-center justify-center text-xs font-bold shrink-0">${idx + 1}</span>
+                                    <div>
+                                        <div class="font-medium text-sm">${escapeHtml(challenge.text)}</div>
+                                    </div>
+                                </div>
+                            </div>
+                        `;
+                });
+            } else {
+                challengesHtml = '<div class="text-center py-8 text-inksoft"><span class="material-icons" style="font-size:32px;">flag</span><p class="mt-2">Vazifalar mavjud emas</p></div>';
+            }
+            document.getElementById('challengesList').innerHTML = challengesHtml;
+
+            updateStatus();
+
+            var bookmarkIcon = document.getElementById('bookmarkIcon');
+            bookmarkIcon.textContent = state.isBookmarked ? 'bookmark' : 'bookmark_border';
+
+            document.getElementById('likesCount').textContent = state.likes;
+            document.getElementById('likeIcon').textContent = state.isLiked ? 'thumb_up' : 'thumb_up_off_alt';
+
+            if (problem.testCases && problem.testCases.length) {
+                var tcContainer = document.querySelector('.flex.flex-wrap.gap-2');
+                if (tcContainer) {
+                    tcContainer.innerHTML = '';
+                    problem.testCases.forEach(function(tc, idx) {
+                        var btn = document.createElement('button');
+                        btn.className = 'test-case-btn' + (idx === 0 ? ' active' : '');
+                        btn.dataset.tc = idx;
+                        btn.textContent = 'Kase ' + (idx + 1);
+                        btn.onclick = function() { selectTestCase(idx); };
+                        tcContainer.appendChild(btn);
+                    });
+                    selectTestCase(0);
+                }
+            }
+
+            var solvedSection = document.getElementById('solvedSection');
+            if (state.isSolved) {
+                solvedSection.classList.remove('hidden');
+                document.getElementById('solutionCode').textContent = problem.solutionCode || 'def two_sum(nums, target):\n    # Your solution here';
+            } else {
+                solvedSection.classList.add('hidden');
+            }
+        }
+
+        function updateStatus() {
+            var statusEl = document.getElementById('pStatus');
+            if (state.isSolved) {
+                statusEl.className = 'status-badge solved';
+                statusEl.innerHTML = '<span class="material-icons small" style="font-size:14px;">check_circle</span> Yechilgan';
+            } else {
+                statusEl.className = 'status-badge unsolved';
+                statusEl.innerHTML = '<span class="material-icons small" style="font-size:14px;">hourglass_empty</span> Yechilmagan';
+            }
+        }
+
+        // ============================================================
+        // SOLVED SECTION: VIDEO
+        // ============================================================
+        function playSolutionVideo() {
+            state.videoVisible = true;
+            var container = document.getElementById('videoContainer');
+            container.classList.remove('hidden');
+            var iframe = document.getElementById('solutionVideo');
+            iframe.src = problem.videoUrl || 'https://www.youtube.com/embed/dQw4w9WgXcQ';
+            container.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+
+        function closeVideo() {
+            state.videoVisible = false;
+            var container = document.getElementById('videoContainer');
+            container.classList.add('hidden');
+            var iframe = document.getElementById('solutionVideo');
+            iframe.src = '';
+        }
+
+        function copySolution() {
+            var code = document.getElementById('solutionCode').textContent;
+            navigator.clipboard.writeText(code).then(function() {
+                showToast('Yechim nusxalandi!', 'success', 1500);
+            }).catch(function() {
+                var ta = document.createElement('textarea');
+                ta.value = code;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                showToast('Yechim nusxalandi!', 'success', 1500);
+            });
+        }
+
+        // ============================================================
+        // TEST CASE SELECTION
+        // ============================================================
+        window.selectTestCase = function(idx) {
+            state.currentTestCase = idx;
+            var tc = problem.testCases[idx];
+            if (!tc) return;
+
+            document.querySelectorAll('.test-case-btn').forEach(function(b, i) {
+                b.classList.toggle('active', i === idx);
+                b.classList.remove('passed', 'failed');
+            });
+
+            document.getElementById('testInput').textContent = tc.input;
+            document.getElementById('testOutput').textContent = tc.output;
+            document.getElementById('testExplanation').textContent = tc.explanation || '';
+        };
+
+        // ============================================================
+        // BOTTOM TAB
+        // ============================================================
+        window.switchBottomTab = function(tab) {
+            state.bottomTab = tab;
+            document.querySelectorAll('#bottomZone .px-3.py-2').forEach(function(b) {
+                b.style.borderBottomColor = 'transparent';
+                b.style.color = 'var(--ink-soft)';
+                b.style.fontWeight = '500';
+            });
+            var btns = document.querySelectorAll('#bottomZone .px-3.py-2');
+            var targetBtn;
+            btns.forEach(function(b) {
+                var onclick = b.getAttribute('onclick');
+                if (onclick && onclick.includes(tab)) {
+                    targetBtn = b;
+                }
+            });
+            if (targetBtn) {
+                targetBtn.style.borderBottomColor = 'var(--ink)';
+                targetBtn.style.color = 'var(--ink)';
+                targetBtn.style.fontWeight = '600';
+            }
+
+            document.getElementById('bottom-testcases').classList.toggle('hidden', tab !== 'testcases');
+            document.getElementById('bottom-result').classList.toggle('hidden', tab !== 'result');
+            document.getElementById('bottom-console').classList.toggle('hidden', tab !== 'console');
+        };
+
+        // ============================================================
+        // RUN CODE
+        // ============================================================
+        function runCode() {
+            var code = state.editor.getValue();
+            var btn = document.getElementById('runBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons small">hourglass_top</span> Bajarilmoqda...';
+
+            setTimeout(function() {
+                var success = Math.random() > 0.3;
+                var output = document.getElementById('resultOutput');
+                var consoleOut = document.getElementById('consoleOutput');
+
+                if (success) {
+                    output.innerHTML =
+                        '<span class="success">✓ Barcha misol testlar o\'tdi!</span>\n' +
+                        '\n<span class="info">▶ Vaqt: 42ms</span>\n' +
+                        '<span class="info">▶ Xotira: 14.2MB</span>';
+
+                    consoleOut.innerHTML =
+                        '<span class="info">$ python two_sum.py</span>\n' +
+                        '<span class="success">✓ Test 1 passed</span>\n' +
+                        '<span class="success">✓ Test 2 passed</span>\n' +
+                        '<span class="success">✓ Test 3 passed</span>';
+
+                    document.querySelectorAll('.test-case-btn').forEach(function(b) {
+                        b.classList.remove('active', 'failed', 'passed');
+                        b.classList.add('passed');
+                    });
+
+                    showToast('Testlar muvaffaqiyatli o\'tdi!', 'success');
+
+                } else {
+                    output.innerHTML =
+                        '<span class="error">✗ Test kase\'laridan o\'ta olmadi</span>\n' +
+                        '\n<span class="info">▶ Kutilgan: [0,1]</span>\n' +
+                        '<span class="error">▶ Qaytarilgan: [1,0]</span>';
+
+                    consoleOut.innerHTML =
+                        '<span class="info">$ python two_sum.py</span>\n' +
+                        '<span class="error">✗ Test 1 failed</span>\n' +
+                        '<span class="error">  Expected: [0,1]</span>\n' +
+                        '<span class="error">  Got: [1,0]</span>';
+
+                    document.querySelectorAll('.test-case-btn').forEach(function(b, i) {
+                        b.classList.remove('active', 'passed');
+                        if (i === 0) {
+                            b.classList.add('failed');
+                        } else {
+                            b.classList.add('passed');
+                        }
+                    });
+
+                    playErrorSound();
+                    showToast('Testlardan biri o\'tmadi', 'error');
+                }
+
+                switchBottomTab('result');
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons small">play_arrow</span> Ishga tushirish';
+
+                if (!success) {
+                    switchBottomTab('console');
+                }
+            }, 1500);
+        }
+
+        // ============================================================
+        // SUBMIT CODE - WITH SOUND & CONFETTI
+        // ============================================================
+        function submitCode() {
+            var btn = document.getElementById('submitBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons small">hourglass_top</span> Yuborilmoqda...';
+
+            setTimeout(function() {
+                var success = Math.random() > 0.4;
+                btn.disabled = false;
+                btn.innerHTML = '<span class="material-icons small">send</span> Yuborish';
+
+                if (success) {
+                    state.isSolved = true;
+                    problem.solved = true;
+                    updateStatus();
+
+                    var time = 30 + Math.floor(Math.random() * 50);
+                    var memory = (10 + Math.random() * 20).toFixed(1);
+                    document.getElementById('resultTime').textContent = time + 'ms';
+                    document.getElementById('resultMemory').textContent = memory + 'MB';
+
+                    renderProblem();
+
+                    // === SOUND EFFECT ===
+                    playVictoryFanfare();
+
+                    // === CONFETTI ===
+                    celebrateAccept();
+
+                    Modal.open('resultModal');
+                    showToast('🎉 Yechim qabul qilindi! +' + problem.xp + ' XP', 'success');
+                } else {
+                    Modal.open('errorModal');
+                    document.getElementById('errorMessage').textContent =
+                        'Test kase\'laridan o\'ta olmadingiz. Xatolarni tekshirib qayta urining.';
+                    playErrorSound();
+                    showToast('❌ Yechim qabul qilinmadi', 'error');
+                }
+            }, 2000);
+        }
+
+        // ============================================================
+        // BOOKMARK
+        // ============================================================
+        function toggleBookmark() {
+            state.isBookmarked = !state.isBookmarked;
+            var icon = document.getElementById('bookmarkIcon');
+            icon.textContent = state.isBookmarked ? 'bookmark' : 'bookmark_border';
+            showToast(state.isBookmarked ? '🔖 Saqlandi' : 'Saqlashdan olib tashlandi', 'info', 1500);
+        }
+
+        // ============================================================
+        // LIKE
+        // ============================================================
+        function toggleLike() {
+            state.isLiked = !state.isLiked;
+            state.likes += state.isLiked ? 1 : -1;
+            document.getElementById('likeIcon').textContent = state.isLiked ? 'thumb_up' : 'thumb_up_off_alt';
+            document.getElementById('likesCount').textContent = state.likes;
+            showToast(state.isLiked ? '👍 Like qo\'shildi' : 'Like olib tashlandi', 'info', 1500);
+        }
+
+        // ============================================================
+        // COPY LINK
+        // ============================================================
+        function copyLink() {
+            var url = window.location.href;
+            navigator.clipboard.writeText(url).then(function() {
+                showToast('Havola nusxalandi!', 'success', 1500);
+            }).catch(function() {
+                var ta = document.createElement('textarea');
+                ta.value = url;
+                document.body.appendChild(ta);
+                ta.select();
+                document.execCommand('copy');
+                ta.remove();
+                showToast('Havola nusxalandi!', 'success', 1500);
+            });
+        }
+
+        // ============================================================
+        // SPLIT DRAG
+        // ============================================================
+        function initDrag() {
+            var bar = document.getElementById('splitDrag');
+            var left = document.getElementById('splitLeft');
+            if (!bar || !left) return;
+
+            var dragging = false;
+            bar.addEventListener('mousedown', function(e) {
+                dragging = true;
+                e.preventDefault();
+                document.body.style.cursor = 'col-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!dragging) return;
+                var ws = document.getElementById('workspace').getBoundingClientRect();
+                var w = Math.max(380, Math.min(e.clientX - ws.left, ws.width - 400));
+                left.style.width = w + 'px';
+                left.style.minWidth = w + 'px';
+                if (state.editor) state.editor.refresh();
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (state.editor) state.editor.refresh();
+            });
+        }
+
+        // ============================================================
+        // BOTTOM RESIZE
+        // ============================================================
+        function initBottomResize() {
+            var handle = document.getElementById('bottomResize');
+            var zone = document.getElementById('bottomZone');
+            if (!handle || !zone) return;
+            var dragging = false,
+                startY = 0,
+                startH = 0;
+
+            handle.addEventListener('mousedown', function(e) {
+                dragging = true;
+                startY = e.clientY;
+                startH = zone.offsetHeight;
+                e.preventDefault();
+                document.body.style.cursor = 'row-resize';
+                document.body.style.userSelect = 'none';
+            });
+
+            document.addEventListener('mousemove', function(e) {
+                if (!dragging) return;
+                var h = Math.max(80, Math.min(startH - (e.clientY - startY), 560));
+                zone.style.height = h + 'px';
+                if (state.editor) state.editor.refresh();
+            });
+
+            document.addEventListener('mouseup', function() {
+                if (!dragging) return;
+                dragging = false;
+                document.body.style.cursor = '';
+                document.body.style.userSelect = '';
+                if (state.editor) state.editor.refresh();
+            });
+        }
+
+        // ============================================================
+        // ESCAPE HTML
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            renderProblem();
+            initEditor();
+            initDrag();
+            initBottomResize();
+
+            document.getElementById('langSelect').addEventListener('change', function() {
+                changeLanguage(this.value);
+            });
+
+            document.getElementById('runBtn').addEventListener('click', runCode);
+            document.getElementById('submitBtn').addEventListener('click', submitCode);
+
+            document.querySelectorAll('.tab-btn').forEach(function(btn) {
+                btn.addEventListener('click', function() {
+                    var tab = this.dataset.tab;
+                    state.currentTab = tab;
+                    document.querySelectorAll('.tab-btn').forEach(function(b) {
+                        b.classList.remove('active');
+                    });
+                    this.classList.add('active');
+
+                    document.querySelectorAll('#tabContent > div').forEach(function(d) {
+                        d.classList.add('hidden');
+                    });
+                    var target = document.getElementById('tab-' + tab);
+                    if (target) target.classList.remove('hidden');
+
+                    setTimeout(function() {
+                        if (state.editor) state.editor.refresh();
+                    }, 100);
+
+                    if (tab === 'description' && window.MathJax && MathJax.typesetPromise) {
+                        MathJax.typesetPromise().catch(function() {});
+                    }
+                });
+            });
+
+            document.querySelector('[data-bookmark]').addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleBookmark();
+            });
+
+            document.getElementById('likeBtn').addEventListener('click', function(e) {
+                e.preventDefault();
+                toggleLike();
+            });
+
+            document.addEventListener('keydown', function(e) {
+                if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    if (e.shiftKey) {
+                        e.preventDefault();
+                        submitCode();
+                    } else {
+                        e.preventDefault();
+                        runCode();
+                    }
+                }
+            });
+
+            setTimeout(function() {
+                if (state.editor) state.editor.refresh();
+            }, 500);
+
+            setTimeout(function() {
+                showToast('💡 Ctrl+Enter — ishga tushirish | Shift+Ctrl+Enter — yuborish | 🔊 Ovoz tugmasi tepada', 'info',
+                    4000);
+            }, 1000);
+        });
+
+        // Expose functions globally
+        window.runCode = runCode;
+        window.submitCode = submitCode;
+        window.toggleBookmark = toggleBookmark;
+        window.toggleLike = toggleLike;
+        window.copyLink = copyLink;
+        window.selectTestCase = selectTestCase;
+        window.switchBottomTab = switchBottomTab;
+        window.renderProblem = renderProblem;
+        window.playSolutionVideo = playSolutionVideo;
+        window.closeVideo = closeVideo;
+        window.copySolution = copySolution;
+
+    })();
+</script>
+
+</body>
+</html>

@@ -1,0 +1,144 @@
+<!-- templates/admin/auth/user_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+<style>
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+        gap: 16px;
+        margin-bottom: 24px;
+        padding: 20px;
+        background: rgb(var(--color-base-200, 248 250 252));
+        border-radius: 12px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    .stat-card {
+        background: rgb(var(--color-base-100, 255 255 255));
+        padding: 18px 20px;
+        border-radius: 10px;
+        text-align: center;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        font-family: 'Inter', sans-serif;
+        position: relative;
+        overflow: hidden;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+
+    .stat-card::before {
+        content: '';
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 3px;
+        border-radius: 10px 10px 0 0;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    }
+
+    .stat-number {
+        font-size: 26px;
+        font-weight: 700;
+        line-height: 1.2;
+        font-family: 'Inter', sans-serif;
+        color: rgb(var(--color-base-content, 15 23 42));
+    }
+
+    .stat-label {
+        font-size: 13px;
+        color: rgb(var(--color-base-content, 100 116 139));
+        opacity: 0.7;
+        margin-top: 4px;
+        font-weight: 500;
+        font-family: 'Inter', sans-serif;
+    }
+
+    .stat-icon {
+        font-size: 28px;
+        display: block;
+        margin-bottom: 6px;
+    }
+
+    .stat-color-blue .stat-number, .stat-color-blue .stat-icon { color: #3b82f6; }
+    .stat-color-blue::before { background: #3b82f6; }
+    .stat-color-green .stat-number, .stat-color-green .stat-icon { color: #22c55e; }
+    .stat-color-green::before { background: #22c55e; }
+    .stat-color-red .stat-number, .stat-color-red .stat-icon { color: #ef4444; }
+    .stat-color-red::before { background: #ef4444; }
+    .stat-color-purple .stat-number, .stat-color-purple .stat-icon { color: #8b5cf6; }
+    .stat-color-purple::before { background: #8b5cf6; }
+    .stat-color-yellow .stat-number, .stat-color-yellow .stat-icon { color: #f59e0b; }
+    .stat-color-yellow::before { background: #f59e0b; }
+
+    .material-icons { font-size: 28px; vertical-align: middle; }
+
+    @media (max-width: 768px) {
+        .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 12px; padding: 12px; }
+        .stat-number { font-size: 20px; }
+        .stat-card { padding: 14px 16px; }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid { grid-template-columns: 1fr 1fr; gap: 8px; padding: 8px; }
+        .stat-number { font-size: 16px; }
+        .stat-label { font-size: 11px; }
+        .stat-card { padding: 10px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module" id="changelist">
+    <div class="stats-grid">
+        <div class="stat-card stat-color-blue">
+            <span class="stat-icon material-icons">people</span>
+            <div class="stat-number">{{ total_users|default:0 }}</div>
+            <div class="stat-label">Jami Foydalanuvchilar</div>
+        </div>
+        <div class="stat-card stat-color-green">
+            <span class="stat-icon material-icons">check_circle</span>
+            <div class="stat-number">{{ active_users|default:0 }}</div>
+            <div class="stat-label">Faol</div>
+        </div>
+        <div class="stat-card stat-color-red">
+            <span class="stat-icon material-icons">block</span>
+            <div class="stat-number">{{ inactive_users|default:0 }}</div>
+            <div class="stat-label">Nofaol</div>
+        </div>
+        <div class="stat-card stat-color-purple">
+            <span class="stat-icon material-icons">admin_panel_settings</span>
+            <div class="stat-number">{{ staff_users|default:0 }}</div>
+            <div class="stat-label">Xodimlar</div>
+        </div>
+        <div class="stat-card stat-color-yellow">
+            <span class="stat-icon material-icons">star</span>
+            <div class="stat-number">{{ superusers|default:0 }}</div>
+            <div class="stat-label">Super Adminlar</div>
+        </div>
+    </div>
+
+    {% block search %}<div class="search-container">{{ block.super }}</div>{% endblock %}
+    {% block filters %}{% if cl.has_filters %}<div id="changelist-filter">{% for spec in cl.filter_specs %}{% admin_list_filter cl spec %}{% endfor %}</div>{% endif %}{% endblock %}
+    {% block result_list %}{{ block.super }}{% endblock %}
+    {% block pagination %}{{ block.super }}{% endblock %}
+</div>
+{% endblock %}
+
+{% block object-tools-items %}
+{{ block.super }}
+<li>
+    <a href="{% url 'admin:auth_user_add' %}" class="addlink" style="display:inline-flex;align-items:center;gap:6px;">
+        <span class="material-icons" style="font-size:18px;">add</span>
+        Foydalanuvchi qo'shish
+    </a>
+</li>
+{% endblock %}

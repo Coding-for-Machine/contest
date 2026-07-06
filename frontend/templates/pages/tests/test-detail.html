@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <!-- ============================================================
+    SEO — MAXIMUM OPTIMIZED (TEST DETAIL PAGE WITH VIDEO & MATHJAX)
+    ============================================================ -->
+
+    <!-- Basic Meta -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    
+    <!-- Go Backend Dinamik Ma'lumotlari uchun if/else shartlari va default qiymatlar -->
+    <title>{{ if .Title }}{{ .Title }}{{ else }}Python asoslari — Yakuniy test | CfM Contest{{ end }}</title>
+    <meta name="description" content="{{ if .Description }}{{ .Description }}{{ else }}CfM Contest onlayn bilimni baholash va yakuniy test topshirish oynasi. Matematika, algoritmlar va dasturlash bo'limi bo'yicha vaqt cheklovi, qoidalar hamda sertifikat talablari.{{ end }}">
+    <meta name="keywords" content="test topshirish, onlayn imtihon, sertifikat olish, dasturlash imtihoni, matematika testi, Yakuniy test, CfM Contest">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
+
+    <!-- Open Graph (Ijtimoiy tarmoqlar va Telegram ulashuvlari uchun) -->
+    <meta property="og:title" content="{{ if .Title }}{{ .Title }}{{ else }}Python asoslari — Yakuniy test | CfM Contest{{ end }}">
+    <meta property="og:description" content="{{ if .Description }}{{ .Description }}{{ else }}Bilim darajangizni tekshiring, test topshirib rasmiy elektron sertifikat va reyting ballariga ega bo'ling.{{ end }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
+    <meta property="og:image" content="https://cfmcontest.uz">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="uz_UZ">
+    <meta property="og:site_name" content="CfM Contest">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ if .Title }}{{ .Title }}{{ else }}Python asoslari — Yakuniy test | CfM Contest{{ end }}">
+    <meta name="twitter:description" content="{{ if .Description }}{{ .Description }}{{ else }}Bilim darajangizni tekshiring, test topshirib rasmiy elektron sertifikatga ega bo'ling.{{ end }}">
+    <meta name="twitter:image" content="https://cfmcontest.uz">
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "CfM Contest",
+        "url": "https://cfmcontest.uz",
+        "description": "Dasturlashni sport qilib o'rganish uchun platforma. 700+ masala, haftalik musobaqalar, video kurslar.",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://cfmcontest.uzsearch?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
+    <!-- Alternate language versions -->
+    <link rel="alternate" href="https://cfmcontest.uz" hreflang="uz">
+    <link rel="alternate" href="https://cfmcontest.uzru/tests" hreflang="ru">
+    <link rel="alternate" href="https://cfmcontest.uzen/tests" hreflang="en">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/cfm_logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/cfm_logo.png">
+    <link rel="apple-touch-icon" href="/static/img/cfm_logo.png">
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Video.js for HLS -->
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+
+    <!-- Markdown & MathJax (Ilmiy masalalar va formulalar renderi uchun) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14', inksoft: '#5b6572', inkfaint: '#9aa3ad',
+                        line: '#e7eaee', 'line-soft': '#f0f2f4', surface: '#fafafa',
+                        'surface-2': '#f4f5f6', easy: '#17924f', 'easy-bg': '#eafbf1',
+                        medium: '#b5710a', 'medium-bg': '#fef6e7', hard: '#d0264a',
+                        'hard-bg': '#fdeced', info: '#1d5fd6', 'info-bg': '#eaf1fd',
+                        brand: '#6a3df5', 'brand-bg': '#f2eefe'
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+
+    <style>
+        .test-container { max-width: 1180px; margin: 0 auto; padding: 0 20px; }
+
+        .markdown-body {
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+            line-height: 1.8;
+            color: var(--ink);
+            background: transparent;
+        }
+        .markdown-body h1, .markdown-body h2, .markdown-body h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        .markdown-body p { margin: 10px 0; }
+        .markdown-body ul, .markdown-body ol { padding-left: 24px; margin: 10px 0; }
+        .markdown-body li { margin: 4px 0; }
+        .markdown-body code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .markdown-body pre {
+            background: #f6f8fa;
+            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1px solid var(--line-soft);
+            overflow-x: auto;
+        }
+        .markdown-body pre code { background: transparent; padding: 0; }
+        .markdown-body blockquote {
+            border-left: 4px solid var(--line);
+            padding-left: 16px;
+            color: var(--ink-soft);
+            margin: 10px 0;
+        }
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+            display: block;
+            overflow-x: auto;
+        }
+        .markdown-body table td, .markdown-body table th {
+            border: 1px solid var(--line);
+            padding: 6px 12px;
+        }
+
+        .status-badge {
+            padding: 2px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .status-badge.active { background: var(--hard-bg); color: var(--hard); }
+        .status-badge.upcoming { background: var(--info-bg); color: var(--info); }
+        .status-badge.ended { background: var(--surface-2); color: var(--ink-soft); }
+        .status-badge.completed { background: var(--easy-bg); color: var(--easy); }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            height: 0;
+            background: #0b0f14;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .video-container .video-js {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+        }
+        .video-container .video-js .vjs-tech {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .material-icons { font-size: 20px; vertical-align: middle; }
+        .material-icons.small { font-size: 16px; }
+
+        @media (max-width: 640px) {
+            .test-container { padding: 0 16px; }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <!-- 🆕 Endi bu yerda faqat bitta bo'sh header — mazmuni main.js
+         (injectNavbar) tomonidan to'ldiriladi. Barcha sahifalarda
+         XUDDI SHU bitta qator yetarli, navbar HTML'ni qayta yozish
+         shart emas. -->
+    <header id="navbar" class="topbar" role="banner"></header>
+
+
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+        <div class="test-container py-6 sm:py-10">
+
+            <!-- Breadcrumb -->
+            <div class="flex items-center gap-2 text-sm text-inksoft mb-6 flex-wrap">
+                <a href="/tests.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                </a>
+                <span class="material-icons small" style="font-size:14px;">chevron_right</span>
+                <span class="text-ink font-medium" id="breadcrumbTitle">Python asoslari — Yakuniy test</span>
+            </div>
+
+            <!-- Status -->
+            <div class="flex items-center gap-3 mb-4 flex-wrap">
+                <span class="status-badge active" id="testStatus">
+                    <span class="material-icons small" style="font-size:14px;">play_circle</span> Faol
+                </span>
+                <span class="badge badge-medium" id="testDifficulty">O'rtacha</span>
+                <span class="badge badge-info" id="testCategory">📚 Python</span>
+            </div>
+
+            <h1 class="font-display font-bold text-2xl sm:text-3xl md:text-4xl mb-3" id="testTitle">Python asoslari — Yakuniy test</h1>
+
+            <!-- Description -->
+            <div class="markdown-body mb-6" id="testDescription">
+                <p>Ushbu test <strong>Python dasturlash tilining asosiy tushunchalari</strong> bo'yicha bilimingizni tekshiradi.</p>
+                <p>$$x = \frac{-b \pm \sqrt{b^2 - 4ac}}{2a}$$</p>
+                <p><strong>Qoidalar:</strong></p>
+                <ul>
+                    <li>Har bir to'g'ri javob uchun <strong>ball</strong> beriladi</li>
+                    <li>Noto'g'ri javob uchun <strong>jarima</strong> qo'llaniladi</li>
+                    <li>Javobsiz qoldirilgan savol ball bermaydi</li>
+                </ul>
+            </div>
+
+            <!-- Stats -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                <div class="stat-chip text-center">
+                    <div class="stat-num text-xl" id="testDuration">45</div>
+                    <div class="text-xs text-inksoft mt-1">⏱ daqiqa</div>
+                </div>
+                <div class="stat-chip text-center">
+                    <div class="stat-num text-xl" id="testQuestionsCount">30</div>
+                    <div class="text-xs text-inksoft mt-1">📝 savol</div>
+                </div>
+                <div class="stat-chip text-center">
+                    <div class="stat-num text-xl" id="testPassScore">60%</div>
+                    <div class="text-xs text-inksoft mt-1">🎯 o'tish bali</div>
+                </div>
+                <div class="stat-chip text-center">
+                    <div class="stat-num text-xl" id="testPenalty">0.33</div>
+                    <div class="text-xs text-inksoft mt-1">⚠️ jarima K</div>
+                </div>
+            </div>
+
+            <!-- Video -->
+            <div class="mb-8">
+                <h2 class="font-display font-bold text-lg mb-3 flex items-center gap-2">
+                    <span class="material-icons">play_circle</span> Video tushuntirish
+                </h2>
+                <div class="video-container">
+                    <video id="introVideo" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto"
+                    poster="http://localhost:9000/cfm/media/movies/thumbnails/cfm_logo_Q2ghoMq.jpg"
+                    data-setup='{"techOrder": ["html5"], "html5": {"hls": {"enableLowInitialPlaylist": true}}}'>
+                    <source src="http://localhost:9000/cfm/media/movies/hls/77e80e60-5289-401b-a4c6-d8d5b786f3e9/index.m3u8" type="application/x-mpegURL">
+                </video>
+            </div>
+            <div class="flex items-center gap-2 mt-2 text-sm text-inksoft">
+                <span class="material-icons small">schedule</span>
+                <span id="videoDuration">00:44</span>
+                <span class="divider-dot"></span>
+                <span id="videoStatus">▶️ Ko'rishga tayyor</span>
+            </div>
+        </div>
+
+        <!-- Start Button -->
+        <a href="/exam.html?test=py-basics-final" class="btn btn-primary btn-block max-w-sm inline-flex">
+            <span class="material-icons">play_arrow</span> Testni boshlash
+        </a>
+        <div class="text-xs text-inksoft mt-3 text-center">
+            <span class="material-icons small">info</span> Test boshlangach vaqt ortga qaytmaydi
+        </div>
+
+    </div>
+
+</main>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- Global JS -->
+<script src="/assets/js/main.js"></script>
+
+<script>
+    (function() {
+        // Test data
+        var test = {
+            title: "Python asoslari — Yakuniy test",
+            slug: "py-basics-final",
+            status: "active",
+            difficulty: "medium",
+            category: "Python",
+            duration: 45,
+            questionsCount: 30,
+            passScore: 60,
+            penalty: 0.33,
+            video: {
+                src: "http://localhost:9000/cfm/media/movies/hls/77e80e60-5289-401b-a4c6-d8d5b786f3e9/index.m3u8",
+                thumb: "http://localhost:9000/cfm/media/movies/thumbnails/cfm_logo_Q2ghoMq.jpg",
+                duration: "00:44"
+            }
+        };
+
+        // Render
+        document.getElementById('breadcrumbTitle').textContent = test.title;
+        document.getElementById('testTitle').textContent = test.title;
+        document.getElementById('testDuration').textContent = test.duration;
+        document.getElementById('testQuestionsCount').textContent = test.questionsCount;
+        document.getElementById('testPassScore').textContent = test.passScore + '%';
+        document.getElementById('testPenalty').textContent = test.penalty;
+        document.getElementById('videoDuration').textContent = test.video.duration;
+
+        // Difficulty
+        var diffEl = document.getElementById('testDifficulty');
+        diffEl.textContent = test.difficulty.charAt(0).toUpperCase() + test.difficulty.slice(1);
+        diffEl.className = 'badge ' + (test.difficulty === 'easy' ? 'badge-easy' : test.difficulty === 'hard' ? 'badge-hard' :
+            'badge-medium');
+
+        // Status
+        var statusMap = {
+            active: ['active', 'play_circle', 'Faol']
+        };
+        var s = statusMap[test.status] || statusMap.active;
+        var statusEl = document.getElementById('testStatus');
+        statusEl.className = 'status-badge ' + s[0];
+        statusEl.innerHTML = '<span class="material-icons small" style="font-size:14px;">' + s[1] + '</span> ' + s[2];
+
+        // Video
+        var videoEl = document.getElementById('introVideo');
+        if (videoEl && test.video) {
+            var player = videojs(videoEl, {
+                controls: true,
+                autoplay: false,
+                preload: 'auto',
+                fluid: true,
+                poster: test.video.thumb || null,
+                html5: { hls: { enableLowInitialPlaylist: true, smoothQualityChange: true, overrideNative: true } }
+            });
+            if (test.video.src) {
+                player.src({ src: test.video.src, type: 'application/x-mpegURL' });
+            }
+            var statusText = document.getElementById('videoStatus');
+            player.on('playing', function() {
+                statusText.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">play_circle</span> Ko\'rilmoqda...';
+                statusText.style.color = 'var(--easy)';
+            });
+            player.on('pause', function() {
+                statusText.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">pause</span> To\'xtatilgan';
+                statusText.style.color = 'var(--ink-soft)';
+            });
+            player.on('ended', function() {
+                statusText.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">check_circle</span> Tugatildi';
+                statusText.style.color = 'var(--easy)';
+            });
+        }
+
+        // Toast
+        setTimeout(function() {
+            showToast('📝 Testga tayyormisiz?', 'info', 3000);
+        }, 800);
+
+        // Expose test data for exam page
+        window.testDetail = test;
+    })();
+</script>
+
+</body>
+</html>

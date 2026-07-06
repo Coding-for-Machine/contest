@@ -2,65 +2,55 @@
 
 import httpx
 import logging
-from typing import Tuple, Dict, Optional
 from django.conf import settings
-
 
 logger = logging.getLogger(__name__)
 
 
-class AuthService:
+class AsyncAuthService:
     """
-    Auth server bilan aloqa (SYNC VERSION)
+    Auth server bilan aloqa — to'liq async (httpx.AsyncClient).
+
+    GET /api/user  →  200 OK:
+        {
+            "id": 7142908334,                        # telegram_id
+            "u":  "Coding_for_Machines",             # username
+            "p":  "998979437674",                    # phone
+            "f":  "CfM 🐾 ✨🌙",                    # full_name
+            "l":  "2026-06-26 07:03:36.747693+00:00" # last_login
+        }
     """
 
     def __init__(self):
         self.base_url = settings.AUTH_SERVER_BASE_URL
-        self.timeout = 10.0
+        self.timeout  = httpx.Timeout(10.0)
 
-    def verify_token(self, token: str) -> Tuple[bool, Optional[int]]:
-
+    async def get_user_info(self, token: str) -> tuple[dict, int | None]:
         headers = {
             "Authorization": f"Bearer {token}",
             "Accept": "application/json",
         }
-
         try:
-            response = httpx.get(
-                f"{self.base_url}/api/verify",
-                headers=headers,
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            return True, response.status_code
+            async with httpx.AsyncClient(timeout=self.timeout) as client:
+                response = await client.get(
+                    f"{self.base_url}/api/user",
+                    headers=headers,
+                )
+                response.raise_for_status()
+                return response.json(), response.status_code
 
         except httpx.HTTPStatusError as e:
-            return False, e.response.status_code if e.response else None
-
-        except httpx.RequestError:
-            return False, None
-
-    def get_user_info(self, token: str) -> Tuple[Dict, Optional[int]]:
-
-        headers = {
-            "Authorization": f"Bearer {token}",
-            "Accept": "application/json",
-        }
-
-        try:
-            response = httpx.get(
-                f"{self.base_url}/api/user",
-                headers=headers,
-                timeout=self.timeout
-            )
-            response.raise_for_status()
-            return response.json(), response.status_code
-
-        except httpx.HTTPStatusError as e:
-            return {"error": "Auth failed"}, e.response.status_code if e.response else None
+            try:
+                err_data = e.response.json()
+            except Exception:
+                err_data = {"error": "Auth server xatoligi yoki yaroqsiz token"}
+            status = e.response.status_code if e.response else None
+            logger.warning("Auth server %s qaytardi: %s", status, err_data)
+            return err_data, status
 
         except httpx.RequestError as e:
-            return {"error": str(e)}, None
+            logger.error("Auth serverga ulanib bo'lmadi: %s", e)
+            return {"error": f"Auth serverga ulanib bo'lmadi: {e}"}, None
 
 
-auth_service = AuthService()
+auth_service = AsyncAuthService()

@@ -1,0 +1,1541 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <!-- ============================================================
+    SEO — MAXIMUM OPTIMIZED (LIVE EXAM WINDOW PAGE)
+    ============================================================ -->
+
+    <!-- Basic Meta -->
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    
+    <!-- 🚀 Go Backend Dinamik Ma'lumotlari uchun if/else shartlari va default qiymatlar -->
+    <title>{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}</title>
+    <meta name="description" content="{{ if .Description }}{{ .Description }}{{ else }}CfM Contest onlayn jonli imtihon topshirish sahifasi. Algoritmlar, dasturlash va matematika fanlaridan berilgan vaqt davomida test savollarini yechish paneli.{{ end }}">
+    <meta name="keywords" content="onlayn test, jonli imtihon, imtihon topshirish, dasturlash imtihoni, matematika testi, RobaContest, CfM Contest">
+    <meta name="robots" content="index, follow">
+    <link rel="canonical" href="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
+
+    <!-- Open Graph (Ijtimoiy tarmoqlar va Telegram ulashuvlari uchun) -->
+    <meta property="og:title" content="{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}">
+    <meta property="og:description" content="{{ if .Description }}{{ .Description }}{{ else }}Vaqt tugaguncha test savollariga javob bering, bilimingizni isbotlang va rasmiy sertifikatga ega bo'ling.{{ end }}">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
+    <meta property="og:image" content="https://cfmcontest.uz">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:locale" content="uz_UZ">
+    <meta property="og:site_name" content="CfM Contest">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}">
+    <meta name="twitter:description" content="{{ if .Description }}{{ .Description }}{{ else }}Vaqt tugaguncha test savollariga javob bering va rasmiy sertifikatga ega bo'ling.{{ end }}">
+    <meta name="twitter:image" content="https://cfmcontest.uz">
+
+    <!-- Schema.org Structured Data -->
+    <script type="application/ld+json">
+    {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "CfM Contest",
+        "url": "https://cfmcontest.uz",
+        "description": "Dasturlashni sport qilib o'rganish uchun platforma. 700+ masala, haftalik musobaqalar, video kurslar.",
+        "potentialAction": {
+            "@type": "SearchAction",
+            "target": "https://cfmcontest.uzsearch?q={search_term_string}",
+            "query-input": "required name=search_term_string"
+        }
+    }
+    </script>
+
+    <!-- Alternate language versions -->
+    <link rel="alternate" href="https://cfmcontest.uz" hreflang="uz">
+    <link rel="alternate" href="https://cfmcontest.uzru/test/exam" hreflang="ru">
+    <link rel="alternate" href="https://cfmcontest.uzen/test/exam" hreflang="en">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/cfm_logo.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/cfm_logo.png">
+    <link rel="apple-touch-icon" href="/static/img/cfm_logo.png">
+
+    <!-- Preconnect for performance -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+
+    <!-- Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+
+    <!-- Markdown & MathJax (Ilmiy formulalar va chiroyli matn renderi uchun) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+            svg: { fontCache: 'global' }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14', inksoft: '#5b6572', inkfaint: '#9aa3ad',
+                        line: '#e7eaee', 'line-soft': '#f0f2f4', surface: '#fafafa',
+                        'surface-2': '#f4f5f6', easy: '#17924f', 'easy-bg': '#eafbf1',
+                        medium: '#b5710a', 'medium-bg': '#fef6e7', hard: '#d0264a',
+                        'hard-bg': '#fdeced', info: '#1d5fd6', 'info-bg': '#eaf1fd',
+                        brand: '#6a3df5', 'brand-bg': '#f2eefe'
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <!-- 🛠️ FIKS: ../../../ kabi nisbiy yo'llar mutloq tozalandi. Ildizdan toza /static va /assets ulandi -->
+    <link rel="stylesheet" href="/assets/css/style.css">
+
+    <style>
+        * {
+            box-sizing: border-box;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        .exam-container {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 12px;
+        }
+
+        .markdown-body {
+            font-family: 'Inter', sans-serif;
+            font-size: 14px;
+            line-height: 1.7;
+            color: var(--ink);
+            background: transparent;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            margin-top: 16px;
+            margin-bottom: 8px;
+        }
+        .markdown-body p {
+            margin: 8px 0;
+        }
+        .markdown-body ul,
+        .markdown-body ol {
+            padding-left: 20px;
+            margin: 8px 0;
+        }
+        .markdown-body li {
+            margin: 3px 0;
+        }
+        .markdown-body code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            background: #f6f8fa;
+            padding: 2px 5px;
+            border-radius: 4px;
+        }
+        .markdown-body pre {
+            background: #f6f8fa;
+            border-radius: 6px;
+            padding: 10px 12px;
+            border: 1px solid var(--line-soft);
+            overflow-x: auto;
+            font-size: 12px;
+        }
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+
+        /* ===== QUESTION DOT ===== */
+        .q-dot {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 2px solid var(--line);
+            background: #fff;
+            color: var(--ink-soft);
+            flex-shrink: 0;
+            position: relative;
+            user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .q-dot:active {
+            transform: scale(0.92);
+        }
+        .q-dot.active {
+            border-color: var(--info);
+            background: var(--info-bg);
+            color: var(--info);
+            box-shadow: 0 0 0 3px rgba(29, 95, 214, 0.15);
+        }
+        .q-dot.answered {
+            border-color: var(--easy);
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .q-dot.answered::after {
+            content: '✓';
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            font-size: 9px;
+            background: var(--easy);
+            color: #fff;
+            border-radius: 50%;
+            width: 14px;
+            height: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+        }
+        .q-dot.flagged {
+            border-color: var(--hard);
+            background: var(--hard-bg);
+            color: var(--hard);
+        }
+        .q-dot.flagged::after {
+            content: '🚩';
+            position: absolute;
+            top: -6px;
+            right: -6px;
+            font-size: 10px;
+            background: var(--hard);
+            color: #fff;
+            border-radius: 50%;
+            width: 16px;
+            height: 16px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .q-dot.current {
+            box-shadow: 0 0 0 3px rgba(29, 95, 214, 0.25);
+        }
+
+        .question-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 6px;
+        }
+
+        /* ===== OPTION LABEL ===== */
+        .option-label {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: 2px solid var(--line);
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.15s ease;
+            background: #fff;
+            font-size: 13px;
+            -webkit-touch-callout: none;
+            user-select: none;
+        }
+        .option-label:active {
+            transform: scale(0.98);
+        }
+        .option-label input[type="radio"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--info);
+            flex-shrink: 0;
+            cursor: pointer;
+        }
+        .option-label .letter {
+            width: 24px;
+            height: 24px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: var(--surface-2);
+            font-weight: 700;
+            font-size: 11px;
+            color: var(--ink-soft);
+            flex-shrink: 0;
+        }
+        .option-label.selected {
+            border-color: var(--info);
+            background: var(--info-bg);
+        }
+        .option-label.selected .letter {
+            background: var(--info);
+            color: #fff;
+        }
+        .option-label.eliminated {
+            opacity: 0.35;
+            pointer-events: none;
+            text-decoration: line-through;
+        }
+
+        /* ===== STATS ===== */
+        .stats-bar {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            padding: 6px 10px;
+            background: var(--surface);
+            border-radius: 8px;
+            border: 1px solid var(--line);
+        }
+        .stats-bar .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+            font-size: 10px;
+            color: var(--ink-soft);
+        }
+        .stats-bar .stat-item .num {
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+        .stats-bar .stat-item .num.green {
+            color: var(--easy);
+        }
+        .stats-bar .stat-item .num.red {
+            color: var(--hard);
+        }
+        .stats-bar .stat-item .num.gray {
+            color: var(--ink-faint);
+        }
+        .stats-bar .stat-item .num.blue {
+            color: var(--info);
+        }
+
+        .progress-ring {
+            width: 44px;
+            height: 44px;
+            position: relative;
+            flex-shrink: 0;
+        }
+        .progress-ring svg {
+            transform: rotate(-90deg);
+            width: 44px;
+            height: 44px;
+        }
+        .progress-ring .bg {
+            fill: none;
+            stroke: var(--line-soft);
+            stroke-width: 4;
+        }
+        .progress-ring .fill {
+            fill: none;
+            stroke: var(--info);
+            stroke-width: 4;
+            stroke-linecap: round;
+            transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+        .progress-ring .center-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 10px;
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        /* ===== MOBILE DRAWER ===== */
+        .drawer-toggle {
+            position: fixed;
+            bottom: 76px;
+            right: 12px;
+            z-index: 50;
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(11, 15, 20, 0.3);
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.2s;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .drawer-toggle:active {
+            transform: scale(0.9);
+        }
+
+        .question-drawer {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            z-index: 45;
+            background: #fff;
+            border-top: 1px solid var(--line);
+            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+            padding: 10px 12px 16px;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            max-height: 55vh;
+            overflow-y: auto;
+            border-radius: 16px 16px 0 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .question-drawer.open {
+            transform: translateY(0);
+        }
+        .question-drawer .drawer-handle {
+            width: 36px;
+            height: 4px;
+            border-radius: 99px;
+            background: var(--line);
+            margin: 0 auto 10px;
+            cursor: pointer;
+        }
+        .question-drawer .drawer-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .question-drawer .drawer-header .close-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--ink-soft);
+            padding: 8px;
+            border-radius: 50%;
+            transition: background 0.2s;
+            touch-action: manipulation;
+        }
+        .question-drawer .drawer-header .close-btn:active {
+            background: var(--line-soft);
+        }
+        .question-drawer .drawer-stats {
+            display: flex;
+            gap: 8px;
+            font-size: 11px;
+            color: var(--ink-soft);
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+        }
+        .question-drawer .drawer-stats .stat {
+            display: flex;
+            align-items: center;
+            gap: 3px;
+        }
+        .question-drawer .drawer-stats .num {
+            font-weight: 700;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        /* ===== MODAL ===== */
+        .submit-confirm-modal .modal-box {
+            max-width: 360px;
+            text-align: center;
+            padding: 20px;
+        }
+        .submit-confirm-modal .modal-box .summary-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 6px;
+            margin: 10px 0 12px;
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item {
+            background: var(--surface);
+            padding: 6px;
+            border-radius: 6px;
+            border: 1px solid var(--line);
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item .num {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 18px;
+            font-weight: 700;
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item .label {
+            font-size: 9px;
+            color: var(--ink-soft);
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item.green .num {
+            color: var(--easy);
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item.red .num {
+            color: var(--hard);
+        }
+        .submit-confirm-modal .modal-box .summary-stats .item.gray .num {
+            color: var(--ink-faint);
+        }
+
+        .material-icons {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+        .material-icons.small {
+            font-size: 16px;
+        }
+
+        #flagBtn.active {
+            background: var(--hard-bg);
+            border-color: var(--hard);
+            color: var(--hard);
+        }
+        #lifelineBtn:disabled {
+            opacity: .4;
+            cursor: not-allowed;
+        }
+
+        /* ===== MOBILE TIMER BAR ===== */
+        .mobile-timer-bar {
+            position: sticky;
+            top: 57px;
+            z-index: 30;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            padding: 6px 12px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
+        }
+        .mobile-timer-bar .time {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 16px;
+            color: var(--hard);
+        }
+        .mobile-timer-bar .info {
+            font-size: 11px;
+            color: var(--ink-soft);
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        .mobile-timer-bar .info .num {
+            font-weight: 700;
+            color: var(--ink);
+        }
+
+        /* ============================================================
+           RESPONSIVE
+           ============================================================ */
+        @media (max-width: 1024px) {
+            .question-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 5px;
+            }
+            .q-dot {
+                width: 34px;
+                height: 34px;
+                font-size: 11px;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .exam-container {
+                padding: 0 10px;
+            }
+            .q-dot {
+                width: 30px;
+                height: 30px;
+                font-size: 10px;
+            }
+            .question-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 4px;
+            }
+            .option-label {
+                padding: 8px 10px;
+                font-size: 12px;
+                gap: 8px;
+            }
+            .option-label .letter {
+                width: 20px;
+                height: 20px;
+                font-size: 10px;
+            }
+            .stats-bar {
+                font-size: 9px;
+                padding: 4px 8px;
+            }
+            .progress-ring {
+                width: 40px;
+                height: 40px;
+            }
+            .progress-ring svg {
+                width: 40px;
+                height: 40px;
+            }
+            .progress-ring .center-text {
+                font-size: 9px;
+            }
+            .lg\:block {
+                display: none;
+            }
+            .lg\:grid-cols-\[1fr_320px\] {
+                grid-template-columns: 1fr;
+            }
+            .mobile-timer-bar {
+                display: flex !important;
+            }
+            .drawer-toggle {
+                display: flex;
+            }
+            .submit-confirm-modal .modal-box .summary-stats {
+                grid-template-columns: repeat(3, 1fr);
+            }
+            .card {
+                border-radius: 10px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .exam-container {
+                padding: 0 8px;
+            }
+            .q-dot {
+                width: 26px;
+                height: 26px;
+                font-size: 9px;
+                border-width: 1.5px;
+            }
+            .question-grid {
+                grid-template-columns: repeat(5, 1fr);
+                gap: 3px;
+            }
+            .option-label {
+                padding: 6px 8px;
+                font-size: 11px;
+                gap: 6px;
+            }
+            .option-label .letter {
+                width: 18px;
+                height: 18px;
+                font-size: 9px;
+            }
+            .option-label input[type="radio"] {
+                width: 14px;
+                height: 14px;
+            }
+            .q-dot::after {
+                width: 12px;
+                height: 12px;
+                font-size: 7px;
+                top: -4px;
+                right: -4px;
+            }
+            .mobile-timer-bar .time {
+                font-size: 14px;
+            }
+            .mobile-timer-bar .info {
+                font-size: 10px;
+                gap: 4px;
+            }
+            .question-drawer {
+                padding: 8px 10px 12px;
+            }
+            .question-drawer .drawer-stats {
+                font-size: 10px;
+                gap: 6px;
+            }
+            .question-drawer .q-dot {
+                width: 24px;
+                height: 24px;
+                font-size: 8px;
+            }
+            .question-drawer .question-grid {
+                gap: 3px;
+            }
+            .drawer-toggle {
+                width: 44px;
+                height: 44px;
+                bottom: 70px;
+                right: 10px;
+            }
+            .drawer-toggle .material-icons {
+                font-size: 22px;
+            }
+            .submit-confirm-modal .modal-box .summary-stats .item .num {
+                font-size: 14px;
+            }
+            .submit-confirm-modal .modal-box {
+                padding: 16px;
+            }
+            .submit-confirm-modal .modal-box .summary-stats {
+                gap: 4px;
+            }
+        }
+
+        @media (max-width: 380px) {
+            .q-dot {
+                width: 22px;
+                height: 22px;
+                font-size: 8px;
+                border-width: 1.5px;
+            }
+            .question-grid {
+                gap: 2px;
+            }
+            .option-label {
+                font-size: 10px;
+                padding: 5px 6px;
+            }
+            .option-label .letter {
+                width: 16px;
+                height: 16px;
+                font-size: 8px;
+            }
+            .mobile-timer-bar .info {
+                font-size: 9px;
+            }
+            .mobile-timer-bar .time {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <!-- 🆕 Endi bu yerda faqat bitta bo'sh header — mazmuni main.js
+         (injectNavbar) tomonidan to'ldiriladi. Barcha sahifalarda
+         XUDDI SHU bitta qator yetarli, navbar HTML'ni qayta yozish
+         shart emas. -->
+    <header id="navbar" class="topbar" role="banner"></header>
+
+
+
+    <!-- ===== MOBILE TIMER BAR ===== -->
+    <div class="mobile-timer-bar">
+        <div class="time" id="mobileTimer">45:00</div>
+        <div class="info">
+            <span><span class="material-icons" style="font-size:14px;">description</span> <span class="num" id="mobileAnswered">0</span>/<span id="mobileTotal">30</span></span>
+            <span><span class="material-icons" style="font-size:14px;color:var(--hard);">flag</span> <span class="num red" id="mobileFlagged">0</span></span>
+            <span><span class="material-icons" style="font-size:14px;">trending_up</span> <span class="num" id="mobilePercent">0%</span></span>
+        </div>
+        <button onclick="toggleDrawer()" class="btn btn-ghost btn-sm" style="padding:2px 6px;min-width:32px;min-height:32px;">
+            <span class="material-icons" style="font-size:18px;">list_alt</span>
+        </button>
+    </div>
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+        <div class="exam-container py-4 sm:py-6">
+
+            <!-- Breadcrumb -->
+            <div class="flex items-center gap-2 text-xs text-inksoft mb-4 flex-wrap">
+                <a href="/tests.html" class="hover:text-ink flex items-center gap-0.5">
+                    <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                </a>
+                <span class="material-icons small" style="font-size:12px;">chevron_right</span>
+                <span class="text-ink font-medium text-xs truncate max-w-[120px]" id="breadcrumbTitle">Python asoslari</span>
+                <span class="material-icons small" style="font-size:12px;">chevron_right</span>
+                <span class="text-inksoft font-medium text-xs">Test</span>
+            </div>
+
+            <!-- Layout -->
+            <div class="grid lg:grid-cols-[1fr_320px] gap-4">
+
+                <!-- LEFT: Question -->
+                <div>
+                    <div class="card p-3 sm:p-4">
+                        <div class="flex items-start justify-between mb-3 gap-2 flex-wrap">
+                            <span class="text-xs font-mono text-inksoft" id="questionCounter">Savol 1 / 30</span>
+                            <div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="badge badge-medium text-[10px]" id="questionDifficulty">O'rtacha</span>
+                                <button id="flagBtn" type="button" class="btn btn-outline btn-sm" style="padding:2px 6px;min-width:28px;min-height:28px;font-size:10px;" title="Keyinroq qaytish uchun belgilash">
+                                    <span class="material-icons" style="font-size:16px;">flag</span>
+                                </button>
+                                <button id="lifelineBtn" type="button" class="btn btn-outline btn-sm" style="padding:2px 6px;min-width:28px;min-height:28px;font-size:9px;" title="50/50 — ikkita noto'g'ri variantni olib tashlaydi">
+                                    <span class="material-icons" style="font-size:14px;">emergency</span>
+                                    <span class="lifeline-count">3</span>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div class="markdown-body mb-4" id="questionText">
+                            <p>Python'da o'zgaruvchi nomlari nima bilan boshlanishi mumkin emas?</p>
+                        </div>
+
+                        <div class="flex flex-col gap-2" id="optionsContainer"></div>
+
+                        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line">
+                            <button id="prevBtn" class="btn btn-outline btn-sm" disabled style="padding:4px 10px;font-size:11px;">
+                                <span class="material-icons small" style="font-size:14px;">chevron_left</span> Oldingi
+                            </button>
+                            <span class="text-xs text-inksoft font-mono" id="questionNumber">1 / 30</span>
+                            <button id="nextBtn" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px;">
+                                Keyingi <span class="material-icons small" style="font-size:14px;">chevron_right</span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT: Desktop Sidebar -->
+                <div class="hidden lg:block lg:sticky lg:top-20 h-fit">
+                    <div class="card p-4">
+
+                        <div class="flex items-center justify-between mb-3 pb-3 border-b border-line">
+                            <span class="text-sm font-semibold flex items-center gap-1">
+                                <span class="material-icons" style="font-size:16px;">schedule</span> Qolgan vaqt
+                            </span>
+                            <span class="font-mono font-bold text-xl text-hard" id="examTimer">45:00</span>
+                        </div>
+
+                        <div class="flex items-center justify-between mb-3">
+                            <div class="flex items-center gap-3">
+                                <div class="progress-ring">
+                                    <svg viewBox="0 0 44 44">
+                                        <circle class="bg" cx="22" cy="22" r="18"/>
+                                        <circle class="fill" cx="22" cy="22" r="18" id="progressRing" stroke-dasharray="113.1" stroke-dashoffset="113.1"/>
+                                    </svg>
+                                    <span class="center-text" id="progressText">0%</span>
+                                </div>
+                                <div>
+                                    <div class="text-xs text-inksoft flex items-center gap-0.5">
+                                        <span class="material-icons" style="font-size:12px;">trending_up</span> Progress
+                                    </div>
+                                    <div class="text-xs font-mono font-bold" id="progressLabel">0/30</div>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-xs text-inksoft flex items-center gap-0.5">
+                                    <span class="material-icons" style="font-size:12px;">flag</span> O'tish
+                                </div>
+                                <div class="text-xs font-mono font-bold" id="passScore">60%</div>
+                            </div>
+                        </div>
+
+                        <div class="stats-bar mb-3">
+                            <span class="stat-item">
+                                <span class="material-icons" style="font-size:12px;color:var(--easy);">check_circle</span>
+                                <span class="num green" id="statAnswered">0</span>
+                            </span>
+                            <span class="stat-item">
+                                <span class="material-icons" style="font-size:12px;color:var(--hard);">flag</span>
+                                <span class="num red" id="statFlagged">0</span>
+                            </span>
+                            <span class="stat-item">
+                                <span class="material-icons" style="font-size:12px;color:var(--ink-faint);">remove_circle</span>
+                                <span class="num gray" id="statSkipped">0</span>
+                            </span>
+                            <span class="stat-item ml-auto">
+                                <span class="material-icons" style="font-size:12px;color:var(--info);">bar_chart</span>
+                                <span class="num blue" id="statPercent">0%</span>
+                            </span>
+                        </div>
+
+                        <div class="question-grid" id="questionGrid"></div>
+
+                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-line text-xs text-inksoft flex-wrap gap-1">
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-easy"></span> Javob</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-hard"></span> Belgilangan</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
+                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
+                        </div>
+
+                        <button id="finishBtn" class="btn btn-primary btn-block mt-4">
+                            <span class="material-icons small">check</span> Testni yakunlash
+                        </button>
+
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- ===== MOBILE DRAWER ===== -->
+    <button class="drawer-toggle" id="drawerToggle" aria-label="Savollar ro'yxati">
+        <span class="material-icons">list_alt</span>
+    </button>
+
+    <div class="question-drawer" id="questionDrawer">
+        <div class="drawer-handle" id="drawerHandle"></div>
+        <div class="drawer-header">
+            <span class="font-semibold text-sm flex items-center gap-1">
+                <span class="material-icons" style="font-size:18px;">list_alt</span> Savollar
+            </span>
+            <button class="close-btn" id="drawerCloseBtn" aria-label="Yopish">
+                <span class="material-icons">close</span>
+            </button>
+        </div>
+        <div class="drawer-stats">
+            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--easy);">check_circle</span> <span class="num green" id="drawerAnswered">0</span></span>
+            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--hard);">flag</span> <span class="num red" id="drawerFlagged">0</span></span>
+            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--ink-faint);">remove_circle</span> <span class="num gray" id="drawerSkipped">0</span></span>
+            <span class="stat ml-auto"><span class="material-icons" style="font-size:12px;color:var(--info);">bar_chart</span> <span class="num" id="drawerProgress">0%</span></span>
+        </div>
+        <div class="question-grid" id="questionDotsMobile"></div>
+        <div class="flex items-center justify-between mt-2 pt-2 border-t border-line text-xs text-inksoft flex-wrap gap-1">
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-easy"></span> Javob</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-hard"></span> Belgilangan</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
+            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
+        </div>
+    </div>
+
+    <!-- ===== SUBMIT MODAL ===== -->
+    <div class="modal-overlay submit-confirm-modal" id="submitModal">
+        <div class="modal-box">
+            <div class="flex items-center justify-center mb-2">
+                <span class="material-icons text-info" style="font-size:28px;">fact_check</span>
+            </div>
+            <h3 class="font-display font-bold text-lg mb-1">Testni yakunlash</h3>
+            <p class="text-sm text-inksoft mb-2">Quyidagi ma'lumotlarni tekshirib, yakunlashni tasdiqlang.</p>
+
+            <div class="summary-stats" id="summaryStats">
+                <div class="item green">
+                    <div class="num" id="summaryCorrect">0</div>
+                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--easy);">check_circle</span> Javob</div>
+                </div>
+                <div class="item red">
+                    <div class="num" id="summaryFlagged">0</div>
+                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--hard);">flag</span> Belgilangan</div>
+                </div>
+                <div class="item gray">
+                    <div class="num" id="summarySkipped">0</div>
+                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--ink-faint);">remove_circle</span> Javobsiz</div>
+                </div>
+            </div>
+            <p class="text-[10px] text-inkfaint text-center mb-2">To'g'ri/noto'g'ri natija faqat yakunlangach ko'rsatiladi.</p>
+
+            <div class="flex items-center justify-between text-xs text-inksoft mb-3 px-1">
+                <span>Jami: <strong id="summaryTotal">30</strong></span>
+                <span><span class="material-icons" style="font-size:12px;">trending_up</span> <strong id="summaryPercent">0%</strong></span>
+            </div>
+
+            <div class="flex gap-2">
+                <button onclick="Modal.close('submitModal')" class="btn btn-outline flex-1 text-sm">Bekor qilish</button>
+                <button id="confirmSubmitBtn" class="btn btn-primary flex-1 text-sm">
+                    <span class="material-icons small">check</span> Yakunlash
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast-container"></div>
+
+    <!-- Global JS -->
+    <script src="/assets/js/main.js"></script>
+
+    <!-- ===== EXAM JS ===== -->
+    <script>
+        (function() {
+            'use strict';
+
+            // ============================================================
+            // TEST DATA
+            // ============================================================
+            var testData = {
+                id: 1,
+                title: "Python asoslari — Yakuniy test",
+                slug: "py-basics-final",
+                duration: 45,
+                passScore: 60,
+                penalty: 0.33,
+                maxLifelines: 3,
+                xp: 186,
+                questions: []
+            };
+
+            var XP_BY_DIFFICULTY = { easy: 3, medium: 6, hard: 10 };
+
+            var baseQ = [
+                { text: "Python'da o'zgaruvchi nomlari nima bilan boshlanishi mumkin **emas**?",
+                    options: ["Harf bilan", "Pastki chiziq bilan", "Raqam bilan", "Kirill harflar bilan"], correct: 2,
+                    difficulty: 'medium'
+                },
+                { text: "Python'da qaysi biri to'g'ri kommentariya usuli?",
+                    options: ["`// comment`", "`<!-- comment -->`", "`# comment`", "`/* comment */`"], correct: 2,
+                    difficulty: 'easy'
+                },
+                { text: "Python'da `len()` funksiyasi nima uchun ishlatiladi?",
+                    options: ["Massivni saralash", "Uzunlikni olish", "Element qo'shish", "Element o'chirish"], correct: 1,
+                    difficulty: 'easy'
+                },
+                { text: "Python'da `for` sikli qanday ishlaydi?",
+                    options: ["Faqat sonlar bilan ishlaydi", "Iterable obyektlar ustida aylanish", "Faqat ro'yxatlar bilan ishlaydi",
+                        "Faqat lug'atlar bilan ishlaydi"
+                    ], correct: 1, difficulty: 'medium'
+                },
+                { text: "Python'da `try/except` bloki nima uchun ishlatiladi?",
+                    options: ["Sikllarni boshqarish", "Funksiyalarni chaqirish", "Xatoliklarni ushlash",
+                        "O'zgaruvchilarni e'lon qilish"
+                    ], correct: 2, difficulty: 'medium'
+                },
+                { text: "Python'da `list` va `tuple` orasidagi asosiy farq nima?",
+                    options: ["List tezroq ishlaydi", "Tuple o'zgarmas (immutable)", "List faqat sonlar saqlaydi",
+                        "Tuple faqat matn saqlaydi"
+                    ], correct: 1, difficulty: 'hard'
+                }
+            ];
+
+            var diffCycle = ['easy', 'medium', 'hard', 'easy', 'medium', 'hard'];
+            for (var i = 0; i < 30; i++) {
+                var base = baseQ[i % baseQ.length];
+                var diff = diffCycle[i % diffCycle.length];
+                testData.questions.push({
+                    id: i + 1,
+                    text: base.text + (i >= 6 ? " (Savol #" + (i + 1) + ")" : ""),
+                    options: base.options.map(function(o, oi) {
+                        return { id: oi, text: o + (i >= 6 ? " — $E=mc^2$" : "") };
+                    }),
+                    correct: base.correct,
+                    difficulty: diff,
+                    xp: XP_BY_DIFFICULTY[diff] || 5
+                });
+            }
+
+            // ============================================================
+            // STATE
+            // ============================================================
+            var state = {
+                currentQuestion: 0,
+                answers: {},
+                flags: {},
+                eliminated: {},
+                lifelinesUsed: 0,
+                isFinished: false,
+                timerInterval: null,
+                timeLeft: testData.duration * 60,
+                drawerOpen: false,
+                sessionId: null
+            };
+
+            // ============================================================
+            // DOM REFS
+            // ============================================================
+            var breadcrumbTitle = document.getElementById('breadcrumbTitle');
+            var examTimer = document.getElementById('examTimer');
+            var questionCounter = document.getElementById('questionCounter');
+            var questionNumber = document.getElementById('questionNumber');
+            var questionText = document.getElementById('questionText');
+            var questionDifficulty = document.getElementById('questionDifficulty');
+            var optionsContainer = document.getElementById('optionsContainer');
+            var questionGrid = document.getElementById('questionGrid');
+            var drawerGrid = document.getElementById('questionDotsMobile');
+
+            var statAnswered = document.getElementById('statAnswered');
+            var statFlagged = document.getElementById('statFlagged');
+            var statSkipped = document.getElementById('statSkipped');
+            var statPercent = document.getElementById('statPercent');
+            var progressRing = document.getElementById('progressRing');
+            var progressText = document.getElementById('progressText');
+            var progressLabel = document.getElementById('progressLabel');
+            var passScore = document.getElementById('passScore');
+
+            var mobileTimer = document.getElementById('mobileTimer');
+            var mobileAnswered = document.getElementById('mobileAnswered');
+            var mobileTotal = document.getElementById('mobileTotal');
+            var mobileFlagged = document.getElementById('mobileFlagged');
+            var mobilePercent = document.getElementById('mobilePercent');
+
+            var drawerToggle = document.getElementById('drawerToggle');
+            var questionDrawer = document.getElementById('questionDrawer');
+            var drawerCloseBtn = document.getElementById('drawerCloseBtn');
+            var drawerHandle = document.getElementById('drawerHandle');
+
+            var prevBtn = document.getElementById('prevBtn');
+            var nextBtn = document.getElementById('nextBtn');
+            var finishBtn = document.getElementById('finishBtn');
+            var confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
+
+            var summaryCorrect = document.getElementById('summaryCorrect');
+            var summaryFlagged = document.getElementById('summaryFlagged');
+            var summarySkipped = document.getElementById('summarySkipped');
+            var summaryTotal = document.getElementById('summaryTotal');
+            var summaryPercent = document.getElementById('summaryPercent');
+
+            var letters = ['A', 'B', 'C', 'D', 'E', 'F'];
+
+            // ============================================================
+            // HELPERS
+            // ============================================================
+            function escapeHtml(str) {
+                if (!str) return '';
+                var d = document.createElement('div');
+                d.textContent = str;
+                return d.innerHTML;
+            }
+
+            function getDifficultyBadge(diff) {
+                var map = {
+                    easy: ['badge-easy', 'Oson'],
+                    medium: ['badge-medium', 'O\'rtacha'],
+                    hard: ['badge-hard', 'Murakkab']
+                };
+                var pair = map[diff] || map.medium;
+                return '<span class="badge ' + pair[0] + '">' + pair[1] + '</span>';
+            }
+
+            function renderMarkdown(el, content) {
+                if (!el || !content) return;
+                var html = marked.parse(content);
+                el.innerHTML = html;
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([el]).catch(function() {});
+                }
+            }
+
+            function getStats() {
+                var total = testData.questions.length;
+                var answered = Object.keys(state.answers).length;
+                var flagged = Object.keys(state.flags).filter(function(k) { return state.flags[k]; }).length;
+                var skipped = total - answered;
+                return { total: total, answered: answered, flagged: flagged, skipped: skipped };
+            }
+
+            function updateStats() {
+                var stats = getStats();
+                var percent = stats.total > 0 ? Math.round((stats.answered / stats.total) * 100) : 0;
+
+                statAnswered.textContent = stats.answered;
+                statFlagged.textContent = stats.flagged;
+                statSkipped.textContent = stats.skipped;
+                statPercent.textContent = percent + '%';
+                progressText.textContent = percent + '%';
+                progressLabel.textContent = stats.answered + '/' + stats.total;
+                passScore.textContent = testData.passScore + '%';
+
+                mobileTimer.textContent = examTimer.textContent;
+                mobileAnswered.textContent = stats.answered;
+                mobileTotal.textContent = stats.total;
+                mobileFlagged.textContent = stats.flagged;
+                mobilePercent.textContent = percent + '%';
+
+                document.getElementById('drawerAnswered').textContent = stats.answered;
+                document.getElementById('drawerFlagged').textContent = stats.flagged;
+                document.getElementById('drawerSkipped').textContent = stats.skipped;
+                document.getElementById('drawerProgress').textContent = percent + '%';
+
+                var circumference = 113.1;
+                var offset = circumference - (percent / 100) * circumference;
+                progressRing.style.strokeDashoffset = offset;
+
+                var lifelineBtn = document.getElementById('lifelineBtn');
+                if (lifelineBtn) {
+                    var left = testData.maxLifelines - state.lifelinesUsed;
+                    lifelineBtn.querySelector('.lifeline-count').textContent = left;
+                    lifelineBtn.disabled = left <= 0 || (state.eliminated[state.currentQuestion] || []).length > 0;
+                }
+                var flagBtn = document.getElementById('flagBtn');
+                if (flagBtn) flagBtn.classList.toggle('active', !!state.flags[state.currentQuestion]);
+
+                renderDots(questionGrid);
+                renderDots(drawerGrid);
+            }
+
+            function renderDots(container) {
+                var html = '';
+                testData.questions.forEach(function(q, idx) {
+                    var cls = 'q-dot';
+                    if (idx === state.currentQuestion) cls += ' active current';
+                    if (state.flags[idx]) cls += ' flagged';
+                    else if (state.answers[idx] !== undefined) cls += ' answered';
+                    html += '<div class="' + cls + '" data-index="' + idx + '">' + (idx + 1) + '</div>';
+                });
+                container.innerHTML = html;
+
+                // Click and touch handlers for dots
+                container.querySelectorAll('.q-dot').forEach(function(el) {
+                    var idx = parseInt(el.getAttribute('data-index'), 10);
+                    var handler = function(e) {
+                        e.preventDefault();
+                        goToQuestion(idx);
+                    };
+                    el.addEventListener('click', handler);
+                    el.addEventListener('touchstart', handler, { passive: false });
+                });
+            }
+
+            function renderExam() {
+                breadcrumbTitle.textContent = testData.title;
+
+                var q = testData.questions[state.currentQuestion];
+                if (!q) return;
+
+                questionCounter.textContent = 'Savol ' + (state.currentQuestion + 1) + ' / ' + testData.questions.length;
+                questionNumber.textContent = (state.currentQuestion + 1) + ' / ' + testData.questions.length;
+                renderMarkdown(questionText, q.text);
+                questionDifficulty.innerHTML = getDifficultyBadge(q.difficulty);
+
+                var elim = state.eliminated[state.currentQuestion] || [];
+                var optionsHtml = '';
+                q.options.forEach(function(opt, idx) {
+                    var selected = state.answers[state.currentQuestion] === idx;
+                    var isElim = elim.indexOf(idx) !== -1;
+                    var cls = 'option-label';
+                    if (selected) cls += ' selected';
+                    if (isElim) cls += ' eliminated';
+                    var optHtml = marked.parseInline(opt.text);
+
+                    optionsHtml += '<label class="' + cls + '" ' + (isElim ? '' : 'data-opt-index="' + idx + '"') + '>' +
+                        '<input type="radio" name="question" ' + (selected ? 'checked' : '') + ' ' + (isElim ?
+                            'disabled' : '') + '>' +
+                        '<span class="letter">' + letters[idx] + '</span>' +
+                        '<span class="flex-1 markdown-body" style="font-size:12px;background:transparent;padding:0;">' +
+                        optHtml + '</span>' +
+                        '</label>';
+                });
+                optionsContainer.innerHTML = optionsHtml;
+
+                // Attach click/touch handlers to options
+                optionsContainer.querySelectorAll('.option-label:not(.eliminated)').forEach(function(label) {
+                    var idx = parseInt(label.getAttribute('data-opt-index'), 10);
+                    var handler = function(e) {
+                        e.preventDefault();
+                        selectOption(idx);
+                    };
+                    label.addEventListener('click', handler);
+                    label.addEventListener('touchstart', handler, { passive: false });
+                });
+
+                if (window.MathJax && MathJax.typesetPromise) {
+                    MathJax.typesetPromise([optionsContainer]).catch(function() {});
+                }
+
+                prevBtn.disabled = state.currentQuestion === 0;
+                nextBtn.disabled = state.currentQuestion === testData.questions.length - 1;
+
+                updateStats();
+
+                if (window.innerWidth < 768 && state.drawerOpen) {
+                    closeDrawer();
+                }
+                mobileTimer.textContent = examTimer.textContent;
+            }
+
+            // ============================================================
+            // ACTIONS
+            // ============================================================
+            window.selectOption = function(idx) {
+                if (state.isFinished) return;
+                var elim = state.eliminated[state.currentQuestion] || [];
+                if (elim.indexOf(idx) !== -1) return;
+                state.answers[state.currentQuestion] = idx;
+                renderExam();
+                try { localStorage.setItem('exam_answers', JSON.stringify(state.answers)); } catch (e) {}
+            };
+
+            window.useLifeline = function() {
+                if (state.isFinished) return;
+                if (state.lifelinesUsed >= testData.maxLifelines) {
+                    showToast("Lifeline'lar tugadi", 'warning');
+                    return;
+                }
+                var idx = state.currentQuestion;
+                if ((state.eliminated[idx] || []).length > 0) return;
+                var q = testData.questions[idx];
+                var wrongIdx = q.options.map(function(o, i) { return i; }).filter(function(i) { return i !== q.correct; });
+                wrongIdx.sort(function() { return Math.random() - 0.5; });
+                var toRemove = wrongIdx.slice(0, Math.max(0, q.options.length - 2));
+                state.eliminated[idx] = toRemove;
+                state.lifelinesUsed++;
+                showToast('🛟 2 ta noto\'g\'ri variant olib tashlandi', 'info', 2000);
+                renderExam();
+            };
+
+            window.toggleFlag = function() {
+                var idx = state.currentQuestion;
+                state.flags[idx] = !state.flags[idx];
+                updateStats();
+            };
+
+            window.goToQuestion = function(idx) {
+                if (state.isFinished) return;
+                if (idx < 0 || idx >= testData.questions.length) return;
+                state.currentQuestion = idx;
+                renderExam();
+                // Close drawer on mobile after selection
+                if (window.innerWidth < 768 && state.drawerOpen) {
+                    closeDrawer();
+                }
+                if (window.innerWidth < 768) {
+                    document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            };
+
+            function prevQuestion() {
+                if (state.currentQuestion > 0) {
+                    state.currentQuestion--;
+                    renderExam();
+                }
+            }
+
+            function nextQuestion() {
+                if (state.currentQuestion < testData.questions.length - 1) {
+                    state.currentQuestion++;
+                    renderExam();
+                }
+            }
+
+            // ============================================================
+            // DRAWER CONTROL — FIXED FOR MOBILE
+            // ============================================================
+            function toggleDrawer() {
+                state.drawerOpen = !state.drawerOpen;
+                questionDrawer.classList.toggle('open', state.drawerOpen);
+                drawerToggle.style.display = state.drawerOpen ? 'none' : 'flex';
+            }
+
+            function closeDrawer() {
+                state.drawerOpen = false;
+                questionDrawer.classList.remove('open');
+                drawerToggle.style.display = 'flex';
+            }
+
+            // Expose globally
+            window.toggleDrawer = toggleDrawer;
+            window.closeDrawer = closeDrawer;
+
+            function openSubmitModal() {
+                var stats = getStats();
+                summaryCorrect.textContent = stats.answered;
+                summaryFlagged.textContent = stats.flagged;
+                summarySkipped.textContent = stats.skipped;
+                summaryTotal.textContent = stats.total;
+                var percent = stats.total > 0 ? Math.round((stats.answered / stats.total) * 100) : 0;
+                summaryPercent.textContent = percent + '%';
+                Modal.open('submitModal');
+            }
+
+            // ============================================================
+            // TIMER
+            // ============================================================
+            function startTimer() {
+                if (state.timerInterval) clearInterval(state.timerInterval);
+                state.timerInterval = setInterval(function() {
+                    state.timeLeft--;
+                    var mins = Math.floor(state.timeLeft / 60);
+                    var secs = state.timeLeft % 60;
+                    var timeStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                    examTimer.textContent = timeStr;
+                    mobileTimer.textContent = timeStr;
+
+                    if (state.timeLeft <= 60) {
+                        examTimer.style.color = 'var(--hard)';
+                        mobileTimer.style.color = 'var(--hard)';
+                    } else if (state.timeLeft <= 300) {
+                        examTimer.style.color = 'var(--medium)';
+                        mobileTimer.style.color = 'var(--medium)';
+                    } else {
+                        examTimer.style.color = '';
+                        mobileTimer.style.color = '';
+                    }
+
+                    if (state.timeLeft <= 0) {
+                        clearInterval(state.timerInterval);
+                        showToast('⏰ Vaqt tugadi!', 'warning', 4000);
+                        setTimeout(openSubmitModal, 1000);
+                    }
+                }, 1000);
+            }
+
+            // ============================================================
+            // FINISH
+            // ============================================================
+            function finishExam() {
+                if (state.isFinished) return;
+                state.isFinished = true;
+                if (state.timerInterval) clearInterval(state.timerInterval);
+
+                var timeSpent = testData.duration * 60 - state.timeLeft;
+                var results = {
+                    test_id: testData.id,
+                    test_slug: testData.slug,
+                    answers: state.answers,
+                    flags: state.flags,
+                    time_spent: timeSpent,
+                    total_questions: testData.questions.length,
+                    timestamp: new Date().toISOString(),
+                    source: 'local'
+                };
+
+                try {
+                    localStorage.setItem('exam_results', JSON.stringify(results));
+                    localStorage.setItem('exam_test_data', JSON.stringify(testData));
+                } catch (e) {}
+
+                showToast('📊 Test yakunlandi!', 'success', 2500);
+                setTimeout(function() {
+                    window.location.href = '/result.html?test=' + testData.slug;
+                }, 1000);
+            }
+
+            // ============================================================
+            // INIT
+            // ============================================================
+            document.addEventListener('DOMContentLoaded', function() {
+                try {
+                    var saved = localStorage.getItem('exam_answers');
+                    if (saved) {
+                        var parsed = JSON.parse(saved);
+                        if (Object.keys(parsed).length > 0) {
+                            state.answers = parsed;
+                            showToast('📂 Avvalgi holat tiklandi', 'info', 2000);
+                        }
+                    }
+                } catch (e) {}
+
+                renderExam();
+                startTimer();
+
+                // Button listeners
+                prevBtn.addEventListener('click', prevQuestion);
+                nextBtn.addEventListener('click', nextQuestion);
+
+                // ============================================================
+                // DRAWER TOGGLE — FIXED for mobile touch
+                // ============================================================
+                // Drawer toggle button (floating)
+                drawerToggle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDrawer();
+                });
+                drawerToggle.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDrawer();
+                }, { passive: false });
+
+                // Close button (X) — FIXED!
+                drawerCloseBtn.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDrawer();
+                });
+                drawerCloseBtn.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    toggleDrawer();
+                }, { passive: false });
+
+                // Drawer handle (drag indicator)
+                drawerHandle.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    toggleDrawer();
+                });
+                drawerHandle.addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    toggleDrawer();
+                }, { passive: false });
+
+                finishBtn.addEventListener('click', openSubmitModal);
+                confirmSubmitBtn.addEventListener('click', function() {
+                    Modal.close('submitModal');
+                    finishExam();
+                });
+
+                document.getElementById('lifelineBtn').addEventListener('click', useLifeline);
+                document.getElementById('lifelineBtn').addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    useLifeline();
+                }, { passive: false });
+
+                document.getElementById('flagBtn').addEventListener('click', toggleFlag);
+                document.getElementById('flagBtn').addEventListener('touchstart', function(e) {
+                    e.preventDefault();
+                    toggleFlag();
+                }, { passive: false });
+
+                // Close drawer on outside tap
+                document.addEventListener('click', function(e) {
+                    if (state.drawerOpen && window.innerWidth < 768) {
+                        var drawer = document.getElementById('questionDrawer');
+                        var toggle = document.getElementById('drawerToggle');
+                        if (!drawer.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+                            closeDrawer();
+                        }
+                    }
+                });
+
+                // Close drawer on outside touch
+                document.addEventListener('touchstart', function(e) {
+                    if (state.drawerOpen && window.innerWidth < 768) {
+                        var drawer = document.getElementById('questionDrawer');
+                        var toggle = document.getElementById('drawerToggle');
+                        if (!drawer.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
+                            closeDrawer();
+                        }
+                    }
+                }, { passive: true });
+
+                // Keyboard shortcuts
+                document.addEventListener('keydown', function(e) {
+                    if (!state.isFinished) {
+                        if (e.key === 'ArrowLeft' && !prevBtn.disabled) {
+                            e.preventDefault();
+                            prevQuestion();
+                        }
+                        if (e.key === 'ArrowRight' && !nextBtn.disabled) {
+                            e.preventDefault();
+                            nextQuestion();
+                        }
+                        if (e.key >= '1' && e.key <= '4') {
+                            var idx = parseInt(e.key) - 1;
+                            var q = testData.questions[state.currentQuestion];
+                            if (q && q.options[idx]) {
+                                e.preventDefault();
+                                selectOption(idx);
+                            }
+                        }
+                        if (e.key === 'Escape' && state.drawerOpen) {
+                            closeDrawer();
+                        }
+                    }
+                });
+
+                setTimeout(function() {
+                    showToast('💡 1-4 tugmalar — javob | ← → — navigatsiya', 'info', 4000);
+                }, 1000);
+            });
+
+            // Expose
+            window.selectOption = selectOption;
+            window.goToQuestion = goToQuestion;
+            window.toggleDrawer = toggleDrawer;
+            window.useLifeline = useLifeline;
+            window.toggleFlag = toggleFlag;
+
+        })();
+    </script>
+
+</body>
+</html>

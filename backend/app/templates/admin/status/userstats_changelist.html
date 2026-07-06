@@ -1,0 +1,369 @@
+<!-- templates/admin/status/userstats_changelist.html -->
+{% extends "admin/change_list.html" %}
+{% load i18n static admin_list %}
+
+{% block extrastyle %}
+{{ block.super }}
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+<style>
+    /* ============================================
+       DASHBOARD STATS
+    ============================================ */
+    .stats-grid {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 16px;
+        padding: 20px;
+        margin-bottom: 24px;
+        background: rgb(var(--color-base-200, 248 250 252));
+        border-radius: 12px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    @media (max-width: 768px) {
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            padding: 12px;
+        }
+    }
+
+    @media (max-width: 480px) {
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+
+    .stat-card {
+        background: rgb(var(--color-base-100, 255 255 255));
+        padding: 16px 20px;
+        border-radius: 10px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        text-align: center;
+        transition: all 0.2s ease;
+    }
+
+    .stat-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+    }
+
+    .stat-card .stat-number {
+        font-size: 28px;
+        font-weight: 700;
+        font-family: 'Inter', sans-serif;
+        color: rgb(var(--color-base-content, 15 23 42));
+    }
+
+    .stat-card .stat-label {
+        font-size: 12px;
+        color: rgb(var(--color-base-content, 100 116 139));
+        margin-top: 4px;
+        font-weight: 500;
+    }
+
+    .stat-card .stat-icon {
+        font-size: 24px;
+        display: block;
+        margin-bottom: 4px;
+    }
+
+    .stat-card.purple .stat-number { color: #8b5cf6; }
+    .stat-card.blue .stat-number { color: #3b82f6; }
+    .stat-card.green .stat-number { color: #22c55e; }
+    .stat-card.orange .stat-number { color: #f59e0b; }
+
+    /* ============================================
+       LEVEL STATS
+    ============================================ */
+    .level-stats {
+        display: grid;
+        grid-template-columns: repeat(5, 1fr);
+        gap: 12px;
+        padding: 16px 20px;
+        margin-bottom: 24px;
+        background: rgb(var(--color-base-100, 255 255 255));
+        border-radius: 12px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+    }
+
+    @media (max-width: 768px) {
+        .level-stats {
+            grid-template-columns: repeat(3, 1fr);
+        }
+    }
+
+    @media (max-width: 480px) {
+        .level-stats {
+            grid-template-columns: repeat(2, 1fr);
+        }
+    }
+
+    .level-item {
+        text-align: center;
+        padding: 8px;
+        border-radius: 8px;
+        background: rgb(var(--color-base-200, 248 250 252));
+    }
+
+    .level-item .level-count {
+        font-size: 20px;
+        font-weight: 700;
+    }
+
+    .level-item .level-label {
+        font-size: 11px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    .level-item .level-bar {
+        width: 100%;
+        height: 4px;
+        background: #f1f5f9;
+        border-radius: 10px;
+        margin-top: 6px;
+        overflow: hidden;
+    }
+
+    .level-item .level-bar .fill {
+        height: 100%;
+        border-radius: 10px;
+        transition: width 0.5s;
+    }
+
+    /* ============================================
+       CHART CONTAINER
+    ============================================ */
+    .chart-container {
+        background: rgb(var(--color-base-100, 255 255 255));
+        border-radius: 12px;
+        border: 1px solid rgb(var(--color-base-300, 226 232 240));
+        padding: 20px;
+        margin-bottom: 24px;
+    }
+
+    .chart-container .chart-title {
+        font-size: 16px;
+        font-weight: 600;
+        margin-bottom: 16px;
+        color: rgb(var(--color-base-content, 15 23 42));
+    }
+
+    .chart-bars {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        height: 150px;
+        gap: 8px;
+        padding-top: 8px;
+    }
+
+    .chart-bar {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .chart-bar .bar {
+        width: 100%;
+        max-width: 40px;
+        min-height: 4px;
+        border-radius: 4px 4px 0 0;
+        background: #8b5cf6;
+        transition: height 0.5s ease;
+        position: relative;
+    }
+
+    .chart-bar .bar-label {
+        font-size: 10px;
+        color: #94a3b8;
+        font-weight: 500;
+    }
+
+    .chart-bar .bar-value {
+        font-size: 10px;
+        font-weight: 600;
+        color: #8b5cf6;
+    }
+
+    /* ============================================
+       HEATMAP
+    ============================================ */
+    .heatmap-grid {
+        display: grid;
+        grid-template-columns: repeat(31, 1fr);
+        gap: 2px;
+        margin-top: 12px;
+    }
+
+    .heatmap-cell {
+        aspect-ratio: 1;
+        border-radius: 2px;
+        background: #f1f5f9;
+        transition: all 0.2s;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .heatmap-cell:hover {
+        transform: scale(1.5);
+        z-index: 10;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    }
+
+    .heatmap-cell .tooltip {
+        display: none;
+        position: absolute;
+        bottom: 100%;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #1e293b;
+        color: #f1f5f9;
+        padding: 4px 8px;
+        border-radius: 4px;
+        font-size: 10px;
+        white-space: nowrap;
+        z-index: 20;
+    }
+
+    .heatmap-cell:hover .tooltip {
+        display: block;
+    }
+
+    .heatmap-cell.level-0 { background: #f1f5f9; }
+    .heatmap-cell.level-1 { background: #dbeafe; }
+    .heatmap-cell.level-2 { background: #93c5fd; }
+    .heatmap-cell.level-3 { background: #60a5fa; }
+    .heatmap-cell.level-4 { background: #3b82f6; }
+    .heatmap-cell.level-5 { background: #1d4ed8; }
+
+    /* Dark mode */
+    .theme-dark .stat-card { background: #1e293b; border-color: #334155; }
+    .theme-dark .level-item { background: #0f172a; }
+    .theme-dark .chart-container { background: #1e293b; border-color: #334155; }
+    .theme-dark .heatmap-cell.level-0 { background: #1e293b; }
+    .theme-dark .heatmap-cell.level-1 { background: #1e3a5f; }
+    .theme-dark .heatmap-cell.level-2 { background: #1e4d7f; }
+    .theme-dark .heatmap-cell.level-3 { background: #1e6b9f; }
+    .theme-dark .heatmap-cell.level-4 { background: #1e8abf; }
+    .theme-dark .heatmap-cell.level-5 { background: #1ea9df; }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="module" id="changelist">
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- STATS GRID -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="stats-grid">
+        <div class="stat-card purple">
+            <span class="stat-icon">👥</span>
+            <div class="stat-number">{{ total_users|default:0 }}</div>
+            <div class="stat-label">Jami Foydalanuvchilar</div>
+        </div>
+        <div class="stat-card blue">
+            <span class="stat-icon">⚡</span>
+            <div class="stat-number">{{ total_xp|default:0 }}</div>
+            <div class="stat-label">Jami XP</div>
+        </div>
+        <div class="stat-card green">
+            <span class="stat-icon">📊</span>
+            <div class="stat-number">{{ avg_xp|default:0 }}</div>
+            <div class="stat-label">O'rtacha XP</div>
+        </div>
+        <div class="stat-card orange">
+            <span class="stat-icon">🏆</span>
+            <div class="stat-number">{{ top_users|length }}</div>
+            <div class="stat-label">Top Foydalanuvchilar</div>
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- LEVEL STATS -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="level-stats">
+        {% for level, data in level_stats.items %}
+        <div class="level-item">
+            <div class="level-count" style="color: 
+                {% if level == 'beginner' %}#94a3b8
+                {% elif level == 'bronze' %}#cd7f32
+                {% elif level == 'silver' %}#c0c0c0
+                {% elif level == 'gold' %}#ffd700
+                {% else %}#7c3aed{% endif %};
+            ">
+                {{ data.count }}
+            </div>
+            <div class="level-label">{{ data.label }}</div>
+            <div class="level-bar">
+                <div class="fill" style="width: {{ data.percent }}%; background: 
+                    {% if level == 'beginner' %}#94a3b8
+                    {% elif level == 'bronze' %}#cd7f32
+                    {% elif level == 'silver' %}#c0c0c0
+                    {% elif level == 'gold' %}#ffd700
+                    {% else %}#7c3aed{% endif %};
+                "></div>
+            </div>
+            <div style="font-size: 10px; color: #94a3b8; margin-top: 2px;">{{ data.percent }}%</div>
+        </div>
+        {% endfor %}
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- WEEKLY ACTIVITY CHART -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="chart-container">
+        <div class="chart-title">📈 Haftalik Faollik</div>
+        <div class="chart-bars">
+            {% for item in weekly_activity %}
+            <div class="chart-bar">
+                <div class="bar-value">{{ item.xp }}</div>
+                <div class="bar" style="height: {% widthratio item.xp 100 100 %}%;"></div>
+                <div class="bar-label">{{ item.label }}</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- HEATMAP -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="chart-container">
+        <div class="chart-title">🔥 So'nggi 30 kunlik Faollik</div>
+        <div class="heatmap-grid">
+            {% for item in heatmap_data %}
+            <div class="heatmap-cell level-{% if item.xp == 0 %}0{% elif item.xp < 10 %}1{% elif item.xp < 50 %}2{% elif item.xp < 100 %}3{% elif item.xp < 500 %}4{% else %}5{% endif %}">
+                <div class="tooltip">{{ item.date }}: {{ item.xp }} XP</div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- TOP USERS -->
+    <!-- ════════════════════════════════════════ -->
+    <div class="chart-container">
+        <div class="chart-title">🏆 Top 10 Foydalanuvchilar</div>
+        <div style="display: flex; flex-direction: column; gap: 8px;">
+            {% for user in top_users %}
+            <div style="display: flex; align-items: center; justify-content: space-between; padding: 8px 12px; background: rgb(var(--color-base-200, 248 250 252)); border-radius: 8px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <span style="font-weight: 700; color: #94a3b8; width: 24px;">#{{ forloop.counter }}</span>
+                    <span style="font-weight: 500;">{{ user.username }}</span>
+                    <span style="font-size: 11px; color: #94a3b8;">{{ user.level }}</span>
+                </div>
+                <span style="font-weight: 700; color: #8b5cf6;">⚡ {{ user.xp }}</span>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+
+    <!-- ════════════════════════════════════════ -->
+    <!-- DJANGO DEFAULT CHANGELIST -->
+    <!-- ════════════════════════════════════════ -->
+    {% block result_list %}{{ block.super }}{% endblock %}
+    {% block pagination %}{{ block.super }}{% endblock %}
+</div>
+{% endblock %}

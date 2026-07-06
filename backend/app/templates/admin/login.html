@@ -1,147 +1,200 @@
-<!-- templates/admin/login.html -->
-{% extends "unfold/layouts/base_simple.html" %}
-{% load i18n static %}
+{% extends 'unfold/layouts/unauthenticated.html' %}
+{% load i18n static unfold %}
 
-{% block title %}Kirish | CfM Contest{% endblock %}
+{% block extrahead %}
+    {{ block.super }}
+    <!-- Google Material Icons -->
+    <link rel="stylesheet" href="https://googleapis.com" />
+    
+    <style>
+        /* ============================================================
+           ADAPTIV VA 100% MARKAZLASHTIRILGAN LOGIN INTERFEYSI
+           ============================================================ */
+        
+        /* Global fon: Oq va Qora rejimga mos mayin gradientlar */
+        body.login {
+            background: radial-gradient(circle at 50% 0%, rgba(59, 130, 246, 0.05), transparent 50%) !important;
+            min-height: 100vh !important;
+        }
+        .dark body.login {
+            background: #09090b !important;
+        }
+
+        /* Unfold-ning o'z o'rovchi konteynerini o'rtaga keltirish va shakllantirish */
+        main div.w-full.max-w-md {
+            background: #ffffff !important;
+            border: 1px solid #e2e8f0 !important;
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.05), 0 10px 10px -5px rgba(0, 0, 0, 0.02) !important;
+            border-radius: 24px !important;
+            padding: 2.5rem !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+        }
+        
+        /* Dark mode - Qora rejim foni va ramkasi */
+        .dark main div.w-full.max-w-md {
+            background: #18181b !important;
+            border-color: #27272a !important;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5) !important;
+        }
+
+        /* Tepadagi Ikonka qutisi va uning oq/qora rejim ranglari */
+        .premium-logo-box {
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            width: 3.5rem !important;
+            height: 3.5rem !important;
+            border-radius: 1rem !important;
+            background: #eff6ff !important; /* Light mode: Havorang fon */
+            color: #2563eb !important;     /* Light mode: Ko'k ikon */
+            box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.02) !important;
+        }
+        .dark .premium-logo-box {
+            background: rgba(59, 130, 246, 0.15) !important; /* Dark mode: Shaffof ko'k */
+            color: #60a5fa !important;                        /* Dark mode: Och ko'k */
+        }
+
+        /* Unfold inputlarini ikkala rejimga mukammal moslash */
+        input[type="text"], input[type="password"] {
+            border-radius: 12px !important;
+            border-width: 2px !important;
+            border-color: #e2e8f0 !important;
+            background-color: #f8fafc !important;
+            padding: 0.75rem 1rem !important;
+            font-size: 0.95rem !important;
+            transition: all 0.2s ease !important;
+            color: #0f172a !important;
+        }
+        .dark input[type="text"], .dark input[type="password"] {
+            background-color: #27272a !important;
+            border-color: #3f3f46 !important;
+            color: #f1f5f9 !important;
+        }
+        
+        /* Inputlar fokus bo'lganda (Bosilganda) */
+        input[type="text"]:focus, input[type="password"]:focus {
+            border-color: #3b82f6 !important;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+            background-color: #ffffff !important;
+        }
+        .dark input[type="text"]:focus, .dark input[type="password"]:focus {
+            background-color: #18181b !important;
+            border-color: #60a5fa !important;
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.15) !important;
+        }
+
+        /* Kirish tugmasi (Light rejimda toza ko'k, Dark rejimda moslashuvchan) */
+        .submit-row-btn {
+            background: #0284c7 !important; /* Standart yorqin ko'k background */
+            transition: all 0.2s ease-in-out !important;
+        }
+        .submit-row-btn:hover {
+            background: #0369a1 !important;
+            transform: translateY(-1px) !important;
+        }
+        .submit-row-btn:hover .arrow-icon {
+            transform: translateX(4px) !important;
+        }
+
+        /* Xatolik yuz bergandagi Silkiniş animatsiyasi */
+        .premium-login-error {
+            animation: shakeErrorAlert 0.4s cubic-bezier(.36,.07,.19,.97) both !important;
+        }
+        @keyframes shakeErrorAlert {
+            10%, 90% { transform: translate3d(-1px, 0, 0); }
+            20%, 80% { transform: translate3d(2px, 0, 0); }
+            30%, 50%, 70% { transform: translate3d(-4px, 0, 0); }
+            40%, 60% { transform: translate3d(4px, 0, 0); }
+        }
+    </style>
+{% endblock %}
+
+{% block extrastyle %}
+    {{ block.super }}
+    {{ form.media }}
+{% endblock %}
+
+{% block title %}
+    {% trans "Kirish" %} | {{ site_title|default:"CfM Contest" }}
+{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-slate-950" style="background-color: #0b0f19 !important;">
-    <div class="w-full max-w-md px-4">
-        
-        <!-- ASOSIY CARD: Premium Glassmorphism va Shadow effektlari bilan -->
-        <div class="rounded-2xl overflow-hidden border transition-all duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.3)]" 
-             style="background-color: #111827 !important; border-color: #1f2937 !important;">
-            
-            <!-- Header - Modern Mesh Gradient & Blur -->
-            <div class="relative px-6 py-10 text-center" style="background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%) !important;">
-                <!-- Bezak elementlari -->
-                <div class="absolute inset-0 bg-white/[0.03] pointer-events-none" style="backdrop-filter: blur(1px);"></div>
-                
-                <div class="relative z-10">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-white/10 rounded-2xl mb-4 border border-white/20 shadow-lg backdrop-blur-md transform rotate-3 hover:rotate-0 transition-transform duration-300">
-                        <span class="material-symbols-outlined text-white text-4xl" style="color: #ffffff !important;">school</span>
-                    </div>
-                    <h1 class="text-3xl font-extrabold tracking-tight" style="color: #ffffff !important; margin: 0; font-family: system-ui, sans-serif;">CfM Contest</h1>
-                    <p class="mt-2 text-sm font-medium" style="color: #bfdbfe !important; margin: 0; opacity: 0.85;">
-                        {% trans "Bilimingizni sinov qiling" %}
-                    </p>
-                </div>
-            </div>
-
-            <!-- Login Form Body -->
-            <div class="p-6 sm:p-8">
-                <h2 class="text-2xl font-bold mb-1" style="color: #ffffff !important; margin: 0 0 6px 0;">
-                    {% trans "Xush kelibsiz!" %}
-                </h2>
-                <p class="text-sm mb-6" style="color: #9ca3af !important; margin: 0 0 28px 0;">
-                    {% trans "Davom etish uchun hisobingizga kiring" %}
-                </p>
-
-                <form method="post" action="{{ app_path }}">
-                    {% csrf_token %}
-                    <input type="hidden" name="next" value="{{ next }}">
-                    
-                    <!-- Username field -->
-                    <div class="mb-5">
-                        <label class="block text-xs font-bold uppercase tracking-widest mb-2" style="color: #9ca3af !important;">
-                            {% trans "Foydalanuvchi nomi" %}
-                        </label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                <span class="material-symbols-outlined text-xl" style="color: #4b5563 !important;">person</span>
-                            </span>
-                            <input type="text" name="username" 
-                                   class="w-full pl-12 pr-4 py-3 rounded-xl border text-sm font-medium transition-all duration-200 outline-none"
-                                   style="background-color: #1f2937 !important; border-color: #374151 !important; color: #ffffff !important;"
-                                   onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.2)';"
-                                   onblur="this.style.borderColor='#374151'; this.style.boxShadow='none';"
-                                   placeholder="Foydalanuvchi nomi" required>
-                        </div>
-                    </div>
-
-                    <!-- Password field -->
-                    <div class="mb-6">
-                        <label class="block text-xs font-bold uppercase tracking-widest mb-2" style="color: #9ca3af !important;">
-                            {% trans "Parol" %}
-                        </label>
-                        <div class="relative">
-                            <span class="absolute inset-y-0 left-0 flex items-center pl-4 pointer-events-none">
-                                <span class="material-symbols-outlined text-xl" style="color: #4b5563 !important;">lock</span>
-                            </span>
-                            <input type="password" name="password" 
-                                   class="w-full pl-12 pr-12 py-3 rounded-xl border text-sm font-medium transition-all duration-200 outline-none"
-                                   style="background-color: #1f2937 !important; border-color: #374151 !important; color: #ffffff !important;"
-                                   onfocus="this.style.borderColor='#6366f1'; this.style.boxShadow='0 0 0 3px rgba(99, 102, 241, 0.2)';"
-                                   onblur="this.style.borderColor='#374151'; this.style.boxShadow='none';"
-                                   placeholder="••••••••" required>
-                            <button type="button" onclick="togglePassword(this)" 
-                                    class="absolute inset-y-0 right-0 flex items-center pr-4" style="color: #4b5563 !important;">
-                                <span class="material-symbols-outlined text-xl hover:text-gray-300 transition-colors">visibility_off</span>
-                            </button>
-                        </div>
-                    </div>
-
-                    <!-- Error message -->
-                    {% if form.errors or form.non_field_errors %}
-                    <div class="mb-6 p-4 rounded-xl border" style="background-color: rgba(244, 63, 94, 0.08) !important; border-color: rgba(244, 63, 94, 0.25) !important;">
-                        <p class="text-xs text-center font-medium flex items-center justify-center gap-2" style="color: #f43f5e !important; margin: 0; line-height: 1.5;">
-                            <span class="material-symbols-outlined text-lg flex-shrink-0">error</span>
-                            <span>
-                                {% if form.non_field_errors %}
-                                    {{ form.non_field_errors|striptags }}
-                                {% else %}
-                                    {% trans "Foydalanuvchi nomi yoki parol noto'g'ri" %}
-                                {% endif %}
-                            </span>
-                        </p>
-                    </div>
-                    {% endif %}
-
-                    <!-- Submit button -->
-                    <button type="submit" 
-                            class="w-full font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-indigo-600/20 cursor-pointer"
-                            style="background: linear-gradient(to right, #4f46e5, #3b82f6) !important; color: #ffffff !important; border: none !important;"
-                            onmouseover="this.style.opacity='0.95'; this.style.transform='translateY(-1px)';"
-                            onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';"
-                            onmousedown="this.style.transform='translateY(1px)';">
-                        <span class="material-symbols-outlined text-lg">login</span>
-                        {% trans "Tizimga kirish" %}
-                    </button>
-                </form>
-
-                <!-- Divider -->
-                <div class="relative my-8">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t" style="border-color: #1f2937 !important;"></div>
-                    </div>
-                    <div class="relative flex justify-center text-xs font-bold uppercase tracking-widest">
-                        <span class="px-4 text-xs font-semibold tracking-widest" style="background-color: #111827 !important; color: #4b5563 !important;">
-                            CfM Panel
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="text-center text-xs font-medium" style="color: #4b5563 !important; tracking-wide">
-                    <p>© 2026 CfM Contest. {% trans "Barcha huquqlar himoyalangan" %}</p>
-                </div>
-            </div>
+    <!-- ── TO'G'RILANGAN PREMIUM HEADER ── -->
+    <div class="text-center mb-6 select-none">
+        <!-- Qulv ikonasi tiklandi va ikkala rejimga moslandi -->
+        <div class="premium-logo-box mb-3 transform hover:scale-105 transition-transform duration-200">
+            <span class="material-symbols-outlined text-[26px] font-bold">lock_open</span>
         </div>
+        <h1 class="text-2xl font-black tracking-tight text-gray-950 dark:text-zinc-50">
+            {{ site_title|default:"CfM Contest" }}
+        </h1>
+        <p class="mt-1 text-xs font-semibold text-gray-400 dark:text-zinc-500">
+            {% trans "Boshqaruv paneliga xush kelibsiz!" %}
+        </p>
     </div>
-</div>
 
-<script>
-function togglePassword(button) {
-    const input = button.parentElement.querySelector('input');
-    const icon = button.querySelector('span');
+    <!-- Toast Xabarnomalar qobig'i -->
+    {% include "unfold/helpers/messages.html" %}
+
+    <!-- ── ERROR ALERT BLOCK ── -->
+    {% if form.errors or form.non_field_errors %}
+        <div class="premium-login-error mb-5 flex flex-col gap-2 rounded-xl border border-red-200 bg-red-50/50 p-4 dark:border-red-900/30 dark:bg-red-950/10">
+            <div class="flex items-center gap-2 text-red-600 dark:text-red-400 font-bold text-xs">
+                <span class="material-symbols-outlined text-[18px]">gpp_maybe</span>
+                {% trans "Foydalanuvchi nomi yoki parol noto'g'ri!" %}
+            </div>
+            {% if form.non_field_errors %}
+                <div class="text-[11px] font-medium text-red-700 dark:text-red-400/90 pl-7">
+                    {% for error in form.non_field_errors %}
+                        <p>{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    {% block login_before %}{% endblock %}
+
+    <!-- ── NATIVE INPUT FORMA ── -->
+    <form action="{{ app_path }}" method="post" id="login-form" class="space-y-4">
+        {% csrf_token %}
+
+        <div class="relative group">
+            {% include "unfold/helpers/field.html" with field=form.username %}
+        </div>
+
+        <div class="relative group">
+            {% include "unfold/helpers/field.html" with field=form.password %}
+        </div>
+
+        <!-- Tugmalar qismi -->
+        <div class="flex flex-col gap-3 mt-6">
+            <!-- PRIMARY ADAPTIVE BUTTON -->
+            {% component "unfold/components/button.html" with submit=1 variant="primary" class="submit-row-btn w-full flex items-center justify-center gap-2 py-3 text-white font-bold rounded-xl shadow-md active:scale-[0.99]" %}
+                {% trans "Tizimga kirish" %} 
+                <span class="material-symbols-outlined arrow-icon text-[18px] font-bold transition-transform duration-200">arrow_forward</span>
+            {% endcomponent %}
+
+            <!-- SECONDARY PASSWORD RESET LINK -->
+            {% url 'admin_password_reset' as password_reset_url %}
+            {% url 'admin:admin_password_reset' as unfold_password_reset_url %}
+
+            {% if password_reset_url or unfold_password_reset_url %}
+                {% component "unfold/components/button.html" with href=password_reset_url|default:unfold_password_reset_url variant="secondary" class="password-reset-link w-full text-center py-2 text-xs font-semibold text-gray-400 hover:text-gray-700 dark:text-zinc-500 dark:hover:text-zinc-300 transition-colors" %}
+                    {% trans "Parolni unutdingizmi?" %}
+                {% endcomponent %}
+            {% endif %}
+        </div>
+    </form>
+
+    {% block login_after %}{% endblock %}
     
-    if (input.type === 'password') {
-        input.type = 'text';
-        icon.textContent = 'visibility';
-    } else {
-        input.type = 'password';
-        icon.textContent = 'visibility_off';
-    }
-}
-</script>
+    <!-- FOOTER BRANDING -->
+    <div class="mt-8 border-t border-gray-100 pt-4 text-center dark:border-zinc-800">
+        <p class="text-[10px] font-bold tracking-wider text-gray-300 dark:text-zinc-600 uppercase">
+            {{ site_title|default:"CfM Contest" }} © {% now "Y" %}
+        </p>
+    </div>
 {% endblock %}

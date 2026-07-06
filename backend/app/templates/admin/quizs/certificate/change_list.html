@@ -1,0 +1,16 @@
+<!-- certificates/templates/admin/quizs/certificate/change_list.html -->
+
+{% extends "admin/change_list.html" %}
+
+{% block object-tools-items %}
+    {{ block.super }}
+    {% if pending_count > 0 %}
+    <li>
+        <a href="{% url 'admin:certificate-generate-all' %}" 
+           class="button"
+           style="background: #f59e0b; color: white;">
+            ⚡ Barcha sertifikatlarni generatsiya qilish ({{ pending_count }})
+        </a>
+    </li>
+    {% endif %}
+{% endblock %}

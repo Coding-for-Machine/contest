@@ -1,0 +1,1227 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistemalar negizi | RobaContest</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Google Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
+
+    <!-- Video.js for HLS -->
+    <link href="https://vjs.zencdn.net/7.20.3/video-js.css" rel="stylesheet">
+    <script src="https://vjs.zencdn.net/7.20.3/video.min.js"></script>
+
+    <!-- Markdown & MathJax -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
+    <script>
+        MathJax = {
+            tex: {
+                inlineMath: [
+                    ['$', '$'],
+                    ['\\(', '\\)']
+                ],
+                displayMath: [
+                    ['$$', '$$'],
+                    ['\\[', '\\]']
+                ]
+            },
+            svg: {
+                fontCache: 'global'
+            }
+        };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+
+    <!-- Tailwind -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        ink: '#0b0f14',
+                        inksoft: '#5b6572',
+                        inkfaint: '#9aa3ad',
+                        line: '#e7eaee',
+                        'line-soft': '#f0f2f4',
+                        surface: '#fafafa',
+                        'surface-2': '#f4f5f6',
+                        easy: '#17924f',
+                        'easy-bg': '#eafbf1',
+                        medium: '#b5710a',
+                        'medium-bg': '#fef6e7',
+                        hard: '#d0264a',
+                        'hard-bg': '#fdeced',
+                        info: '#1d5fd6',
+                        'info-bg': '#eaf1fd',
+                    },
+                    fontFamily: {
+                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
+                    },
+                }
+            }
+        }
+    </script>
+
+    <link rel="stylesheet" href="../../static/css/style.css">
+
+    <style>
+        .course-detail {
+            max-width: 1180px;
+            margin: 0 auto;
+            padding: 0 20px;
+        }
+
+        /* Markdown styles */
+        .markdown-body {
+            font-family: 'Inter', sans-serif;
+            font-size: 14.5px;
+            line-height: 1.8;
+            color: var(--ink);
+            background: transparent;
+        }
+        .markdown-body h1,
+        .markdown-body h2,
+        .markdown-body h3 {
+            font-family: 'Space Grotesk', sans-serif;
+            font-weight: 700;
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+        .markdown-body h1 {
+            font-size: 1.8em;
+        }
+        .markdown-body h2 {
+            font-size: 1.5em;
+        }
+        .markdown-body h3 {
+            font-size: 1.25em;
+        }
+        .markdown-body p {
+            margin: 10px 0;
+        }
+        .markdown-body ul,
+        .markdown-body ol {
+            padding-left: 24px;
+            margin: 10px 0;
+        }
+        .markdown-body li {
+            margin: 4px 0;
+        }
+        .markdown-body code {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            background: #f6f8fa;
+            padding: 2px 6px;
+            border-radius: 4px;
+        }
+        .markdown-body pre {
+            background: #f6f8fa;
+            border-radius: 8px;
+            padding: 14px 16px;
+            border: 1px solid var(--line-soft);
+            overflow-x: auto;
+        }
+        .markdown-body pre code {
+            background: transparent;
+            padding: 0;
+        }
+        .markdown-body blockquote {
+            border-left: 4px solid var(--line);
+            padding-left: 16px;
+            color: var(--ink-soft);
+            margin: 10px 0;
+        }
+        .markdown-body table {
+            border-collapse: collapse;
+            width: 100%;
+        }
+        .markdown-body table td,
+        .markdown-body table th {
+            border: 1px solid var(--line);
+            padding: 6px 12px;
+        }
+        .markdown-body img {
+            max-width: 100%;
+            border-radius: 8px;
+        }
+        .markdown-body .math {
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .module-card {
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            overflow: hidden;
+            transition: all 0.2s ease;
+            background: #fff;
+        }
+        .module-card:hover {
+            border-color: #d7dbe0;
+        }
+
+        .module-header {
+            padding: 14px 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: var(--surface);
+            transition: background 0.15s ease;
+            user-select: none;
+        }
+        .module-header:hover {
+            background: var(--surface-2);
+        }
+        .module-header .chevron {
+            transition: transform 0.25s ease;
+        }
+        .module-header.open .chevron {
+            transform: rotate(180deg);
+        }
+
+        .module-body {
+            border-top: 1px solid var(--line);
+            padding: 0;
+            overflow: hidden;
+            max-height: 0;
+            transition: max-height 0.3s ease;
+        }
+        .module-body.open {
+            max-height: 2000px;
+        }
+
+        .lesson-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 18px;
+            border-bottom: 1px solid var(--line-soft);
+            transition: background 0.15s ease;
+            cursor: pointer;
+            text-decoration: none;
+            color: var(--ink);
+        }
+        .lesson-item:hover {
+            background: var(--surface);
+        }
+        .lesson-item:last-child {
+            border-bottom: none;
+        }
+        .lesson-item .status-icon {
+            width: 28px;
+            height: 28px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+        .lesson-item .status-icon.completed {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .lesson-item .status-icon.in-progress {
+            background: var(--medium-bg);
+            color: var(--medium);
+        }
+        .lesson-item .status-icon.pending {
+            background: var(--surface-2);
+            color: var(--ink-faint);
+        }
+
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%;
+            height: 0;
+            background: #0b0f14;
+            border-radius: 12px;
+            overflow: hidden;
+        }
+        .video-container video,
+        .video-container .vjs-poster,
+        .video-container .video-js {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100% !important;
+            height: 100% !important;
+            object-fit: cover;
+        }
+        .video-container .video-js .vjs-tech {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+        }
+
+        .badge-status {
+            padding: 2px 12px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.03em;
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .badge-status.completed {
+            background: var(--easy-bg);
+            color: var(--easy);
+        }
+        .badge-status.in-progress {
+            background: var(--medium-bg);
+            color: var(--medium);
+        }
+        .badge-status.not-started {
+            background: var(--surface-2);
+            color: var(--ink-soft);
+        }
+
+        .material-icons {
+            font-size: 20px;
+            vertical-align: middle;
+        }
+        .material-icons.small {
+            font-size: 16px;
+        }
+
+        /* Video info bar */
+        .video-info-bar {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 16px 24px;
+            padding: 12px 16px;
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 12px;
+            margin-top: 12px;
+        }
+        .video-info-bar .info-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 13px;
+            color: var(--ink-soft);
+        }
+        .video-info-bar .info-item .material-icons {
+            font-size: 18px;
+        }
+        .video-info-bar .info-item .value {
+            color: var(--ink);
+            font-weight: 600;
+        }
+
+        /* Course stats */
+        .course-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+            gap: 12px;
+            margin-bottom: 24px;
+        }
+        .course-stats .stat-card {
+            background: var(--surface);
+            border: 1px solid var(--line);
+            border-radius: 10px;
+            padding: 14px 16px;
+            text-align: center;
+        }
+        .course-stats .stat-card .number {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 700;
+            font-size: 22px;
+            color: var(--ink);
+        }
+        .course-stats .stat-card .label {
+            font-size: 12px;
+            color: var(--ink-soft);
+            margin-top: 2px;
+        }
+        .course-stats .stat-card .material-icons {
+            font-size: 24px;
+            color: var(--info);
+            display: block;
+            margin-bottom: 4px;
+        }
+
+        .desc-container {
+            padding: 20px 0;
+        }
+
+        @media (max-width: 640px) {
+            .course-detail {
+                padding: 0 16px;
+            }
+            .module-header {
+                padding: 12px 14px;
+            }
+            .lesson-item {
+                padding: 10px 14px;
+            }
+            .course-stats {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .video-info-bar {
+                gap: 10px;
+            }
+            .video-info-bar .info-item {
+                font-size: 12px;
+            }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- ===== TOPBAR ===== -->
+    <header class="topbar">
+        <div class="container-rc flex items-center justify-between h-14">
+            <div class="flex items-center gap-8">
+                <a href="/" class="flex items-center gap-2 shrink-0">
+                    <span class="w-8 h-8 rounded-lg bg-ink flex items-center justify-center">
+                        <span class="material-icons text-white" style="font-size:20px;">code</span>
+                    </span>
+                    <span class="font-display font-bold text-[17px] tracking-tight hidden sm:inline">Roba<span class="text-inksoft font-medium">Contest</span></span>
+                </a>
+                <nav class="hidden md:flex items-center gap-6">
+                    <a href="/problems.html" class="nav-link">Masalalar</a>
+                    <a href="/tests.html" class="nav-link">Testlar</a>
+                    <a href="/contests.html" class="nav-link">Musobaqalar</a>
+                    <a href="/courses.html" class="nav-link active">Kurslar</a>
+                    <a href="/leaderboard.html" class="nav-link">Reyting</a>
+                </nav>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <button class="hidden sm:flex items-center gap-2 text-inksoft hover:text-ink transition" aria-label="Qidirish">
+                    <span class="material-icons">search</span>
+                </button>
+                <a href="/login.html" class="btn btn-outline btn-sm btn-login">Kirish</a>
+                <a href="/login.html" class="btn btn-primary btn-sm btn-signup">Boshlash</a>
+                <div class="relative">
+                    <div class="user-avatar" onclick="document.getElementById('userMenu').classList.toggle('hidden')">AZ</div>
+                    <div id="userMenu" class="hidden absolute right-0 top-11 w-52 bg-white border border-line rounded-xl shadow-lg py-1.5 z-50">
+                        <a href="/profile.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">person</span> Profil
+                        </a>
+                        <a href="/leaderboard.html" class="block px-4 py-2 text-sm hover:bg-surface">
+                            <span class="material-icons small mr-2">emoji_events</span> Mening reytingim
+                        </a>
+                        <div class="h-px bg-line my-1"></div>
+                        <button onclick="Auth.logout()" class="w-full text-left px-4 py-2 text-sm text-hard hover:bg-surface">
+                            <span class="material-icons small mr-2">logout</span> Chiqish
+                        </button>
+                    </div>
+                </div>
+                <button class="md:hidden" onclick="document.getElementById('mobileNav').classList.toggle('hidden')" aria-label="Menyu">
+                    <span class="material-icons">menu</span>
+                </button>
+            </div>
+        </div>
+        <div id="mobileNav" class="hidden md:hidden border-t border-line bg-white">
+            <nav class="container-rc flex flex-col py-2">
+                <a href="/problems.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">emoji_events</span> Musobaqalar
+                </a>
+                <a href="/courses.html" class="py-3 text-sm font-medium border-b border-line-soft">
+                    <span class="material-icons small mr-2">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="py-3 text-sm font-medium">
+                    <span class="material-icons small mr-2">leaderboard</span> Reyting
+                </a>
+            </nav>
+        </div>
+    </header>
+
+    <!-- ===== MAIN ===== -->
+    <main>
+
+        <div class="course-detail py-8">
+
+            <!-- Breadcrumb -->
+            <div class="flex items-center gap-2 text-sm text-inksoft mb-6">
+                <a href="/courses.html" class="hover:text-ink">Kurslar</a>
+                <span class="material-icons small" style="font-size:14px;">chevron_right</span>
+                <span class="text-ink font-medium" id="courseTitle">Sistemalar negizi</span>
+            </div>
+
+            <!-- Course Header -->
+            <div class="grid lg:grid-cols-[1fr_320px] gap-8 mb-8">
+                <!-- Left: Info -->
+                <div>
+                    <div class="flex items-center gap-3 mb-3 flex-wrap">
+                        <span class="badge-status" id="courseStatus">
+                            <span class="material-icons small" style="font-size:14px;">hourglass_empty</span> Boshlanmagan
+                        </span>
+                        <span class="badge badge-neutral" id="coursePrice">Bepul</span>
+                        <span class="badge badge-info" id="courseLevel">
+                            <span class="material-icons small" style="font-size:14px;">school</span> O'rtacha
+                        </span>
+                    </div>
+                    <h1 class="font-display font-bold text-3xl sm:text-4xl mb-3" id="courseTitle2">Sistemalar negizi</h1>
+                    <div class="flex items-center flex-wrap gap-5 text-sm text-inksoft">
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-icons small">description</span>
+                            <span id="lessonProgress">0/20</span> dars
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-icons small">quiz</span>
+                            <span id="testProgress">0/6</span> test
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-icons small">schedule</span>
+                            <span id="totalHours">10+</span> soat
+                        </span>
+                        <span class="flex items-center gap-1.5">
+                            <span class="material-icons small">school</span>
+                            <span id="moduleCount">6</span> modul
+                        </span>
+                    </div>
+                </div>
+
+                <!-- Right: Progress -->
+                <div class="card p-6 h-fit">
+                    <div class="flex items-center justify-between mb-4">
+                        <span class="text-sm font-semibold">Kurs progressi</span>
+                        <span class="font-mono font-bold" id="progressPercent">0%</span>
+                    </div>
+                    <div class="rate-track mb-4">
+                        <div class="rate-fill high" id="progressBar" style="width:0%"></div>
+                    </div>
+                    <div class="grid grid-cols-3 gap-3 text-center text-sm">
+                        <div>
+                            <div class="font-mono font-bold text-easy" id="completedLessons">0</div>
+                            <div class="text-xs text-inksoft">Dars</div>
+                        </div>
+                        <div>
+                            <div class="font-mono font-bold text-info" id="completedTests">0</div>
+                            <div class="text-xs text-inksoft">Test</div>
+                        </div>
+                        <div>
+                            <div class="font-mono font-bold text-medium" id="totalItems">0</div>
+                            <div class="text-xs text-inksoft">Jami</div>
+                        </div>
+                    </div>
+                    <button id="enrollBtn" class="btn btn-primary btn-block mt-4">
+                        <span class="material-icons small">play_arrow</span> Boshlash
+                    </button>
+                </div>
+            </div>
+
+            <!-- Video Section -->
+            <div class="mb-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <h2 class="font-display font-bold text-xl">
+                        <span class="material-icons" style="font-size:22px;">play_circle</span> Video darslik
+                    </h2>
+                    <span class="badge badge-live">
+                        <span class="dot"></span> Yangi
+                    </span>
+                </div>
+
+                <!-- Video 16:9 -->
+                <div class="video-container">
+                    <video id="courseVideo" class="video-js vjs-default-skin vjs-big-play-centered" controls preload="auto"
+                    poster="http://localhost:9000/cfm/media/movies/thumbnails/cfm_logo_Q2ghoMq.jpg"
+                    data-setup='{"techOrder": ["html5"], "html5": {"hls": {"enableLowInitialPlaylist": true}}}'>
+                    <source src="http://localhost:9000/cfm/media/movies/hls/77e80e60-5289-401b-a4c6-d8d5b786f3e9/index.m3u8" type="application/x-mpegURL">
+                </video>
+            </div>
+
+            <!-- Video Info Bar -->
+            <div class="video-info-bar">
+                <span class="info-item">
+                    <span class="material-icons">schedule</span>
+                    <span>Davomiyligi: <span class="value" id="videoDuration">00:44</span></span>
+                </span>
+                <span class="info-item">
+                    <span class="material-icons">visibility</span>
+                    <span>Ko'rishlar: <span class="value">1,234</span></span>
+                </span>
+                <span class="info-item">
+                    <span class="material-icons">thumb_up</span>
+                    <span>Like: <span class="value">342</span></span>
+                </span>
+                <span class="info-item" id="videoStatus">
+                    <span class="material-icons" style="font-size:18px;">play_circle</span>
+                    <span class="value" style="color:var(--info);">Ko'rishga tayyor</span>
+                </span>
+                <span class="info-item ml-auto">
+                    <span class="material-icons">fullscreen</span>
+                    <span class="text-xs text-inksoft">16:9</span>
+                </span>
+            </div>
+        </div>
+
+        <!-- Description (Markdown + Math) -->
+        <div class="desc-container mb-8">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="material-icons">description</span>
+                <h2 class="font-display font-bold text-xl">Kurs haqida</h2>
+            </div>
+            <div class="markdown-body border border-line rounded-xl p-6 bg-white" id="courseDesc">
+                <!-- Rendered by JS -->
+            </div>
+        </div>
+
+        <!-- Course Stats -->
+        <div class="course-stats">
+            <div class="stat-card">
+                <span class="material-icons">menu_book</span>
+                <div class="number" id="statModules">6</div>
+                <div class="label">Modullar</div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons">description</span>
+                <div class="number" id="statLessons">20+</div>
+                <div class="label">Video darslar</div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons">schedule</span>
+                <div class="number" id="statHours">10+</div>
+                <div class="label">Soat kontent</div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons">people</span>
+                <div class="number" id="statStudents">1,234</div>
+                <div class="label">O'quvchilar</div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons">star</span>
+                <div class="number" id="statRating">4.8</div>
+                <div class="label">Baho</div>
+            </div>
+            <div class="stat-card">
+                <span class="material-icons">quiz</span>
+                <div class="number" id="statTests">6</div>
+                <div class="label">Testlar</div>
+            </div>
+        </div>
+
+        <!-- Modules -->
+        <div>
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="font-display font-bold text-xl">
+                    <span class="material-icons" style="font-size:22px;">menu_book</span> Kurs dasturi
+                </h2>
+                <span class="text-sm text-inksoft" id="moduleCountLabel">6 modul</span>
+            </div>
+            <div id="modulesContainer" class="flex flex-col gap-3">
+                <!-- Modules rendered by JS -->
+            </div>
+        </div>
+
+    </div>
+
+</main>
+
+<!-- ===== FOOTER ===== -->
+<footer class="border-t border-line mt-16">
+    <div class="container-rc py-14 grid grid-cols-2 md:grid-cols-5 gap-8">
+        <div class="col-span-2">
+            <div class="flex items-center gap-2 mb-3">
+                <span class="w-7 h-7 rounded-lg bg-ink flex items-center justify-center">
+                    <span class="material-icons text-white" style="font-size:18px;">code</span>
+                </span>
+                <span class="font-display font-bold">RobaContest</span>
+            </div>
+            <p class="text-sm text-inksoft max-w-xs">Masalalar, testlar, musobaqalar va kurslar bitta joyda — dasturlashni sport qilib o'rgan.</p>
+        </div>
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Platforma</div>
+            <div class="flex flex-col gap-2 text-sm text-inksoft">
+                <a href="/problems.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">playlist_play</span> Masalalar
+                </a>
+                <a href="/tests.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
+                </a>
+                <a href="/contests.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">emoji_events</span> Musobaqalar
+                </a>
+            </div>
+        </div>
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">O'quv</div>
+            <div class="flex flex-col gap-2 text-sm text-inksoft">
+                <a href="/courses.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">school</span> Kurslar
+                </a>
+                <a href="/leaderboard.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">leaderboard</span> Reyting
+                </a>
+                <a href="/profile.html" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">person</span> Profil
+                </a>
+            </div>
+        </div>
+        <div>
+            <div class="text-xs font-bold uppercase tracking-wide text-inkfaint mb-3">Aloqa</div>
+            <div class="flex flex-col gap-2 text-sm text-inksoft">
+                <a href="https://t.me/robacontest" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">telegram</span> Telegram
+                </a>
+                <a href="mailto:info@robacontest.uz" class="hover:text-ink flex items-center gap-1">
+                    <span class="material-icons small" style="font-size:14px;">email</span> info@robacontest.uz
+                </a>
+            </div>
+        </div>
+    </div>
+    <div class="border-t border-line-soft">
+        <div class="container-rc py-5 flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-inkfaint">
+            <span>© 2026 RobaContest. Barcha huquqlar himoyalangan.</span>
+            <span class="font-mono">v2.0.0</span>
+        </div>
+    </div>
+</footer>
+
+<!-- Toast -->
+<div id="toast-container"></div>
+
+<!-- Global JS -->
+<script src="../../static/js/main.js"></script>
+
+<!-- ===== COURSE DETAIL JS ===== -->
+<script>
+    (function() {
+        'use strict';
+
+        // ============================================================
+        // DATA
+        // ============================================================
+        var courseData = {
+            id: 1,
+            title: "Sistemalar negizi",
+            slug: "sistemalar-negizi",
+            description: "# Sistemalar negizi\n\nKompyuter va internet aslida qanday ishlashini tushunib oling. Bu kursda siz arxitektura qurilishi va tizimlarni tashkil etishni o'rganasiz.\n\n## Nima o'rganasiz?\n\n- **Kompyuter arxitekturasi** — protsessor, xotira va kirish-chiqish tizimlari\n- **Operatsion tizimlar** — abstraktsiya va resurslarni boshqarish\n- **Tarmoqlar** — internet protokollari va ma'lumotlar uzatish\n\n## Matematik asoslar\n\nAlgoritmlarni tahlil qilish uchun quyidagi formulalardan foydalanamiz:\n\n$$T(n) = O(n \\log n)$$\n\n$$\\sum_{i=1}^{n} i = \\frac{n(n+1)}{2}$$\n\n## Dasturlash tillari\n\nKurs davomida quyidagi tillarda misollar ko'rib chiqamiz:\n\n```python\ndef binary_search(arr, target):\n    left, right = 0, len(arr) - 1\n    while left <= right:\n        mid = (left + right) // 2\n        if arr[mid] == target:\n            return mid\n        elif arr[mid] < target:\n            left = mid + 1\n        else:\n            right = mid - 1\n    return -1\n```\n\n## Kurs natijasi\n\nKursni tugatgandan so'ng siz:\n\n1. Kompyuter tizimlarining asosiy qismlarini tushunasiz\n2. Internet va tarmoq protokollari haqida bilimga ega bo'lasiz\n3. Algoritmlarni tahlil qilish ko'nikmalarini rivojlantirasiz\n\n> **Eslatma:** Kurs davomida amaliy topshiriqlar va testlar mavjud.",
+            price: 0,
+            discount_price: null,
+            level: "intermediate",
+            students: 1234,
+            rating: 4.8,
+            total_hours: "10+",
+            video: {
+                src: "http://localhost:9000/cfm/media/movies/hls/77e80e60-5289-401b-a4c6-d8d5b786f3e9/index.m3u8",
+                thumb: "http://localhost:9000/cfm/media/movies/thumbnails/cfm_logo_Q2ghoMq.jpg",
+                duration: "00:44",
+                type: "hls"
+            },
+            is_paid: false,
+            is_completed: false,
+            modules: [{
+                id: 1,
+                title: "Tizimlar negizi",
+                slug: "tizimlar-negizi",
+                lessons: [
+                    { id: 1, title: "Kompyuter anatomiyasi", slug: "kompyuter-anatomiyasi",
+                        is_completed: false, duration: "12:30" },
+                    { id: 2, title: "Operatsion tizim va abstraktsiya", slug: "operatsion-tizim",
+                        is_completed: false, duration: "18:45" },
+                    { id: 3, title: "Dastur, dasturlash tili va dasturchi", slug: "dastur-tili",
+                        is_completed: false, duration: "15:20" },
+                    { id: 4, title: "Internet tarmog'i va protokollari", slug: "internet-protokollari",
+                        is_completed: false, duration: "22:10" }
+                ],
+                tests: [
+                    { id: 1, title: "Tizimlar negizi testi", slug: "tizimlar-test", duration_minutes: 30,
+                        status: "pending" }
+                ]
+            }, {
+                id: 2,
+                title: "Kengayish usullari",
+                slug: "kengayish-usullari",
+                lessons: [
+                    { id: 5, title: "Vertikal va gorizontal kengayish", slug: "kengayish-turlari",
+                        is_completed: false, duration: "14:20" },
+                    { id: 6, title: "Yuklamani taqsimlash (Load Balancing)", slug: "load-balancing",
+                        is_completed: false, duration: "20:15" },
+                    { id: 7, title: "Kesh va CDN dan foydalanish", slug: "cache-cdn", is_completed: false,
+                        duration: "16:40" }
+                ],
+                tests: [
+                    { id: 2, title: "Kengayish usullari testi", slug: "kengayish-test", duration_minutes: 25,
+                        status: "pending" }
+                ]
+            }, {
+                id: 3,
+                title: "Xavfsizlik asoslari",
+                slug: "xavfsizlik-asoslari",
+                lessons: [
+                    { id: 8, title: "Autentifikatsiya va avtorizatsiya", slug: "auth-basics",
+                        is_completed: false, duration: "25:30" },
+                    { id: 9, title: "SSL/TLS va HTTPS", slug: "ssl-tls", is_completed: false,
+                        duration: "18:50" },
+                    { id: 10, title: "XSS va CSRF hujumlari", slug: "xss-csrf", is_completed: false,
+                        duration: "22:00" }
+                ],
+                tests: [
+                    { id: 3, title: "Xavfsizlik asoslari testi", slug: "xavfsizlik-test",
+                    duration_minutes: 35, status: "pending" }
+                ]
+            }, {
+                id: 4,
+                title: "Ma'lumotlar bazalari",
+                slug: "malumotlar-bazalari",
+                lessons: [
+                    { id: 11, title: "SQL vs NoSQL", slug: "sql-nosql", is_completed: false,
+                        duration: "20:10" },
+                    { id: 12, title: "Indekslash va optimize qilish", slug: "index-optimize",
+                        is_completed: false, duration: "24:30" },
+                    { id: 13, title: "Replikatsiya va sharding", slug: "replication-sharding",
+                        is_completed: false, duration: "28:15" }
+                ],
+                tests: [
+                    { id: 4, title: "Ma'lumotlar bazalari testi", slug: "db-test", duration_minutes: 30,
+                        status: "pending" }
+                ]
+            }, {
+                id: 5,
+                title: "Mikroservis arxitekturasi",
+                slug: "mikroservis",
+                lessons: [
+                    { id: 14, title: "Monolit vs Mikroservis", slug: "monolit-mikroservis",
+                        is_completed: false, duration: "22:20" },
+                    { id: 15, title: "API Gateway va Service Discovery", slug: "api-gateway",
+                        is_completed: false, duration: "26:40" },
+                    { id: 16, title: "Mikroservislar orasida kommunikatsiya", slug: "service-communication",
+                        is_completed: false, duration: "30:15" }
+                ],
+                tests: [
+                    { id: 5, title: "Mikroservis arxitekturasi testi", slug: "microservice-test",
+                        duration_minutes: 30, status: "pending" }
+                ]
+            }, {
+                id: 6,
+                title: "DevOps va CI/CD",
+                slug: "devops-cicd",
+                lessons: [
+                    { id: 17, title: "CI/CD asoslari", slug: "cicd-basics", is_completed: false,
+                        duration: "28:10" },
+                    { id: 18, title: "Docker va Containerization", slug: "docker", is_completed: false,
+                        duration: "32:45" },
+                    { id: 19, title: "Kubernetes asoslari", slug: "kubernetes", is_completed: false,
+                        duration: "35:20" },
+                    { id: 20, title: "Monitoring va Logging", slug: "monitoring", is_completed: false,
+                        duration: "26:30" }
+                ],
+                tests: [
+                    { id: 6, title: "DevOps va CI/CD testi", slug: "devops-test", duration_minutes: 40,
+                        status: "pending" }
+                ]
+            }]
+        };
+
+        // ============================================================
+        // DOM REFS
+        // ============================================================
+        var modulesContainer = document.getElementById('modulesContainer');
+        var progressBar = document.getElementById('progressBar');
+        var progressPercent = document.getElementById('progressPercent');
+        var completedLessons = document.getElementById('completedLessons');
+        var completedTests = document.getElementById('completedTests');
+        var totalItems = document.getElementById('totalItems');
+        var moduleCountLabel = document.getElementById('moduleCountLabel');
+        var moduleCount = document.getElementById('moduleCount');
+        var lessonProgress = document.getElementById('lessonProgress');
+        var testProgress = document.getElementById('testProgress');
+        var totalHours = document.getElementById('totalHours');
+        var courseTitle = document.getElementById('courseTitle');
+        var courseTitle2 = document.getElementById('courseTitle2');
+        var courseDesc = document.getElementById('courseDesc');
+        var courseStatus = document.getElementById('courseStatus');
+        var coursePrice = document.getElementById('coursePrice');
+        var courseLevel = document.getElementById('courseLevel');
+        var videoDuration = document.getElementById('videoDuration');
+        var videoStatus = document.getElementById('videoStatus');
+        var enrollBtn = document.getElementById('enrollBtn');
+
+        // Stats
+        var statModules = document.getElementById('statModules');
+        var statLessons = document.getElementById('statLessons');
+        var statHours = document.getElementById('statHours');
+        var statStudents = document.getElementById('statStudents');
+        var statRating = document.getElementById('statRating');
+        var statTests = document.getElementById('statTests');
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function getLessonStatus(lesson) {
+            if (lesson.is_completed) return 'completed';
+            return 'pending';
+        }
+
+        function getLessonIcon(status) {
+            var map = {
+                'completed': 'check_circle',
+                'pending': 'radio_button_unchecked'
+            };
+            return map[status] || 'radio_button_unchecked';
+        }
+
+        function getTestStatus(test) {
+            if (test.status === 'completed') return 'completed';
+            return 'pending';
+        }
+
+        function getTestIcon(status) {
+            return status === 'completed' ? 'check_circle' : 'radio_button_unchecked';
+        }
+
+        function getStatusBadgeHtml(status, label) {
+            var cls = status === 'completed' ? 'completed' : 'not-started';
+            var icon = status === 'completed' ? 'check_circle' : 'hourglass_empty';
+            return '<span class="badge-status ' + cls + '"><span class="material-icons small" style="font-size:14px;">' +
+                icon + '</span> ' + label + '</span>';
+        }
+
+        function getLevelBadge(level) {
+            var map = {
+                beginner: ['badge-easy', 'Boshlang\'ich'],
+                intermediate: ['badge-info', 'O\'rtacha'],
+                advanced: ['badge-hard', 'Murakkab']
+            };
+            var pair = map[level] || map.beginner;
+            return '<span class="badge ' + pair[0] + '"><span class="material-icons small" style="font-size:14px;">school</span> ' +
+                pair[1] + '</span>';
+        }
+
+        // ============================================================
+        // RENDER DESCRIPTION (Markdown + Math)
+        // ============================================================
+        function renderDescription() {
+            if (!courseData.description) {
+                courseDesc.innerHTML = '<p class="text-inksoft">Kurs haqida ma\'lumot mavjud emas.</p>';
+                return;
+            }
+
+            // Parse markdown
+            var html = marked.parse(courseData.description);
+            courseDesc.innerHTML = html;
+
+            // Render MathJax
+            if (window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([courseDesc]).catch(function() {});
+            }
+        }
+
+        // ============================================================
+        // RENDER MODULES
+        // ============================================================
+        function renderModules() {
+            var html = '';
+            var totalLessons = 0;
+            var totalTests = 0;
+            var doneLessons = 0;
+            var doneTests = 0;
+
+            courseData.modules.forEach(function(module, idx) {
+                var hasContent = module.lessons.length > 0 || module.tests.length > 0;
+                var isFirst = idx === 0;
+
+                html += '<div class="module-card">';
+                html += '<div class="module-header' + (isFirst ? ' open' : '') + '" onclick="toggleModule(this)">';
+                html += '<div class="flex items-center gap-3">';
+                html += '<span class="font-semibold text-[15px]">' + (idx + 1) + '. ' + escapeHtml(module
+                .title) + '</span>';
+
+                var totalModuleItems = module.lessons.length + module.tests.length;
+                var doneModuleItems = 0;
+                module.lessons.forEach(function(l) { if (l.is_completed) doneModuleItems++; });
+                module.tests.forEach(function(t) { if (t.status === 'completed') doneModuleItems++; });
+
+                if (totalModuleItems > 0) {
+                    html += ' <span class="text-xs text-inksoft">(' + doneModuleItems + '/' + totalModuleItems +
+                        ')</span>';
+                }
+                html += '</div>';
+                html += '<span class="material-icons chevron">expand_more</span>';
+                html += '</div>';
+
+                html += '<div class="module-body' + (isFirst ? ' open' : '') + '">';
+
+                // Lessons
+                module.lessons.forEach(function(lesson) {
+                    var status = getLessonStatus(lesson);
+                    var icon = getLessonIcon(status);
+                    var label = status === 'completed' ? 'Bajarildi' : 'Boshlash';
+                    totalLessons++;
+                    if (lesson.is_completed) doneLessons++;
+
+                    html += '<a href="/lesson.html?slug=' + lesson.slug + '" class="lesson-item">';
+                    html += '<span class="status-icon ' + status + '"><span class="material-icons">' + icon +
+                        '</span></span>';
+                    html += '<span class="flex-1 text-sm">' + escapeHtml(lesson.title) + '</span>';
+                    if (lesson.duration) {
+                        html += '<span class="text-xs text-inksoft font-mono">' + lesson.duration + '</span>';
+                    }
+                    html += '<span class="text-xs font-mono text-inksoft">' + getStatusBadgeHtml(status, label) +
+                        '</span>';
+                    html += '</a>';
+                });
+
+                // Tests
+                module.tests.forEach(function(test) {
+                    var status = getTestStatus(test);
+                    var icon = getTestIcon(status);
+                    var label = status === 'completed' ? 'Tugatilgan' : 'Boshlash';
+                    totalTests++;
+                    if (test.status === 'completed') doneTests++;
+
+                    html += '<a href="/test-detail.html?slug=' + test.slug + '" class="lesson-item" style="border-bottom-color:var(--line-soft);">';
+                    html += '<span class="status-icon ' + status + '"><span class="material-icons">' + icon +
+                        '</span></span>';
+                    html += '<span class="flex-1 text-sm"><span class="material-icons small" style="font-size:14px;">quiz</span> ' +
+                        escapeHtml(test.title) + '</span>';
+                    html += '<span class="text-xs text-inksoft font-mono">' + test.duration_minutes + ' daq</span>';
+                    html += '<span class="text-xs font-mono text-inksoft">' + getStatusBadgeHtml(status, label) +
+                        '</span>';
+                    html += '</a>';
+                });
+
+                if (!hasContent) {
+                    html +=
+                        '<div class="text-center py-6 text-sm text-inksoft">Bu modulda hali darslar mavjud emas</div>';
+                }
+
+                html += '</div></div>';
+            });
+
+            modulesContainer.innerHTML = html;
+
+            // Update counts
+            var total = totalLessons + totalTests;
+            var done = doneLessons + doneTests;
+            var percent = total > 0 ? Math.round((done / total) * 100) : 0;
+
+            lessonProgress.textContent = doneLessons + '/' + totalLessons;
+            testProgress.textContent = doneTests + '/' + totalTests;
+            completedLessons.textContent = doneLessons;
+            completedTests.textContent = doneTests;
+            totalItems.textContent = total;
+            progressBar.style.width = percent + '%';
+            progressPercent.textContent = percent + '%';
+            totalHours.textContent = courseData.total_hours;
+
+            var moduleCountVal = courseData.modules.length;
+            moduleCount.textContent = moduleCountVal;
+            moduleCountLabel.textContent = moduleCountVal + ' modul';
+
+            // Stats
+            if (statModules) statModules.textContent = moduleCountVal;
+            if (statLessons) statLessons.textContent = totalLessons + '+';
+            if (statTests) statTests.textContent = totalTests;
+            if (statStudents) statStudents.textContent = courseData.students.toLocaleString();
+            if (statRating) statRating.textContent = courseData.rating;
+            if (statHours) statHours.textContent = courseData.total_hours;
+
+            // Update course status
+            if (courseData.is_completed) {
+                courseStatus.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">celebration</span> Tugatilgan';
+                courseStatus.className = 'badge-status completed';
+            } else if (done > 0) {
+                courseStatus.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">pending</span> Davom etmoqda';
+                courseStatus.className = 'badge-status in-progress';
+            } else {
+                courseStatus.innerHTML =
+                    '<span class="material-icons small" style="font-size:14px;">hourglass_empty</span> Boshlanmagan';
+                courseStatus.className = 'badge-status not-started';
+            }
+
+            // Price
+            if (courseData.price === 0) {
+                coursePrice.textContent = 'Bepul';
+                coursePrice.className = 'badge badge-easy';
+            } else if (courseData.discount_price) {
+                coursePrice.innerHTML = courseData.discount_price + ' so\'m <span class="text-inkfaint line-through text-xs">' +
+                    courseData.price + ' so\'m</span>';
+                coursePrice.className = 'badge badge-info';
+            } else {
+                coursePrice.textContent = courseData.price + ' so\'m';
+                coursePrice.className = 'badge badge-neutral';
+            }
+
+            // Level
+            courseLevel.innerHTML = getLevelBadge(courseData.level);
+
+            // Enroll button
+            if (courseData.is_completed) {
+                enrollBtn.innerHTML = '<span class="material-icons small">celebration</span> Tugatilgan';
+                enrollBtn.className = 'btn btn-easy btn-block mt-4';
+                enrollBtn.disabled = true;
+            } else if (courseData.is_paid) {
+                enrollBtn.innerHTML = '<span class="material-icons small">play_arrow</span> Davom etish';
+                enrollBtn.className = 'btn btn-primary btn-block mt-4';
+                enrollBtn.disabled = false;
+            } else {
+                enrollBtn.innerHTML = '<span class="material-icons small">play_arrow</span> Boshlash';
+                enrollBtn.className = 'btn btn-primary btn-block mt-4';
+                enrollBtn.disabled = false;
+            }
+        }
+
+        // ============================================================
+        // TOGGLE MODULE
+        // ============================================================
+        window.toggleModule = function(header) {
+            var body = header.nextElementSibling;
+            var isOpen = body.classList.contains('open');
+            body.classList.toggle('open', !isOpen);
+            header.classList.toggle('open', !isOpen);
+        };
+
+        // ============================================================
+        // INIT VIDEO
+        // ============================================================
+        function initVideo() {
+            var videoEl = document.getElementById('courseVideo');
+            if (!videoEl) return;
+
+            var player = videojs(videoEl, {
+                controls: true,
+                autoplay: false,
+                preload: 'auto',
+                fluid: true,
+                poster: courseData.video.thumb || null,
+                html5: {
+                    hls: {
+                        enableLowInitialPlaylist: true,
+                        smoothQualityChange: true,
+                        overrideNative: true
+                    }
+                },
+                controlBar: {
+                    children: [
+                        'playToggle',
+                        'volumePanel',
+                        'currentTimeDisplay',
+                        'timeDivider',
+                        'durationDisplay',
+                        'progressControl',
+                        'remainingTimeDisplay',
+                        'playbackRateMenuButton',
+                        'fullscreenToggle'
+                    ]
+                }
+            });
+
+            if (courseData.video.src) {
+                player.src({
+                    src: courseData.video.src,
+                    type: 'application/x-mpegURL'
+                });
+            }
+
+            if (courseData.video.duration) {
+                videoDuration.textContent = courseData.video.duration;
+            }
+
+            player.on('loadedmetadata', function() {
+                var dur = player.duration();
+                if (dur && dur > 0) {
+                    var mins = Math.floor(dur / 60);
+                    var secs = Math.floor(dur % 60);
+                    videoDuration.textContent = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
+                }
+            });
+
+            player.on('error', function() {
+                videoStatus.innerHTML =
+                    '<span class="material-icons" style="font-size:18px;color:#d0264a;">error</span> <span style="color:#d0264a;">Video yuklanmadi</span>';
+            });
+
+            player.on('playing', function() {
+                videoStatus.innerHTML =
+                    '<span class="material-icons" style="font-size:18px;color:#17924f;">play_circle</span> <span style="color:#17924f;">Ko\'rilmoqda...</span>';
+            });
+
+            player.on('pause', function() {
+                videoStatus.innerHTML =
+                    '<span class="material-icons" style="font-size:18px;color:#5b6572;">pause</span> <span style="color:#5b6572;">To\'xtatilgan</span>';
+            });
+
+            player.on('ended', function() {
+                videoStatus.innerHTML =
+                    '<span class="material-icons" style="font-size:18px;color:#17924f;">check_circle</span> <span style="color:#17924f;">Tugatildi</span>';
+            });
+
+            window.coursePlayer = player;
+        }
+
+        // ============================================================
+        // ENROLL
+        // ============================================================
+        document.getElementById('enrollBtn').addEventListener('click', function() {
+            if (this.disabled) return;
+            var btn = this;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="material-icons small">hourglass_top</span> Yuklanmoqda...';
+
+            setTimeout(function() {
+                btn.innerHTML = '<span class="material-icons small">check_circle</span> Kursga yozildingiz!';
+                btn.className = 'btn btn-easy btn-block mt-4';
+                showToast('✅ Kursga muvaffaqiyatli yozildingiz!', 'success');
+            }, 1500);
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        document.addEventListener('DOMContentLoaded', function() {
+            courseTitle.textContent = courseData.title;
+            courseTitle2.textContent = courseData.title;
+
+            // Render description with Markdown + Math
+            renderDescription();
+
+            renderModules();
+            setTimeout(initVideo, 500);
+
+            setTimeout(function() {
+                showToast('📚 Kursga xush kelibsiz!', 'info', 3000);
+            }, 1000);
+        });
+
+        // Re-render MathJax when tab becomes visible
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden && window.MathJax && MathJax.typesetPromise) {
+                MathJax.typesetPromise([courseDesc]).catch(function() {});
+            }
+        });
+
+        window.courseData = courseData;
+
+    })();
+</script>
+
+</body>
+</html>

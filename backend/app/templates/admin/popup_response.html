@@ -1,0 +1,15 @@
+{% load i18n %}
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <title>{% trans "Popup javobi" %}</title>
+    <script type="text/javascript">
+        // Django popup response handler
+        opener.dismissRelatedLookupPopup(window, "{{ value|escapejs }}");
+    </script>
+</head>
+<body>
+    <p>{% trans "Bu oyna yopilmoqda..." %}</p>
+</body>
+</html>

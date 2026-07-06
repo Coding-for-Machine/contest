@@ -1,71 +1,28 @@
-<!-- templates/registration/logged_out.html -->
-{% extends "unfold/layouts/base_simple.html" %}
-{% load i18n static %}
+{% extends 'unfold/layouts/unauthenticated.html' %}
+{% load i18n unfold %}
 
-{% block title %}{% trans "Tizimdan chiqish" %} | CfM Contest{% endblock %}
+{% block title %}
+    {% trans "Tizimdan chiqildi" %} | {{ site_title }}
+{% endblock %}
 
 {% block content %}
-<div class="min-h-screen flex items-center justify-center bg-slate-950" style="background-color: #0b0f19 !important;">
-    <div class="w-full max-w-md px-4">
-        
-        <!-- ASOSIY CARD: Premium dizayn va muvaffaqiyatli chiqish belgisi -->
-        <div class="rounded-2xl overflow-hidden border transition-all duration-300 shadow-[0_20px_50px_rgba(0,0,0,0.3)]" 
-             style="background-color: #111827 !important; border-color: #1f2937 !important;">
-            
-            <!-- Header - Modern Muted Gradient -->
-            <div class="relative px-6 py-10 text-center" style="background: linear-gradient(135deg, #374151 0%, #1f2937 100%) !important;">
-                <div class="absolute inset-0 bg-white/[0.02] pointer-events-none" style="backdrop-filter: blur(1px);"></div>
-                
-                <div class="relative z-10">
-                    <div class="inline-flex items-center justify-center w-16 h-16 bg-emerald-500/10 rounded-2xl mb-4 border border-emerald-500/20 shadow-lg backdrop-blur-md">
-                        <span class="material-symbols-outlined text-emerald-500 text-4xl" style="color: #10b981 !important;">logout</span>
-                    </div>
-                    <h1 class="text-2xl font-bold tracking-tight" style="color: #ffffff !important; margin: 0; font-family: system-ui, sans-serif;">
-                        {% trans "Tizimdan chiqildi" %}
-                    </h1>
-                    <p class="mt-2 text-sm font-medium" style="color: #94a3b8 !important; margin: 0; opacity: 0.85;">
-                        CfM Contest boshqaruv paneli
-                    </p>
-                </div>
-            </div>
+    <div id="page" class="bg-white flex min-h-screen dark:bg-base-900">
+        <div class="flex grow items-center justify-center mx-auto px-4">
+            <div class="w-full sm:w-96">
+                <h1 class="font-semibold mb-4 text-font-important-light text-xl tracking-tight dark:text-font-important-dark">
+                    {% trans "Boshqaruv panelidan muvaffaqiyatli chiqdingiz" %}
+                </h1>
 
-            <!-- Body qismi -->
-            <div class="p-6 sm:p-8 text-center">
-                <div class="mb-6 p-4 rounded-xl border" style="background-color: rgba(16, 185, 129, 0.04) !important; border-color: rgba(16, 185, 129, 0.15) !important;">
-                    <p class="text-sm font-medium" style="color: #cbd5e1 !important; margin: 0; line-height: 1.6;">
-                        {% trans "Siz platformadan muvaffaqiyatli chiqdingiz. Xavfsizligingizni ta'minlash uchun sessiyangiz yakunlandi." %}
-                    </p>
-                </div>
+                <p class="leading-relaxed mb-10">
+                    {% trans "Bugun vaqt ajratganingiz uchun rahmat." %}
+                </p>
 
-                <!-- Qaytadan kirish tugmasi (Gradient va animatsiya bilan) -->
-                <a href="{% url 'admin:login' %}" 
-                   class="w-full font-bold py-3 rounded-xl text-sm flex items-center justify-center gap-2 transition-all duration-200 shadow-lg shadow-indigo-600/10 no-underline cursor-pointer"
-                   style="background: linear-gradient(to right, #4f46e5, #3b82f6) !important; color: #ffffff !important; border: none !important; text-decoration: none !important; display: flex !important;"
-                   onmouseover="this.style.opacity='0.95'; this.style.transform='translateY(-1px)';"
-                   onmouseout="this.style.opacity='1'; this.style.transform='translateY(0)';"
-                   onmousedown="this.style.transform='translateY(1px)';">
-                    <span class="material-symbols-outlined text-lg">login</span>
-                    {% trans "Tizimga qayta kirish" %}
-                </a>
-
-                <!-- Divider -->
-                <div class="relative my-8">
-                    <div class="absolute inset-0 flex items-center">
-                        <div class="w-full border-t" style="border-color: #1f2937 !important;"></div>
-                    </div>
-                    <div class="relative flex justify-center text-xs font-bold uppercase tracking-widest">
-                        <span class="px-4 text-xs font-semibold tracking-widest" style="background-color: #111827 !important; color: #4b5563 !important;">
-                            CfM Panel
-                        </span>
-                    </div>
-                </div>
-
-                <!-- Footer -->
-                <div class="text-center text-xs font-medium" style="color: #4b5563 !important;">
-                    <p>© 2026 CfM Contest. {% trans "Barcha huquqlar himoyalangan" %}</p>
-                </div>
+                {% url "admin:index" as login_url %}
+                {% component "unfold/components/button.html" with href=login_url variant="primary" class="w-full" %}
+                    {% trans "Qayta kirish" %}
+                    <span class="material-symbols-outlined relative right-0 transition-all group-hover:-right-1 text-sm">arrow_forward</span>
+                {% endcomponent %}
             </div>
         </div>
     </div>
-</div>
 {% endblock %}
