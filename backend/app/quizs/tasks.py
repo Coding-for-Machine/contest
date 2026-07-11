@@ -2,19 +2,22 @@
 
 import logging
 from django.db import transaction
-
-import qrcode
 from celery import shared_task
-from django.core.files.base import ContentFile
-from django.template.loader import render_to_string
 from django.utils import timezone
 from django.db.models import F
-from weasyprint import HTML
 
 from courses.models import Enrollment
 from status.models import LessonStatus, UserActivityDaily, UserStats
+"""
+Test javoblarini fon rejimida (background) qayta ishlovchi Celery vazifasi.
 
-from .models import Question
+Foydalanuvchi barcha javoblarni bittada (list) yuborganda, og'ir bo'lishi mumkin
+bo'lgan validatsiya + yozish ishi request-response tsiklidan chiqarib, shu yerga
+topshiriladi. Bitta-bitta keladigan javoblar esa API ichida sinxron tarzda
+(darhol) qayta ishlanadi (qarang: session_api.py -> submit_single_answer).
+"""
+
+from .models import TestSession, Question, Choice, UserResponse
 
 logger = logging.getLogger(__name__)
 
@@ -97,3 +100,58 @@ def task_process_lesson_question(response_id, user_id, question_id, lesson_id, i
                                 enrollment.save(update_fields=['is_completed', 'completed_at'])
 
     return f"Lesson response {response_id} processed."
+
+
+
+
+
+@shared_task(bind=True, max_retries=3, default_retry_delay=5)
+def process_bulk_answers(self, session_id: str, user_id: int, answers: list, auto_finish: bool = False):
+    """
+    answers: [{"question_id": int, "choice_id": int | None}, ...]
+
+    Har bir javob uchun xavfsizlik tekshiruvi API darajasida ham, shu yerda ham
+    QAYTA bajariladi (defence in depth) — chunki bulk so'rov to'g'ridan-to'g'ri
+    task navbatiga tushadi va orada boshqa jarayon seansni yopib qo'yishi mumkin.
+    """
+    try:
+        session = TestSession.objects.select_related("test").get(id=session_id, user_id=user_id)
+    except TestSession.DoesNotExist:
+        return {"ok": False, "error": "session_not_found"}
+
+    if session.status != TestSession.Status.IN_PROGRESS:
+        return {"ok": False, "error": "session_not_active"}
+
+    # Ushbu testga tegishli barcha savol ID-lari (begona savol yuborilishining oldini olish)
+    valid_question_ids = set(session.test.questions.values_list("id", flat=True))
+
+    saved = 0
+    skipped = []
+
+    with transaction.atomic():
+        for item in answers:
+            q_id = item.get("question_id")
+            c_id = item.get("choice_id")
+
+            if q_id not in valid_question_ids:
+                skipped.append({"question_id": q_id, "reason": "not_in_test"})
+                continue
+
+            if c_id is not None and not Choice.objects.filter(id=c_id, question_id=q_id).exists():
+                skipped.append({"question_id": q_id, "reason": "invalid_choice"})
+                continue
+
+            UserResponse.objects.update_or_create(
+                session_id=session_id,
+                question_id=q_id,
+                user_id=user_id,
+                defaults={"choice_id": c_id},
+            )
+            saved += 1
+
+    if auto_finish:
+        session.refresh_from_db()
+        # COMPLETED bo'lsa metodning o'zi ichkarida qayta hisoblamaydi (xavfsizlik tekshiruvi bor)
+        session.calculate_mathematical_score()
+
+    return {"ok": True, "saved": saved, "skipped": skipped}

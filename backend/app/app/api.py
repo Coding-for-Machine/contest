@@ -7,7 +7,7 @@ from decouple import config
 from asgiref.sync import sync_to_async
 
 from baseuser.models import BaseUser
-from baseuser.authenticate import get_current_user
+from baseuser.authenticate import get_current_user, get_current_user_option
 from problems.models import Problem
 from contests.models import Contest
 from quizs.models import Test, TestSession
@@ -193,9 +193,15 @@ async def invalidate_index_cache(request: Request):
 from courses.api.course import api as course_api
 from courses.api.lesson import api as lesson_api
 from problems.api.problem import api as problem_api
-from app.sse.api import api as sse_router
+from app.sse.api import sse_router
+from submissions.api import api as submit_api
+from quizs.api.tests import api as tests_api
+from quizs.api.session import session_api
 
 api.include_router(sse_router, prefix="/api/v1/sse")
 api.include_router(course_api, prefix="/api/v1/courses")
 api.include_router(lesson_api, prefix="/api/v1/lesson")
 api.include_router(problem_api, prefix="/api/v1/problems")
+api.include_router(submit_api, prefix="/api/v1/code")
+api.include_router(tests_api, prefix="/api/v1/tests")
+api.include_router(session_api, prefix="/api/v1/test-session")

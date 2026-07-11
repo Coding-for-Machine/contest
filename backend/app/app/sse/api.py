@@ -1,115 +1,115 @@
-# events/api.py
-import asyncio
-import json
-import logging
-from collections.abc import AsyncIterable
+# sse.py
+"""
+Global SSE (Server-Sent Events) endpoint.
 
-from django_bolt.responses import EventSourceResponse, ServerSentEvent
+Bu endpoint HAR BIR FOYDALANUVCHI uchun BITTA doimiy ochiq HTTP ulanish
+bo'lib xizmat qiladi. U hech narsa "hisoblamaydi" — shunchaki Redisning
+`sse:user:{user_id}` kanalini tinglab turadi va u yerga PUBLISH qilingan
+har qanday xabarni, o'zgarishsiz, SSE formatida ("data: <xabar>\n\n")
+brauzerga uzatib beradi.
+
+Nega EventSource (brauzer tomoni) GET so'rov ishlatadi, POST emas?
+Chunki `EventSource` — brauzerning ICHKI (native) API'si, u faqat GET
+so'rovlarni qo'llab-quvvatlaydi va custom header (masalan Authorization)
+yubora olmaydi. Shu sababli autentifikatsiya uchun token QUERY PARAM
+orqali beriladi (`?token=...`) — main.js'dagi `RCEvents.connect()`
+buni avtomatik qo'shadi.
+
+Nega bitta kanal (sse:user:{id}) barcha voqealar uchun ishlatiladi
+(alohida "run" kanali, alohida "submit" kanali emas)?
+Chunki foydalanuvchi bitta paytda bir nechta narsa qilishi mumkin (bir
+nechta tab, run va submit ketma-ket) — hammasini BITTA ulanish orqali
+olib kelib, ichidagi "task_id" maydoni bo'yicha frontendda ажратиш ancha
+sodda va samarali, ko'p ulanish ochishdan ko'ra.
+"""
+
+import redis.asyncio as aioredis
 from django_bolt import Router, Request, Depends
-
+from django_bolt.responses import StreamingResponse
+from baseuser.authenticate import get_current_user_from_url
 from baseuser.models import BaseUser
-from baseuser.authenticate import get_current_user_option
-from .redis_client import get_redis
-from .limits import acquire_connection_slot, release_connection_slot
-from .publisher import replay_missed_events
-from .helpers import get_user_active_contest_ids
 
-logger = logging.getLogger(__name__)
-api = Router(tags=["Server Send Events"])
+sse_router = Router(tags=["sse"])
+
+REDIS_URL = "redis://localhost:6379/0"
 
 
-@api.get("/events", response_class=EventSourceResponse)
-async def global_sse(
-    request: Request,
-    request_user: BaseUser | None = Depends(get_current_user_option),
-) -> AsyncIterable[ServerSentEvent]:
-    
-    # 1. Autentifikatsiya tekshiruvi (Generator ichida yield bilan xavfsiz uzatiladi)
-    if not request_user:
-        yield ServerSentEvent(
-            data={"detail": "Tizimga kirish talab qilinadi!"}, 
-            event="auth_error"
-        )
-        return  # Generatorni o'sha joyda to'xtatamiz
+@sse_router.get("/events/stream/")
+async def event_stream(request: Request, request_user: BaseUser = Depends(get_current_user_from_url)):
+    """
+    Global SSE oqimi.
 
-    user_id = request_user.id
+    `get_current_user` dependency — bu yerda ODATDAGI Authorization
+    header'dan EMAS, balki `?token=...` query parametridan token o'qiy
+    olishi kerak (chunki EventSource header yubora olmaydi). Agar sizning
+    `get_current_user`ingiz faqat header'dan o'qisa, shu funksiya uchun
+    maxsus variant yozib, uni shu yerda ishlating:
 
-    # 2. Global ulanish slot limiti tekshiruvi
-    if not await acquire_connection_slot(user_id):
-        yield ServerSentEvent(
-            data={"detail": "Juda ko'p faol ulanish. Maksimal 3 ta tab ochish mumkin."}, 
-            event="limit_error"
-        )
-        return
-    yield ServerSentEvent(
-            data={"detail": f"foydalanovchi ulandi: {request.user.telegram_id}"}, 
-            event="limit_error"
-        )
-    # 3. Agar tekshiruvlardan o'tsa, Redis Pub/Sub mantiqi shu yerda davom etadi
-    redis_conn = get_redis()
-    pubsub = redis_conn.pubsub()
+        async def get_current_user_from_query(request: Request) -> BaseUser:
+            token = request.query_params.get("token")
+            ...  # tokenni tekshirib, foydalanuvchini qaytaring
+    """
+    channel = f"sse:user:{request_user.id}"
 
-    personal_channel = f"user_events_{user_id}"
-    contest_channels = [
-        f"contest_events_{cid}" for cid in await get_user_active_contest_ids(user_id)
-    ]
-    all_channels = [personal_channel, *contest_channels]
-    last_event_id = request.headers.get("last-event-id")
+    async def event_generator():
+        """
+        Redis pub/sub'ni tinglovchi asinxron generator.
 
-    try:
-        await pubsub.subscribe(*all_channels)
-        logger.info("SSE connected: user=%s channels=%s", user_id, all_channels)
+        `yield` qilingan har bir string — SSE formatidagi BITTA xabar.
+        SSE spetsifikatsiyasiga ko'ra har bir xabar albatta ikkita
+        "\n" bilan tugashi kerak (`\n\n`) — bu brauzerga "xabar shu yerda
+        tugadi" degan signal beradi (main.js'dagi buferni shu belgi
+        bo'yicha bo'lib olamiz).
+        """
+        redis = aioredis.from_url(REDIS_URL)
+        pubsub = redis.pubsub()
+        await pubsub.subscribe(channel)
 
-        # O'tkazib yuborilgan xabarlarni tarixda qayta tiklash (Reconnect / Replay)
-        if last_event_id:
-            for event in await replay_missed_events(user_id, last_event_id):
-                yield ServerSentEvent(
-                    data=event, 
-                    event=event["type"], 
-                    id=event["event_id"]
-                )
-
-        # Ulanish muvaffaqiyatli amalga oshganligi signali
-        yield ServerSentEvent(data={"contests": contest_channels}, event="connected")
-
-        # Redis Pub/Sub oqimini cheksiz tinglaymiz va yield qilamiz
-        async for message in pubsub.listen():
-            if message["type"] != "message":
-                continue
-            try:
-                raw = (
-                    message["data"].decode("utf-8")
-                    if isinstance(message["data"], bytes)
-                    else message["data"]
-                )
-                data = json.loads(raw)
-            except (json.JSONDecodeError, TypeError, AttributeError):
-                logger.warning("Invalid SSE payload on %s", message["channel"])
-                continue
-
-            channel = message["channel"]
-            event_type = data.get("type") or (
-                "notification" if channel == personal_channel else "leaderboard_update"
-            )
-
-            # To'g'ridan-to'g'ri ServerSentEvent obyektini yield qilamiz
-            yield ServerSentEvent(
-                data=data, 
-                event=event_type, 
-                id=str(data.get("event_id", ""))
-            )
-
-    except asyncio.CancelledError:
-        logger.info("SSE disconnected by client: user=%s", user_id)
-        raise
-
-    finally:
-        # Hujjat bo'yicha klient uzilganda resurslarni xavfsiz tozalash (Cleanup)
         try:
-            await pubsub.unsubscribe(*all_channels)
-            await pubsub.close()  # Slotlar qulflanmasligi uchun to'g'ri asinxron close()
-        except Exception as e:
-            logger.error("SSE cleanup error for user %s: %s", user_id, e)
-        
-        # Har qanday holatda foydalanuvchi limit slotini aniq ozod qilamiz
-        await release_connection_slot(user_id)
+            # Ulanish ochilishi bilanoq — frontendga "men tayyorman" signali.
+            # Bu shart emas, lekin frontendda "ulanish muvaffaqiyatli ochildi"
+            # holatini ko'rsatish uchun qulay.
+            yield "event: connected\ndata: {}\n\n"
+
+            # `pubsub.listen()` — cheksiz asinxron sikl, Redis kanalga
+            # PUBLISH bo'lgan HAR BIR xabarni shu yerda ushlab oladi.
+            # Ulanish yopilmaguncha (brauzer tab yopilguncha yoki xato
+            # chiqquncha) bu funksiya HECH QACHON o'z-o'zidan tugamaydi.
+            async for message in pubsub.listen():
+                if message["type"] != "message":
+                    # pubsub.listen() dastlab "subscribe" turidagi xizmat
+                    # xabarini ham yuboradi — bularni o'tkazib yuboramiz.
+                    continue
+
+                data = message["data"]
+                if isinstance(data, bytes):
+                    data = data.decode()
+
+                # Redisdan kelgan xom JSON-string — o'zgarishsiz uzatiladi.
+                # (Bu string ichida "task_id", "type", "result" kabi
+                # maydonlar bor — frontend RCEvents shu maydonlar bo'yicha
+                # to'g'ri joyga yo'naltiradi.)
+                yield f"data: {data}\n\n"
+
+        finally:
+            # Brauzer ulanishni yopganda (tab yopilsa, sahifadan chiqilsa)
+            # bu "finally" blok ishga tushadi — Redis obunasini va
+            # ulanishni tozalab, resurs oqib ketishining (leak) oldini oladi.
+            await pubsub.unsubscribe(channel)
+            await redis.close()
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            # Ba'zi proksi/serverlar (masalan nginx) javobni "buferlab"
+            # keyin yuborishga harakat qiladi — bu esa SSE'ning "jonli"
+            # bo'lish ma'nosini yo'qqa chiqaradi. Shu header shuni oldini
+            # olishga yordam beradi (nginx X-Accel-Buffering: no).
+            "X-Accel-Buffering": "no",
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+        },
+    )
+
+

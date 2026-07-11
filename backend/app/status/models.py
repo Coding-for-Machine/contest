@@ -79,27 +79,39 @@ class UserStats(TimeStampedModel):
 
     @classmethod
     def add_xp(cls, user: BaseUser, xp_amount: int, duration_mins: int = 0) -> "UserStats":
-        """Foydalanuvchiga XP qo'shish — YAGONA umumiy metod."""
+        """Foydalanuvchiga XP qo'shish — YAGONA umumiy metod (Barcha xavfsizlik choralari bilan)."""
         if xp_amount <= 0:
             stats, _ = cls.objects.get_or_create(user=user)
             return stats
 
         with transaction.atomic():
+            # 1. UserStats ni xavfsiz bloklab olamiz va yangilaymiz
             stats, _ = cls.objects.select_for_update().get_or_create(user=user)
             stats.xp += xp_amount
             stats.level = stats.compute_level()
             stats.save(update_fields=["xp", "level", "updated_at"])
 
-            # Heatmap uchun kunlik faollikni yozish
+            # 2. Heatmap uchun kunlik faollikni xavfsiz yozish
             today = timezone.now().date()
-            activity, _ = UserActivityDaily.objects.get_or_create(
-                user=user, date=today
+            
+            # select_for_update parallel ravishda bir vaqtda bir nechta dars/test tugatilganda
+            # kunlik statistikani to'g'ri navbat bilan hisoblashini ta'minlaydi
+            activity, created = UserActivityDaily.objects.select_for_update().get_or_create(
+                user=user, 
+                date=today,
+                defaults={
+                    "xp_earned": xp_amount,
+                    "tasks_count": 1,
+                    "total_duration": duration_mins
+                }
             )
             
-            activity.xp_earned = models.F("xp_earned") + xp_amount
-            activity.tasks_count = models.F("tasks_count") + 1
-            activity.total_duration = models.F("total_duration") + duration_mins
-            activity.save(update_fields=["xp_earned", "tasks_count", "total_duration"])
+            # 3. Agar kunlik faollik qatori bazada allaqachon mavjud bo'lgan bo'lsa, F() yordamida oshiramiz
+            if not created:
+                activity.xp_earned = models.F("xp_earned") + xp_amount
+                activity.tasks_count = models.F("tasks_count") + 1
+                activity.total_duration = models.F("total_duration") + duration_mins
+                activity.save(update_fields=["xp_earned", "tasks_count", "total_duration"])
 
         stats.refresh_from_db()
         return stats

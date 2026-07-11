@@ -61,11 +61,27 @@ class UserResponseInline(TabularInline):
     max_num = 0
 
 
-# ==================== TEST ADMIN ====================
-
 @admin.register(Test)
-class TestAdmin(BaseOwnerAdmin):
+class TestAdmin(BaseOwnerAdmin):  # 👈 Standart admin.ModelAdmin o'rniga ModelAdmin (Unfold)
     change_list_template = "admin/quiz/test_changelist.html"
+    
+    # Unfold uchun vizual qidiruv oynasi dizayni
+    search_fields = ('title', 'slug', 'modul__title', 'access_code')
+    list_editable = ('is_active',)
+    list_per_page = 25
+    ordering = ('-id',)
+    prepopulated_fields = {'slug': ('title',)}
+    
+    # ✅ Inlinelar qo'shildi (Inlinelar ham Unfold'ning TabularInline yoki StackedInline'dan olingan bo'lishi kerak)
+    inlines = [QuestionInline, TestSessionInline]
+    
+    # Unfold interfeysida ustunlarni filtrlar bilan chiroyli guruhlash
+    list_filter = (
+        'is_active',
+        'modul',
+        'start_time',
+        'end_time',
+    )
     
     list_display = (
         'title_display',
@@ -77,65 +93,74 @@ class TestAdmin(BaseOwnerAdmin):
         'created_at_formatted',
     )
     
-    list_filter = (
-        'is_active',
-        'modul',
-        'start_time',
-        'end_time',
-    )
-    
-    search_fields = ('title', 'slug', 'modul__title', 'access_code')
-    list_editable = ('is_active',)
-    list_per_page = 25
-    ordering = ('-id',)
-    prepopulated_fields = {'slug': ('title',)}
-    
-    # ✅ Inlinelar qo'shildi
-    inlines = [QuestionInline, TestSessionInline]
-    
+    # ✅ Markdown muharririni model maydoniga biriktirish
     formfield_overrides = {
         models.TextField: {"widget": MDEditorWidget},
     }
     
+    # ✅ Django Unfold standartidagi Fieldsets tuzilmasi
     fieldsets = (
-        ("📌 Asosiy Ma'lumotlar", {
-            'fields': (
-                ('title', 'slug'),
-                ('modul', 'intro_video'),
-                'is_active',
-            )
-        }),
-        ("⏰ Vaqt va Davomiylik", {
-            'fields': (
-                ('start_time', 'end_time'),
-                ('duration_minutes', 'question_count'),
-                ('random_questions_count', 'max_attempts'),
-            ),
-            'description': "⚠️ Barcha vaqtlar joriy vaqt zonasida ko'rsatiladi"
-        }),
-        ("🎯 Baholash va Cheklovlar", {
-            'fields': (
-                ('min_pass_percentage', 'penalty_coefficient'),
-                ('max_lifelines',),
-            ),
-            'description': "Penalty koeffitsiyenti: 0-1 oralig'ida"
-        }),
-        ("💰 Narx va Kirish", {
-            'fields': (
-                ('price', 'discount_price'),
-                ('access_code',),
-            ),
-            'classes': ('collapse',),
-        }),
-        ("👤 Yaratuvchi", {
-            'fields': ('owner',),
-            'classes': ('collapse',),
-        }),
+        (
+            "📌 Asosiy Ma'lumotlar", 
+            {
+                'fields': (
+                    'title', 
+                    'slug',
+                    'modul', 
+                    'intro_video',
+                    'description',  # 👈 MDEditor shu yerda alohida qatorda chiroyli ochiladi
+                    'is_active',
+                )
+            }
+        ),
+        (
+            "⏰ Vaqt va Davomiylik", 
+            {
+                'fields': (
+                    'start_time', 
+                    'end_time',
+                    'duration_minutes', 
+                    'question_count',
+                    'random_questions_count', 
+                    'max_attempts',
+                ),
+                'description': "⚠️ Barcha vaqtlar joriy vaqt zonasida ko'rsatiladi"
+            }
+        ),
+        (
+            "🎯 Baholash va Cheklovlar", 
+            {
+                'fields': (
+                    'min_pass_percentage', 
+                    'penalty_coefficient',
+                    'max_lifelines',
+                ),
+                'description': "Penalty koeffitsiyenti: 0-1 oralig'ida"
+            }
+        ),
+        (
+            "💰 Narx va Kirish", 
+            {
+                'fields': (
+                    'price', 
+                    'discount_price',
+                    'access_code',
+                ),
+                'classes': ('collapse',), # Unfold buni yig'iluvchi (Accordion) qilib ko'rsatadi
+            }
+        ),
+        (
+            "👤 Yaratuvchi", 
+            {
+                'fields': ('owner',),
+                'classes': ('collapse',),
+            }
+        ),
     )
     
     readonly_fields = ('question_count',)
     
-    # ========== DISPLAY METHODS ==========
+    # ========== DISPLAY METHODS (Unfold Badge va Ranglari bilan) ==========
     
     @display(description="Test nomi", header=True)
     def title_display(self, obj):
@@ -145,43 +170,39 @@ class TestAdmin(BaseOwnerAdmin):
     def modul_display(self, obj):
         if obj.modul:
             return format_html(
-                '<a href="/admin/courses/modul/{}/change/" style="color: #3b82f6;">'
+                '<a href="/admin/courses/modul/{}/change/" class="text-blue-600 font-medium hover:underline">'
                 '📚 {}</a>',
                 obj.modul.id, obj.modul.title[:30]
             )
         return format_html(
-            '<span style="color: #94a3b8;">— Mustaqil test</span>'
+            '<span class="text-gray-400 dark:text-gray-500">— Mustaqil test</span>'
         )
     
     @display(description="Holat")
     def status_badge(self, obj):
         now_time = now()
+        # Unfold o'zining Tailwind klasslari bilan yanada chiroyli badge chiqarish
         if not obj.is_active:
             return mark_safe(
-                '<span style="background: #ef4444; color: white; padding: 2px 12px; '
-                'border-radius: 20px; font-size: 12px;">⛔ Nofaol</span>'
+                '<span class="bg-red-100 text-red-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-red-900/30 dark:text-red-400">⛔ Nofaol</span>'
             )
         if obj.start_time > now_time:
             return mark_safe(
-                '<span style="background: #f59e0b; color: white; padding: 2px 12px; '
-                'border-radius: 20px; font-size: 12px;">🔜 Kutilmoqda</span>'
+                '<span class="bg-amber-100 text-amber-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-amber-900/30 dark:text-amber-400">🔜 Kutilmoqda</span>'
             )
         if obj.end_time < now_time:
             return mark_safe(
-                '<span style="background: #ef4444; color: white; padding: 2px 12px; '
-                'border-radius: 20px; font-size: 12px;">✅ Yakunlangan</span>'
+                '<span class="bg-rose-100 text-rose-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-rose-900/30 dark:text-rose-400">✅ Yakunlangan</span>'
             )
         return mark_safe(
-            '<span style="background: #22c55e; color: white; padding: 2px 12px; '
-            'border-radius: 20px; font-size: 12px;">▶️ Davom etmoqda</span>'
+            '<span class="bg-green-100 text-green-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-green-900/30 dark:text-green-400">▶️ Davom etmoqda</span>'
         )
     
     @display(description="Savollar")
     def question_count_display(self, obj):
         count = obj.questions.count()
         return format_html(
-            '<span style="background: #3b82f6; color: white; padding: 2px 12px; '
-            'border-radius: 20px; font-size: 12px;">📝 {}</span>',
+            '<span class="bg-blue-100 text-blue-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-blue-900/30 dark:text-blue-400">📝 {} ta</span>',
             count
         )
     
@@ -189,8 +210,7 @@ class TestAdmin(BaseOwnerAdmin):
     def sessions_count_display(self, obj):
         count = obj.sessions.count()
         return format_html(
-            '<span style="background: #8b5cf6; color: white; padding: 2px 12px; '
-            'border-radius: 20px; font-size: 12px;">⏱️ {}</span>',
+            '<span class="bg-purple-100 text-purple-700 px-2.5 py-1 rounded-full text-xs font-semibold dark:bg-purple-900/30 dark:text-purple-400">⏱️ {} ta</span>',
             count
         )
     
@@ -587,3 +607,51 @@ class UserResponseAdmin(ModelAdmin):
     @display(description="Yaratilgan")
     def created_at_formatted(self, obj):
         return obj.created_at.strftime("%d-%m-%Y %H:%M")
+    
+
+from .models import TestEnrollment
+@admin.register(TestEnrollment)
+class TestEnrollmentAdmin(ModelAdmin):
+    # 1. Admin panel ro'yxatida ko'rinadigan ustunlar
+    list_display = [
+        "display_user",       # Foydalanuvchi (Telegram yoki Username)
+        "test",               # Sotib olingan test
+        "formatted_amount",   # Summa (So'm yoki Valyuta belgisi bilan)
+        "transaction_id",     # Tranzaksiya kodi
+        "created_at",         # Sotib olingan vaqt
+    ]
+
+    # 2. Qidiruv tizimi (User va Test bog'liqliklari bo'yicha)
+    search_fields = [
+        "user__username", 
+        "user__telegram_id", 
+        "test__title", 
+        "transaction_id"
+    ]
+
+    # 3. O'ng tomondagi qulay filtrlar bloki
+    list_filter = [
+        "test", 
+        "created_at"
+    ]
+
+    # 4. N+1 muammosini oldini olish uchun (Ustunlar yuklanayotganda bazaga qayta so'rov yubormaslik)
+    list_select_related = ["user", "test"]
+
+    # 5. Faqat o'qish uchun mo'ljallangan maydonlar (To'lov ma'lumotlarini admin o'zgartira olmasligi kerak)
+    readonly_fields = ["id", "created_at"]
+
+    # 6. Tartiblash (Yangi sotib olinganlar doim tepada turadi)
+    ordering = ["-created_at"]
+
+    # --- DINAMIK METODLAR (Xavfsizlik va chiroyli format uchun) ---
+
+    @admin.display(description="Foydalanuvchi")
+    def display_user(self, obj):
+        """Foydalanuvchining telegram_id yoki username'ini aniqlab chiqaradi."""
+        return obj.user.username if obj.user.username else f"TG: {obj.user.telegram_id}"
+
+    @admin.display(description="To'lov summasi")
+    def formatted_amount(self, obj):
+        """Summani chiroyli formatda (masalan: 50 000.00) ko'rsatadi."""
+        return f"{obj.amount:,.2f}"

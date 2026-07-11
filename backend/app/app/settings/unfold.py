@@ -361,14 +361,16 @@ def unfold():
                 {
                     "title": _("Statistika & Hisobotlar"),
                     "icon": "analytics",
-                    "collapsible": True,  # Bosganda yopilib-ochiladigan bo'ladi
-                    "permission": lambda request: request.user.has_perm("courses.view_enrollment"),
+                    "collapsible": True,
+                    # BU YERDA: Superuser bo'lsa birdan o'tkazib yuborish
+                    "permission": lambda request: request.user.is_superuser or request.user.has_perm("courses.view_enrollment"),
                     "items": [
                         {
                             "title": _("Kursga yozilishlar"),
                             "icon": "assignment_ind",
                             "link": reverse_lazy("admin:courses_enrollment_changelist"),
-                            "permission": lambda request: request.user.has_perm("courses.view_enrollment"),
+                            # BU YERDA HAM:
+                            "permission": lambda request: request.user.is_superuser or request.user.has_perm("courses.view_enrollment"),
                         },
                         {
                             "title": _("User va Darsliklar statistikasi"),
@@ -495,10 +497,22 @@ def unfold():
                             "permission": lambda request: request.user.has_perm("quizs.view_question"),
                         },
                         {
+                            "title": _("Varyatlarr"),
+                            "icon": "help",
+                            "link": reverse_lazy("admin:quizs_choice_changelist"),
+                            "permission": lambda request: request.user.has_perm("quizs.view_choice"),
+                        },
+                        {
                             "title": _("Test natijalari"),
                             "icon": "assessment",
                             "link": reverse_lazy("admin:quizs_testsession_changelist"),
                             "permission": lambda request: request.user.has_perm("quizs.view_testsession"),
+                        },
+                        {
+                            "title": _("Sotib olingan test"),
+                            "icon": "credit_card_heart",
+                            "link": reverse_lazy("admin:quizs_testenrollment_changelist"),
+                            "permission": lambda request: request.user.has_perm("quizs.view_testenrollment"),
                         },
 
                     ],

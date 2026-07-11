@@ -8,6 +8,27 @@ from video.models import Video
 from baseuser.models import BaseUser
 from mdeditor.fields import MDTextField
 
+class TestEnrollment(models.Model):
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
+    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name="test_enrollments")
+    test = models.ForeignKey('Test', on_delete=models.CASCADE, related_name="enrollments")
+    
+    # To'lov ma'lumotlari bitta jadval ichida
+    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    transaction_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "🛒 Sotib olingan test"
+        verbose_name_plural = "🛒 Sotib olingan testlar"
+        unique_together = ('user', 'test') 
+        indexes = [
+            models.Index(fields=["user", "test"]), # Ruxsatni ultra-tezkor tekshirish uchun kompozit indeks
+        ]
+
+    def __str__(self):
+        return f"{self.user.username if self.user.username else self.user.telegram_id} -> {self.test.title}"
+
 
 class TestSession(models.Model):
     """Foydalanuvchining test topshirish seansi, statistikasi va geymifikatsiya hisoblagichi."""
@@ -72,6 +93,12 @@ class TestSession(models.Model):
         verbose_name="Yutilgan XP ball",
         help_text="Ushbu urinish natijasida foydalanuvchining global profiliga qo'shish uchun hisoblangan butun sonli mukofot balli."
     )
+    lifelines_used = models.PositiveIntegerField(
+        "Ishlatilgan Reler (Lifeline) soni",
+        default=0,
+        help_text="Ushbu seansda foydalanuvchi hozirgacha ishlatgan lifeline'lar soni "
+                  "(faqat serverda hisoblanadi, frontend hisoblagichiga ishonilmaydi)."
+    )
     started_at = models.DateTimeField(
         auto_now_add=True, 
         verbose_name="Boshlangan vaqti",
@@ -124,7 +151,6 @@ class TestSession(models.Model):
         # Testga tegishli barcha savollar ID-larini olish
         test_question_ids = self.test.questions.values_list('id', flat=True)
         
-        # ✅ TUZATISH: user_id o'rniga aynan joriy seans (session_id) bo'yicha filterlash aniq natija beradi
         user_responses = UserResponse.objects.filter(
             session_id=self.id, 
             question_id__in=test_question_ids
@@ -214,6 +240,11 @@ class Test(models.Model):
         max_length=255,
         unique=True,
         help_text="URL manzillari uchun avtomatik hosil bo'luvchi qisqa nom."
+    )
+    description = MDTextField(
+        null=True,
+        verbose_name="test sharti (Matn)", 
+        help_text="Markdown formatida masalaning to'liq shartini yozing."
     )
     duration_minutes = models.PositiveIntegerField(
         "Davomiyligi (daqiqa)", 
@@ -416,10 +447,17 @@ class Question(models.Model):
 
     def clean(self):
         super().clean()
-        # Admin panelda va APIda xavfsizlik tekshiruvi
+        
+        # 1. Ikkalasi ham bo'sh bo'lsa xatolik
         if not self.lesson and not self.test:
             raise ValidationError(
-                {"test": "Savol kamida bitta joyga (Dars yoki Test) bog'lanishi shart!"}
+                "Savol kamida bitta joyga (Dars yoki Test) bog'lanishi shart!"
+            )
+            
+        # 2. Ikkalasi ham tanlangan bo'lsa xatolik
+        if self.lesson and self.test:
+            raise ValidationError(
+                "Savol bir vaqtning o'zida ham Darsga, ham Testga bog'lana olmaydi! Faqat bittasini tanlang."
             )
 
     def save(self, *args, **kwargs):
