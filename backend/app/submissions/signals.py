@@ -1,37 +1,45 @@
-# submissions/signals.py
+from django.db import IntegrityError, transaction
 from django.db.models.signals import post_save
 from django.dispatch import receiver
-from django.db import transaction
-from status.models import UserStats, LessonStatus
 from submissions.models import Submission
-from contests.models import ContestRegistration
 
-
-@receiver(post_save, sender=Submission)
+@receiver(post_save, sender=Submission, dispatch_uid="submission_xp_award_v5")
 def handle_problem_submission_reward(sender, instance, created, **kwargs):
-    if created and instance.status==True:
-        
-        has_previous_accepted = (
-            Submission.objects.filter(
-                user=instance.user,
-                problem = instance.problem,
+    # Faqat status=True (Hamma testdan o'tgan) bo'lsa mantiq ishlaydi
+    if not instance.status:
+        return
+
+    # Tranzaksiya to'liq muvaffaqiyatli yakunlangach (commit), XP berish funksiyasini chaqiramiz
+    transaction.on_commit(lambda pk=instance.pk: _try_award_submission_xp(pk))
+
+
+def _try_award_submission_xp(submission_id: int):
+    from status.models import UserStats
+
+    try:
+        with transaction.atomic():
+            submission = Submission.objects.select_for_update().select_related("problem", "user").get(pk=submission_id)
+            
+            problem = submission.problem
+            xp_amount = getattr(problem, "xp", None) or problem.DEFAULT_XP_BY_DIFFICULTY.get(problem.difficulty, 0)
+            
+            if xp_amount <= 0:
+                return
+
+            # ENG ASOSIY SHART: Foydalanuvchining shu masala bo'yicha boshqa Accepted yechimlari bormi?
+            # .exclude(pk=submission.pk) yordamida joriy tekshirilayotgan yechimni hisobdan chiqarib tashlaymiz.
+            has_prior_accepted = Submission.objects.filter(
+                user=submission.user,
+                problem=submission.problem,
                 status=True
-            ).exists()
-        )
-        if has_previous_accepted:
-            return
-        duration_mins = getattr(instance, "execution_time_ms", 0)
-        UserStats.add_xp(
-            user=instance.user,
-            xp_amount=instance.problem.px,
-            duration_mins=(duration_mins/60)*10,
-        )
-        if instance.contest:
-            ContestRegistration.objects.get(contest=instance.contest, user=instance.user)
-            pass
-        if instance.lesson:
-            LessonStatus.objects.update_or_create(
-                
-            )
-            # finished_tasks_count add
-            pass
+            ).exclude(pk=submission.pk).exists()
+
+            # Agar boshqa to'g'ri yechim topilsa, demak foydalanuvchi allaqachon XP olgan. Funksiyadan chiqamiz.
+            if has_prior_accepted:
+                return
+
+            # Agar bu eng birinchi muvaffaqiyatli yechim bo'lsa, foydalanuvchiga XP beramiz
+            UserStats.add_xp(user=submission.user, xp_amount=xp_amount)
+            
+    except (Submission.DoesNotExist, IntegrityError):
+        return

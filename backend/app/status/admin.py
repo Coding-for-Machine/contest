@@ -4,10 +4,9 @@ import logging
 from datetime import timedelta
 
 from django.contrib import admin
-from django.db.models import Sum, Avg
+from django.db.models import Sum, Avg, Count
 from django.utils.html import format_html
 from django.utils.safestring import mark_safe
-from django.utils.translation import gettext_lazy as _
 from django.utils.timezone import now
 from unfold.admin import ModelAdmin
 
@@ -16,7 +15,6 @@ from .models import UserStats, UserActivityDaily, LessonStatus, LectureStatus
 logger = logging.getLogger(__name__)
 
 
-# Bitta yagona rang palitrasi — admin.py va template bir xil ranglardan foydalanadi
 LEVEL_COLORS = {
     "beginner": "#94a3b8",
     "bronze": "#cd7f32",
@@ -38,9 +36,18 @@ LEVEL_ICONS = {
 # ============================================
 @admin.register(UserStats)
 class UserStatsAdmin(ModelAdmin):
-    """Foydalanuvchi statistikasi — Chartlar va Liderlar jadvali bilan"""
+    """Foydalanuvchi statistikasi.
 
-    change_list_template = "admin/status/userstats_changelist.html"
+    DIQQAT: `change_list_template` ATAY ishlatilmaydi — bu butun
+    change_list.html/change_list_results.html'ni almashtirib,
+    Unfold'ning standart jadval renderingini (colspan, checkbox
+    ustuni, row actions va h.k.) xavf ostiga qo'yishi mumkin.
+    Buning o'rniga Unfold'ning rasmiy `list_before_template` hook'i
+    ishlatiladi — u faqat natijalar jadvali TEPASIGA qo'shimcha
+    blok qo'shadi, jadvalning o'zi butunlay default holatda qoladi.
+    """
+
+    list_before_template = "admin/status/userstats_before_list.html"
 
     list_display = (
         "user_display",
@@ -77,9 +84,7 @@ class UserStatsAdmin(ModelAdmin):
 
     @admin.display(description="XP", ordering="xp")
     def xp_display(self, obj):
-        return format_html(
-            '<span class="font-bold" style="color:#8b5cf6;">⚡ {} XP</span>', obj.xp
-        )
+        return format_html('<span class="font-bold" style="color:#8b5cf6;">⚡ {} XP</span>', obj.xp)
 
     @admin.display(description="Daraja", ordering="level")
     def level_badge(self, obj):
@@ -132,7 +137,7 @@ class UserStatsAdmin(ModelAdmin):
         last = UserActivityDaily.objects.filter(user=obj.user).order_by("-date").first()
         return last.date.strftime("%d-%m-%Y") if last else "—"
 
-    # ---------- Dashboard konteksti ----------
+    # ---------- list_before_template uchun kontekst ----------
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
@@ -141,68 +146,47 @@ class UserStatsAdmin(ModelAdmin):
         total_xp = UserStats.objects.aggregate(total=Sum("xp"))["total"] or 0
         avg_xp = UserStats.objects.aggregate(avg=Avg("xp"))["avg"] or 0
 
-        # 1) Darajalar bo'yicha taqsimot — kartochkalar VA doughnut chart uchun
-        level_stats = {}
+        # 1) Darajalar bo'yicha taqsimot
+        level_cards = []
         level_labels, level_counts, level_bg = [], [], []
         for level, label in UserStats.Level.choices:
             count = UserStats.objects.filter(level=level).count()
             percent = round((count / total_users) * 100, 1) if total_users else 0
             color = LEVEL_COLORS.get(level, "#6b7280")
-            level_stats[level] = {
-                "count": count,
-                "label": str(label),
-                "percent": percent,
-                "color": color,
-                "icon": LEVEL_ICONS.get(level, "•"),
-            }
+            level_cards.append({
+                "count": count, "label": str(label), "percent": percent,
+                "color": color, "icon": LEVEL_ICONS.get(level, "•"),
+            })
             level_labels.append(str(label))
             level_counts.append(count)
             level_bg.append(color)
 
-        # 2) So'nggi 7 kunlik umumiy XP — bar chart uchun (kartochka + Chart.js)
+        # 2) So'nggi 7 kunlik umumiy XP
         today = now().date()
-        weekly_activity, weekly_labels, weekly_xp_data = [], [], []
-        daily_totals = []
+        weekly_labels, weekly_xp_data = [], []
         for i in range(6, -1, -1):
             d = today - timedelta(days=i)
             xp = UserActivityDaily.objects.filter(date=d).aggregate(total=Sum("xp_earned"))["total"] or 0
-            daily_totals.append((d, xp))
             weekly_labels.append(d.strftime("%d-%b"))
             weekly_xp_data.append(xp)
-        max_weekly = max(weekly_xp_data) or 1
-        for d, xp in daily_totals:
-            weekly_activity.append({
-                "label": d.strftime("%d-%b"),
-                "xp": xp,
-                "percent": round((xp / max_weekly) * 100, 1),
-            })
 
-        # 3) So'nggi 30 kunlik heatmap
-        heatmap_data = []
-        for i in range(29, -1, -1):
-            d = today - timedelta(days=i)
-            xp = UserActivityDaily.objects.filter(date=d).aggregate(total=Sum("xp_earned"))["total"] or 0
-            heatmap_data.append({"date": d.strftime("%d-%m-%Y"), "xp": xp})
-
-        # 4) Top 10 lider talabalar
+        # 3) Top 10 lider talabalar (table komponenti uchun headers/rows shaklida)
         top_qs = UserStats.objects.select_related("user").order_by("-xp")[:10]
-        top_users = [{
-            "username": u.user.full_name or u.user.username or f"User#{u.user.telegram_id}",
-            "xp": u.xp,
-            "level": u.get_level_display(),
-            "level_color": LEVEL_COLORS.get(u.level, "#6b7280"),
-        } for u in top_qs]
+        top_rows = []
+        for i, u in enumerate(top_qs, start=1):
+            name = u.user.full_name or u.user.username or f"User#{u.user.telegram_id}"
+            top_rows.append([f"#{i}", name, u.get_level_display(), f"⚡ {u.xp}"])
 
         extra_context.update({
-            "total_users": total_users,
-            "total_xp": total_xp,
-            "avg_xp": round(avg_xp, 1),
-            "level_stats": level_stats,
-            "weekly_activity": weekly_activity,
-            "heatmap_data": heatmap_data,
-            "top_users": top_users,
-            # Chart.js uchun JSON payloadlar (asosiy grafiklar shu orqali chiziladi)
-            "weekly_chart_data": json.dumps({
+            "us_total_users": total_users,
+            "us_total_xp": total_xp,
+            "us_avg_xp": round(avg_xp, 1),
+            "us_level_cards": level_cards,
+            "us_top_table": {
+                "headers": ["#", "Foydalanuvchi", "Daraja", "XP"],
+                "rows": top_rows,
+            },
+            "us_weekly_chart_data": json.dumps({
                 "labels": weekly_labels,
                 "datasets": [{
                     "label": "Kunlik jami XP",
@@ -213,18 +197,9 @@ class UserStatsAdmin(ModelAdmin):
                     "tension": 0.35,
                 }],
             }),
-            "level_chart_data": json.dumps({
+            "us_level_chart_data": json.dumps({
                 "labels": level_labels,
                 "datasets": [{"data": level_counts, "backgroundColor": level_bg, "borderWidth": 0}],
-            }),
-            "top_users_chart_data": json.dumps({
-                "labels": [u["username"] for u in top_users],
-                "datasets": [{
-                    "label": "Jami XP",
-                    "data": [u["xp"] for u in top_users],
-                    "backgroundColor": "#8b5cf6",
-                    "borderRadius": 6,
-                }],
             }),
         })
         return super().changelist_view(request, extra_context=extra_context)
@@ -235,6 +210,8 @@ class UserStatsAdmin(ModelAdmin):
 # ============================================
 @admin.register(UserActivityDaily)
 class UserActivityDailyAdmin(ModelAdmin):
+    list_before_template = "admin/status/useractivitydaily_before_list.html"
+
     list_display = ("user_display", "date_display", "xp_display", "tasks_display", "duration_display")
     list_filter = ("date", "user")
     search_fields = ("user__username", "user__full_name", "user__telegram_id")
@@ -275,12 +252,38 @@ class UserActivityDailyAdmin(ModelAdmin):
         hours, minutes = divmod(obj.total_duration, 60)
         return f"{hours}h {minutes}m" if hours else f"{minutes}m"
 
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        today = now().date()
+        yesterday = today - timedelta(days=1)
+
+        today_agg = UserActivityDaily.objects.filter(date=today).aggregate(
+            xp=Sum("xp_earned"), tasks=Sum("tasks_count"), duration=Sum("total_duration"), users=Count("user"),
+        )
+        yesterday_xp = UserActivityDaily.objects.filter(date=yesterday).aggregate(xp=Sum("xp_earned"))["xp"] or 0
+        today_xp = today_agg["xp"] or 0
+        delta = today_xp - yesterday_xp
+        duration = today_agg["duration"] or 0
+        duration_hours, duration_minutes = divmod(duration, 60)
+
+        extra_context.update({
+            "uad_today_xp": today_xp,
+            "uad_today_tasks": today_agg["tasks"] or 0,
+            "uad_today_duration_hours": duration_hours,
+            "uad_today_duration_minutes": duration_minutes,
+            "uad_today_active_users": today_agg["users"] or 0,
+            "uad_delta_vs_yesterday": delta,
+        })
+        return super().changelist_view(request, extra_context=extra_context)
+
 
 # ============================================
 # LESSON STATUS ADMIN
 # ============================================
 @admin.register(LessonStatus)
 class LessonStatusAdmin(ModelAdmin):
+    list_before_template = "admin/status/lessonstatus_before_list.html"
+
     list_display = ("user_display", "lesson_display", "finished_tasks_display", "status_badge", "completed_at_formatted")
     list_filter = ("is_completed", "lesson__modul__course", "completed_at")
     search_fields = ("user__username", "user__full_name", "lesson__title", "lesson__modul__title")
@@ -334,12 +337,37 @@ class LessonStatusAdmin(ModelAdmin):
     def completed_at_formatted(self, obj):
         return obj.completed_at.strftime("%d-%m-%Y %H:%M") if obj.completed_at else "—"
 
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        total = LessonStatus.objects.count()
+        completed = LessonStatus.objects.filter(is_completed=True).count()
+        percent = round((completed / total) * 100, 1) if total else 0
+
+        top_lessons = (
+            LessonStatus.objects.filter(is_completed=True)
+            .values("lesson__title")
+            .annotate(total=Count("id"))
+            .order_by("-total")[:5]
+        )
+        top_rows = [[row["lesson__title"][:40], row["total"]] for row in top_lessons]
+
+        extra_context.update({
+            "ls_total": total,
+            "ls_completed": completed,
+            "ls_in_progress": total - completed,
+            "ls_percent": percent,
+            "ls_top_table": {"headers": ["Darslik", "Tugatgan talabalar"], "rows": top_rows},
+        })
+        return super().changelist_view(request, extra_context=extra_context)
+
 
 # ============================================
 # LECTURE STATUS ADMIN
 # ============================================
 @admin.register(LectureStatus)
 class LectureStatusAdmin(ModelAdmin):
+    list_before_template = "admin/status/lecturestatus_before_list.html"
+
     list_display = ("user_display", "lecture_display", "status_badge", "completed_at_formatted")
     list_filter = ("is_completed", "lecture__lesson__modul__course", "completed_at")
     search_fields = ("user__username", "user__full_name", "lecture__title", "lecture__lesson__title")
@@ -382,3 +410,21 @@ class LectureStatusAdmin(ModelAdmin):
     @admin.display(description="Tugatilgan vaqt")
     def completed_at_formatted(self, obj):
         return obj.completed_at.strftime("%d-%m-%Y %H:%M") if obj.completed_at else "—"
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        total = LectureStatus.objects.count()
+        completed = LectureStatus.objects.filter(is_completed=True).count()
+        percent = round((completed / total) * 100, 1) if total else 0
+
+        today = now().date()
+        today_completed = LectureStatus.objects.filter(completed_at__date=today, is_completed=True).count()
+
+        extra_context.update({
+            "lc_total": total,
+            "lc_completed": completed,
+            "lc_not_completed": total - completed,
+            "lc_percent": percent,
+            "lc_today_completed": today_completed,
+        })
+        return super().changelist_view(request, extra_context=extra_context)

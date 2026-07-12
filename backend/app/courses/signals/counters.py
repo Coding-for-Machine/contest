@@ -1,140 +1,216 @@
 import logging
-from django.apps import apps
+from django.core.cache import cache
+from django.db.models import F
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
-from courses.tasks import sync_all_counters_task
+
+from courses.models import Course, Lesson, Modul
 
 logger = logging.getLogger(__name__)
 
-# ── Helpers ───────────────────────────────────────────────────────────────────
 
-def _sync_lesson(lesson_id: int) -> None:
-    """Dars vazifalarini va kurs counterlarini hisoblash taskini chaqiradi"""
-    if lesson_id:
-        sync_all_counters_task.delay(lesson_id=lesson_id)
-
-
-def _sync_course(course_id: int) -> None:
-    """Faqat kurs dars/test counterlarini hisoblash taskini chaqiradi"""
-    if course_id:
-        sync_all_counters_task.delay(course_id=course_id)
+def _bump_lesson_tasks(lesson_id: int, delta: int) -> None:
+    if not lesson_id:
+        return
+    if delta > 0:
+        Lesson.objects.filter(id=lesson_id).update(total_tasks_count=F("total_tasks_count") + delta)
+    else:
+        Lesson.objects.filter(id=lesson_id, total_tasks_count__gt=0).update(
+            total_tasks_count=F("total_tasks_count") - abs(delta)
+        )
 
 
-# ── Lesson ────────────────────────────────────────────────────────────────────
+# ── Problem ───────────────────────────────────────────────────────────────
 
-@receiver(post_save, sender='courses.Lesson')
+@receiver(post_save, sender="problems.Problem", dispatch_uid="counter_problem_save_v2")
+def on_problem_save(sender, instance, created, **kwargs):
+    if created and instance.lesson_id:
+        _bump_lesson_tasks(instance.lesson_id, +1)
+    # Kesh — yangi yoki tahrirlangan masala ro'yxatga ta'sir qiladi
+    if hasattr(cache, "delete_pattern"):
+        cache.delete_pattern("problems_list_*")
+    else:
+        cache.delete("problems_list")
+    cache.delete("problems_total_count")
+
+
+@receiver(post_delete, sender="problems.Problem", dispatch_uid="counter_problem_delete_v2")
+def on_problem_delete(sender, instance, **kwargs):
+    _bump_lesson_tasks(instance.lesson_id, -1)
+    if hasattr(cache, "delete_pattern"):
+        cache.delete_pattern("problems_list_*")
+    else:
+        cache.delete("problems_list")
+    cache.delete("problems_total_count")
+
+
+# ── Question (faqat lesson_id bo'lganlar — test savollari total_tasks_count'ga kirmaydi) ──
+
+@receiver(post_save, sender="quizs.Question", dispatch_uid="counter_question_lesson_save_v2")
+def on_question_save_for_lesson(sender, instance, created, **kwargs):
+    if created and instance.lesson_id:
+        _bump_lesson_tasks(instance.lesson_id, +1)
+
+
+@receiver(post_delete, sender="quizs.Question", dispatch_uid="counter_question_lesson_delete_v2")
+def on_question_delete_for_lesson(sender, instance, **kwargs):
+    if instance.lesson_id:
+        _bump_lesson_tasks(instance.lesson_id, -1)
+
+
+# ── Lecture ───────────────────────────────────────────────────────────────
+
+@receiver(post_save, sender="courses.Lecture", dispatch_uid="counter_lecture_save_v2")
+def on_lecture_save(sender, instance, created, **kwargs):
+    if created and instance.lesson_id:
+        _bump_lesson_tasks(instance.lesson_id, +1)
+
+
+@receiver(post_delete, sender="courses.Lecture", dispatch_uid="counter_lecture_delete_v2")
+def on_lecture_delete(sender, instance, **kwargs):
+    if instance.lesson_id:
+        _bump_lesson_tasks(instance.lesson_id, -1)
+
+
+# ── Lesson (kurs darslar soni) / Test / Modul — o'zgarishsiz (avvalgi javobdagidek) ──
+# ... on_lesson_save, on_lesson_delete, on_test_save, on_test_delete,
+# ... on_modul_save, on_modul_delete — avvalgi javobimdan o'zgarishsiz qoladi
+
+def _course_id_and_slug_by_modul(modul_id: int):
+    return Course.objects.filter(modullar__id=modul_id).values("id", "slug").first()
+
+
+# ── Lesson ────────────────────────────────────────────────────────────────
+
+@receiver(post_save, sender=Lesson, dispatch_uid="counter_lesson_save_v1")
 def on_lesson_save(sender, instance, created, **kwargs):
-    """Yangi dars qo'shilganda kurs counterini yangilash"""
-    if created and instance.modul_id:
-        # Lesson modul orqali o'z kursiga bog'langan, buni dars yaratilgandayoq taskga bersa bo'ladi
-        course_id = instance.modul.course_id if instance.modul else None
-        _sync_course(course_id)
+    if not (created and instance.modul_id):
+        return
+    try:
+        data = _course_id_and_slug_by_modul(instance.modul_id)
+        if not data:
+            return
+        Course.objects.filter(id=data["id"]).update(total_lessons_count=F("total_lessons_count") + 1)
+        if data["slug"]:
+            pass
+    except Exception as e:
+        logger.error(f"on_lesson_save xato: {e}", exc_info=True)
 
 
-@receiver(pre_delete, sender='courses.Lesson')
+@receiver(pre_delete, sender=Lesson, dispatch_uid="counter_lesson_delete_v1")
 def on_lesson_delete(sender, instance, **kwargs):
-    """Dars o'chirilishidan oldin (countdown bilan kechiktirib chaqiriladi)"""
-    if instance.modul_id:
-        course_id = instance.modul.course_id if instance.modul else None
-        if course_id:
-            sync_all_counters_task.apply_async(kwargs={'course_id': course_id}, countdown=1)
-
-
-# ── Test ──────────────────────────────────────────────────────────────────────
-@receiver(post_save, sender='quizs.Test')
-def on_test_save(sender, instance, **kwargs):
-    """
-    Test qo'shilganda yoki o'zgarganda faqat taskni chaqiradi.
-    Keshni o'chirishni Celery task o'z bo'yniga olgan.
-    """
     if not instance.modul_id:
         return
-        
     try:
-        Modul = apps.get_model('courses', 'Modul')
-
-        # Bitta yengil query orqali faqat course_id ni olamiz
-        modul_data = (
-            Modul.objects
-            .filter(id=instance.modul_id)
-            .values('course_id')
-            .first()
+        data = _course_id_and_slug_by_modul(instance.modul_id)
+        if not data:
+            return
+        Course.objects.filter(id=data["id"], total_lessons_count__gt=0).update(
+            total_lessons_count=F("total_lessons_count") - 1
         )
-        
-        if modul_data and modul_data['course_id']:
-            # Taskni zudlik bilan fonda ishga tushiramiz
-            sync_all_counters_task.delay(course_id=modul_data['course_id'])
+        if data["slug"]:
+            pass
+    except Exception as e:
+        logger.error(f"on_lesson_delete xato: {e}", exc_info=True)
 
+
+# ── Test ──────────────────────────────────────────────────────────────────
+
+@receiver(post_save, sender='quizs.Test', dispatch_uid="counter_test_save_v1")
+def on_test_save(sender, instance, created, **kwargs):
+    if not (created and instance.modul_id):
+        return
+    try:
+        data = _course_id_and_slug_by_modul(instance.modul_id)
+        if not data:
+            return
+        Course.objects.filter(id=data["id"]).update(total_test_count=F("total_test_count") + 1)
+        if data["slug"]:
+            pass
     except Exception as e:
         logger.error(f"on_test_save xato: {e}", exc_info=True)
 
 
-@receiver(pre_delete, sender='quizs.Test')
+@receiver(pre_delete, sender='quizs.Test', dispatch_uid="counter_test_delete_v1")
 def on_test_delete(sender, instance, **kwargs):
-    """
-    Test o'chirilayotganda taskni 1 soniya kechiktirib chaqiradi.
-    DB dan test to'liq o'chgach, Celery counterlarni to'g'rilab, keshni o'chiradi.
-    """
     if not instance.modul_id:
         return
-        
     try:
-        Modul = apps.get_model('courses', 'Modul')
-
-        modul_data = (
-            Modul.objects
-            .filter(id=instance.modul_id)
-            .values('course_id')
-            .first()
+        data = _course_id_and_slug_by_modul(instance.modul_id)
+        if not data:
+            return
+        Course.objects.filter(id=data["id"], total_test_count__gt=0).update(
+            total_test_count=F("total_test_count") - 1
         )
-        
-        if modul_data and modul_data['course_id']:
-            # countdown=1 orqali test o'chib bo'lishini kutamiz
-            sync_all_counters_task.apply_async(
-                kwargs={'course_id': modul_data['course_id']},
-                countdown=1
-            )
-
+        if data["slug"]:
+            pass
     except Exception as e:
         logger.warning(f"on_test_delete xato: {e}", exc_info=True)
 
 
-# ── Problem ───────────────────────────────────────────────────────────────────
+# ── Problem (Lesson ichidagi total_tasks_count) ─────────────────────────────
 
-@receiver(post_save, sender='problems.Problem')
+@receiver(post_save, sender='problems.Problem', dispatch_uid="counter_problem_save_v1")
 def on_problem_save(sender, instance, created, **kwargs):
-    if created and instance.lesson_id:
-        
-        _sync_lesson(instance.lesson_id)
+    if not (created and instance.lesson_id):
+        return
+    from courses.models import Lesson as LessonModel
+    LessonModel.objects.filter(id=instance.lesson_id).update(total_tasks_count=F("total_tasks_count") + 1)
 
 
-@receiver(post_delete, sender='problems.Problem')
+@receiver(pre_delete, sender='problems.Problem', dispatch_uid="counter_problem_delete_v1")
 def on_problem_delete(sender, instance, **kwargs):
-    _sync_lesson(instance.lesson_id)
+    if not instance.lesson_id:
+        return
+    from courses.models import Lesson as LessonModel
+    LessonModel.objects.filter(id=instance.lesson_id, total_tasks_count__gt=0).update(
+        total_tasks_count=F("total_tasks_count") - 1
+    )
 
 
-# ── Question ──────────────────────────────────────────────────────────────────
+# ── Question (Lesson ichidagi total_tasks_count'ga ta'siri, Test ichidagi question_count) ──
+# ESLATMA: Test.question_count uchun quizs/signals.py da ALLAQACHON select_for_update()
+# bilan yozilgan xavfsiz signal bor — bu yerda takrorlanmaydi.
 
-@receiver(post_save, sender='quizs.Question')
-def on_question_save(sender, instance, created, **kwargs):
-    if created and instance.lesson_id:
-        _sync_lesson(instance.lesson_id)
-
-
-@receiver(post_delete, sender='quizs.Question')
-def on_question_delete(sender, instance, **kwargs):
-    _sync_lesson(instance.lesson_id)
-
-
-# ── Lecture ───────────────────────────────────────────────────────────────────
-
-@receiver(post_save, sender='courses.Lecture')
-def on_lecture_save(sender, instance, created, **kwargs):
-    if created and instance.lesson_id:
-        _sync_lesson(instance.lesson_id)
+@receiver(post_save, sender='quizs.Question', dispatch_uid="counter_question_lesson_save_v1")
+def on_question_save_for_lesson(sender, instance, created, **kwargs):
+    if not (created and instance.lesson_id):
+        return
+    from courses.models import Lesson as LessonModel
+    LessonModel.objects.filter(id=instance.lesson_id).update(total_tasks_count=F("total_tasks_count") + 1)
 
 
-@receiver(post_delete, sender='courses.Lecture')
-def on_lecture_delete(sender, instance, **kwargs):
-    _sync_lesson(instance.lesson_id)
+@receiver(pre_delete, sender='quizs.Question', dispatch_uid="counter_question_lesson_delete_v1")
+def on_question_delete_for_lesson(sender, instance, **kwargs):
+    if not instance.lesson_id:
+        return
+    from courses.models import Lesson as LessonModel
+    LessonModel.objects.filter(id=instance.lesson_id, total_tasks_count__gt=0).update(
+        total_tasks_count=F("total_tasks_count") - 1
+    )
 
+
+# ── Modul (kesh tozalash) ───────────────────────────────────────────────────
+
+@receiver(post_save, sender=Modul, dispatch_uid="counter_modul_save_v1")
+def on_modul_save(sender, instance, **kwargs):
+    if not instance.course_id:
+        return
+    try:
+        course = Course.objects.filter(id=instance.course_id).only("slug").first()
+        if course and course.slug:
+            pass
+    except Exception as e:
+        logger.error(f"on_modul_save xato: {e}", exc_info=True)
+
+
+@receiver(pre_delete, sender=Modul, dispatch_uid="counter_modul_delete_v1")
+def on_modul_delete(sender, instance, **kwargs):
+    if not instance.course_id:
+        return
+    try:
+        course = Course.objects.filter(id=instance.course_id).only("slug").first()
+        if course and course.slug:
+            pass
+    except Exception as e:
+        logger.error(f"on_modul_delete xato: {e}", exc_info=True)

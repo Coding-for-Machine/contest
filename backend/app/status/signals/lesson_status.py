@@ -133,3 +133,17 @@ def on_lesson_status_save(sender, instance, created, **kwargs):
     transaction.on_commit(
         lambda u_id=instance.user_id, l_id=instance.lesson_id: run_lesson_progress_calculation(u_id, l_id)
     )
+
+from status.models import LectureStatus
+
+@receiver(post_save, sender=LectureStatus)
+def lecture_xp_add(sender, instance, created, **kwargs):
+     if not created or not instance.is_completed:
+        return
+     transaction.on_commit(lambda: _award_lecture_xp(instance.pk))
+
+def _award_lecture_xp(status_id: int):
+    from status.models import UserStats
+
+    ls = LectureStatus.objects.select_related("lecture", "user").get(pk=status_id)
+    UserStats.add_xp(user=ls.user, xp_amount=ls.lecture.xp)

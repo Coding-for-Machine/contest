@@ -404,6 +404,8 @@ class ContestRegistration(models.Model):
         verbose_name="Boshlangan sana",
         help_text="Foydalanuvchi tanlovga ro'yxatdan o'tib, testni boshlagan vaqt.",
     )
+    xp_awarded = models.PositiveIntegerField(default=0)
+
     completed_at = models.DateTimeField(
         null=True,
         blank=True,
@@ -411,6 +413,7 @@ class ContestRegistration(models.Model):
         verbose_name="Yakunlangan sana",
         help_text="Test yakunlangan yoki muddati tugagan payt. Avtomat to'ldiriladi.",
     )
+
 
     class Meta:
         unique_together = ['user', 'contest']
@@ -453,3 +456,12 @@ class ContestRegistration(models.Model):
         if self.status in [self.Status.COMPLETED, self.Status.EXPIRED, self.Status.DISQUALIFIED] and not self.completed_at:
             self.completed_at = timezone.now()
         super().save(*args, **kwargs)
+    
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["user", "contest"],
+                condition=models.Q(xp_awarded__gt=0),
+                name="unique_xp_award_per_user_contest",
+            )
+        ]

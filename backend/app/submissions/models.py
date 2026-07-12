@@ -6,12 +6,12 @@ from baseuser.models import BaseUser
 
 class Submission(models.Model):
     class VerdictChoices(models.TextChoices):
-        ACCEPTED = "AC", "Accepted"               # Hamma testlardan o'tdi
-        WRONG_ANSWER = "WA", "Wrong Answer"       # Testda xatolik bor
-        RUNTIME_ERROR = "RE", "Runtime Error"     # Kod ijrosida xato (Crash)
-        TIME_LIMIT_EXCEEDED = "TLE", "Time Limit Exceeded" # Vaqt tugadi
-        MEMORY_LIMIT_EXCEEDED = "MLE", "Memory Limit Exceeded" # Xotira to'ldi
-        COMPILE_ERROR = "CE", "Compile Error"     # Kompilyatsiya xatosi
+        ACCEPTED = "AC", "Accepted"               
+        WRONG_ANSWER = "WA", "Wrong Answer"       
+        RUNTIME_ERROR = "RE", "Runtime Error"     
+        TIME_LIMIT_EXCEEDED = "TLE", "Time Limit Exceeded" 
+        MEMORY_LIMIT_EXCEEDED = "MLE", "Memory Limit Exceeded" 
+        COMPILE_ERROR = "CE", "Compile Error"     
 
     # 1. MUNOSABATLAR (Relations)
     user = models.ForeignKey(
@@ -88,6 +88,7 @@ class Submission(models.Model):
             models.Index(fields=["problem", "status"]),
             models.Index(fields=["-submitted_at"]), 
         ]
+        
         ordering = ["-submitted_at"]
 
     def __str__(self):

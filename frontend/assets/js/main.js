@@ -169,7 +169,7 @@
     // ============================================================
     // 3. API FETCH
     // ============================================================
-    var RC_API_BASE = 'https://bug-free-yodel-97qrqvqjvqv4hpvx4-8080.app.github.dev/api';
+    var RC_API_BASE = 'http://localhost:8000/api/v1';
 
     // Django data API (problems, categories, tags, submissions...) — alohida bazaviy URL.
     // Har bir sahifa shu bittasidan foydalanadi: window.RC_DATA_API_BASE
@@ -218,6 +218,151 @@
         return data;
     }
     window.apiFetch = apiFetch;
+
+    // ============================================================
+    // 3.1 GLOBAL SSE (Server-Sent Events) — BITTA umumiy ulanish, butun sayt uchun.
+    //
+    // Oqim: POST /run yoki /submit → backend darhol {task_id, queued:true}
+    // qaytaradi (Celery navbatga qo'yadi) → Celery worker Piston orqali
+    // bajaradi → natijani Redisga PUBLISH qiladi (kanal: sse:user:{id}) →
+    // Django Bolt shu kanalni tinglab turgan async SSE endpoint orqali
+    // brauzerga uzatadi → shu yerdagi RCEvents ularni tarqatadi (pub/sub).
+    //
+    // Bitta ulanishda RUN/SUBMIT natijalaridan tashqari boshqa turdagi
+    // eventlar ham kelishi mumkin (bildirishnoma va h.k.) — shuning uchun
+    // umumiy (global) pub/sub sifatida yozilgan, faqat run/submit uchun emas.
+    //
+    // Ishlatilishi:
+    //   RCEvents.connect();                                    // bir marta, sahifa boshida
+    //   var off = RCEvents.onTask(taskId, function(envelope) {...});  // task_id bo'yicha obuna
+    //   off();                                                 // kerak bo'lmasa uziladi
+    //   RCEvents.on('notification', function(envelope) {...});  // umumiy turdagi eventga obuna
+    //
+    // EventSource maxsus header yubora olmagani uchun autentifikatsiya
+    // query parametr orqali beriladi (?token=...) — backendda shu parametrni
+    // o'qiydigan auth dependency kerak bo'ladi.
+    // ============================================================
+    var RCEvents = (function() {
+        var source = null;
+        var connected = false;
+        var listeners = {};       // eventType -> [callback, ...]
+        var taskListeners = {};   // task_id  -> [callback, ...]
+
+        // Backend hamma narsani STRING holda yuboradi. Ba'zan bu string JSON
+        // (masalan {"task_id":...,"type":...,"result":"..."}), ba'zan xom
+        // matn bo'lishi mumkin — shuning uchun ikkalasini ham qo'llab-quvvatlaymiz.
+        function parseEnvelope(raw) {
+            try { return JSON.parse(raw); } catch (e) { return { raw: raw }; }
+        }
+
+        function dispatch(eventName, raw) {
+            var data = parseEnvelope(raw);
+            var envelope = { event: eventName, data: data, raw: raw };
+
+            console.log('◀ [SSE:' + eventName + ']', data);
+
+            (listeners[eventName] || []).slice().forEach(function(cb) { cb(envelope); });
+
+            var taskId = data && (data.task_id || data.taskId);
+            if (taskId && taskListeners[taskId]) {
+                taskListeners[taskId].slice().forEach(function(cb) { cb(envelope); });
+            }
+        }
+
+        return {
+            connect: function(url) {
+                if (connected || !window.EventSource) return;
+                url = url || ((window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1') + '/sse/events/stream/');
+
+                var token = Auth.getToken();
+                if (token) url += (url.indexOf('?') === -1 ? '?' : '&') + 'token=' + encodeURIComponent(token);
+
+                try {
+                    source = new EventSource(url, { withCredentials: true });
+                } catch (e) {
+                    console.error('[SSE] ulanish ochilmadi:', e);
+                    return;
+                }
+
+                source.onopen = function() {
+                    connected = true;
+                    console.log('■ [SSE] global ulanish ochildi');
+                };
+                source.onerror = function(e) {
+                    connected = false;
+                    console.warn('[SSE] ulanishda uzilish (brauzer avtomatik qayta ulanadi):', e);
+                };
+
+                // Nomlanmagan ("data: ..." faqat) eventlar
+                source.onmessage = function(e) { dispatch('message', e.data); };
+
+                // Backend "event: run_result" kabi nomlangan eventlar yuborsa —
+                // ro'yxatga moslab qo'shing
+                ['run_result', 'submission_result', 'notification', 'task_update', 'done'].forEach(function(name) {
+                    source.addEventListener(name, function(e) { dispatch(name, e.data); });
+                });
+            },
+
+            disconnect: function() {
+                if (source) { source.close(); source = null; }
+                connected = false;
+            },
+
+            // Umumiy turdagi eventlarga obuna (masalan 'notification')
+            on: function(eventName, cb) {
+                listeners[eventName] = listeners[eventName] || [];
+                listeners[eventName].push(cb);
+                return function() {
+                    listeners[eventName] = (listeners[eventName] || []).filter(function(f) { return f !== cb; });
+                };
+            },
+
+            // Aynan bitta task_id (bitta Run/Submit) natijalariga obuna
+            onTask: function(taskId, cb) {
+                taskListeners[taskId] = taskListeners[taskId] || [];
+                taskListeners[taskId].push(cb);
+                return function() {
+                    taskListeners[taskId] = (taskListeners[taskId] || []).filter(function(f) { return f !== cb; });
+                };
+            },
+
+            isConnected: function() { return connected; }
+        };
+    })();
+    window.RCEvents = RCEvents;
+
+    // ============================================================
+    // 3.2 PISTON VERDIKT-STRING PARSERI
+    //
+    // Backend (PistonStreamService) natijani JSON emas, quyidagi qolipdagi
+    // STRING holida qaytaradi:
+    //   "IJRO: [AC]\n[Natija]:\n0 1"
+    //   "KOMPILYATSIYA: [CE]\n[Xatolik matni]:\n..."
+    //   "IJRO: [TO] (Vaqt tugadi)"
+    // Bu yerda uni struktura holiga o'tkazamiz.
+    // ============================================================
+    var VERDICT_LABELS = {
+        AC: 'Qabul qilindi', CE: 'Kompilyatsiya xatosi', RE: "Ishga tushirish xatosi",
+        TO: 'Vaqt tugadi', SG: 'Signal (crash)', OL: "Chiqish uzunligi oshib ketdi",
+        EL: "Xato uzunligi oshib ketdi", XX: 'Tizim xatosi'
+    };
+
+    function parseVerdictString(str) {
+        str = str || '';
+        var m = str.match(/^([^:]+):\s*\[([A-Z]{2})\]\s*(?:\(([^)]*)\))?(?:\n\[[^\]]+\]:\n([\s\S]*))?$/);
+        if (!m) return { stage: '—', code: 'XX', label: VERDICT_LABELS.XX, passed: false, note: '', body: str };
+
+        var stage = m[1].trim(), code = m[2], note = m[3] || '', body = m[4] || '';
+        return {
+            stage: stage,
+            code: code,
+            label: VERDICT_LABELS[code] || code,
+            passed: code === 'AC',
+            note: note,
+            body: body
+        };
+    }
+    window.parseVerdictString = parseVerdictString;
 
     // ============================================================
     // 4. TOPBAR USER — login/logout holatiga qarab navbar o'ng
@@ -798,6 +943,9 @@
         highlightNav();
         initHintToggles();
         initEditorMockup();
+
+        // 🆕 Global SSE — login qilgan bo'lsa, butun sayt uchun bitta ulanish ochamiz
+        if (Auth.isLoggedIn()) RCEvents.connect();
 
         if (!document.getElementById('toast-container')) {
             var c = document.createElement('div');

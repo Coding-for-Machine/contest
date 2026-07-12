@@ -339,15 +339,18 @@ class Test(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
     
     class Meta:
-        verbose_name = "📝 Test"
-        verbose_name_plural = "📑 Testlar"
-        ordering = ["-created_at"]
-        indexes = [
-            models.Index(fields=["start_time", "end_time"]),
-            models.Index(fields=["is_active", "start_time"]),
-            models.Index(fields=["modul"]),
+        verbose_name = "❓ Savol"
+        verbose_name_plural = "❔ Savollar"
+        ordering = ["order", "created_at"]
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(lesson__isnull=False, test__isnull=True)
+                    | models.Q(lesson__isnull=True, test__isnull=False)
+                ),
+                name="question_belongs_to_lesson_xor_test",
+            )
         ]
-
     def __str__(self):
         return f"Test — {self.title}"
 

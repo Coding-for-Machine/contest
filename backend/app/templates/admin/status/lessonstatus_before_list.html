@@ -1,0 +1,28 @@
+{% load i18n unfold %}
+{# LessonStatusAdmin.list_before_template — faqat jadval tepasidagi xulosa bloki #}
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}📗 {% trans "Jami yozuvlar" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ ls_total|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}✅ {% trans "Tugatilgan" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ ls_completed|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}⏳ {% trans "Davom etmoqda" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ ls_in_progress|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}📊 {% trans "Tugatish foizi" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ ls_percent|default:0 }}%{% endcomponent %}
+        <div class="w-full h-1.5 rounded-full mt-2 overflow-hidden bg-gray-100 dark:bg-gray-800">
+            <div class="h-full rounded-full" style="width:{{ ls_percent|default:0 }}%;background:#22c55e;"></div>
+        </div>
+    {% endcomponent %}
+{% endcomponent %}
+
+{% component "unfold/components/card.html" with class="mb-6" title=_("Eng ko'p tugatilgan darslar (Top 5)") %}
+    {% component "unfold/components/table.html" with table=ls_top_table card_included=1 striped=1 %}{% endcomponent %}
+{% endcomponent %}

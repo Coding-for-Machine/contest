@@ -197,11 +197,16 @@ from app.sse.api import sse_router
 from submissions.api import api as submit_api
 from quizs.api.tests import api as tests_api
 from quizs.api.session import session_api
+from baseuser.api import api as user_api
+
 
 api.include_router(sse_router, prefix="/api/v1/sse")
 api.include_router(course_api, prefix="/api/v1/courses")
 api.include_router(lesson_api, prefix="/api/v1/lesson")
 api.include_router(problem_api, prefix="/api/v1/problems")
 api.include_router(submit_api, prefix="/api/v1/code")
+# test
 api.include_router(tests_api, prefix="/api/v1/tests")
 api.include_router(session_api, prefix="/api/v1/test-session")
+# user
+api.include_router(user_api, prefix="/api/v1/user")

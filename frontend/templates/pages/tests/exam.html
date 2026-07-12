@@ -1,1541 +1,884 @@
 <!DOCTYPE html>
 <html lang="uz">
 <head>
-    <!-- ============================================================
-    SEO — MAXIMUM OPTIMIZED (LIVE EXAM WINDOW PAGE)
-    ============================================================ -->
-
-    <!-- Basic Meta -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Test topshirilmoqda | CfM Contest</title>
     
-    <!-- 🚀 Go Backend Dinamik Ma'lumotlari uchun if/else shartlari va default qiymatlar -->
-    <title>{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}</title>
-    <meta name="description" content="{{ if .Description }}{{ .Description }}{{ else }}CfM Contest onlayn jonli imtihon topshirish sahifasi. Algoritmlar, dasturlash va matematika fanlaridan berilgan vaqt davomida test savollarini yechish paneli.{{ end }}">
-    <meta name="keywords" content="onlayn test, jonli imtihon, imtihon topshirish, dasturlash imtihoni, matematika testi, RobaContest, CfM Contest">
-    <meta name="robots" content="index, follow">
-    <link rel="canonical" href="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
-
-    <!-- Open Graph (Ijtimoiy tarmoqlar va Telegram ulashuvlari uchun) -->
-    <meta property="og:title" content="{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}">
-    <meta property="og:description" content="{{ if .Description }}{{ .Description }}{{ else }}Vaqt tugaguncha test savollariga javob bering, bilimingizni isbotlang va rasmiy sertifikatga ega bo'ling.{{ end }}">
-    <meta property="og:type" content="website">
-    <meta property="og:url" content="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
-    <meta property="og:image" content="https://cfmcontest.uz">
-    <meta property="og:image:width" content="1200">
-    <meta property="og:image:height" content="630">
-    <meta property="og:locale" content="uz_UZ">
-    <meta property="og:site_name" content="CfM Contest">
-
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary_large_image">
-    <meta name="twitter:title" content="{{ if .Title }}{{ .Title }}{{ else }}Jonli Imtihon Oynasi | CfM Contest{{ end }}">
-    <meta name="twitter:description" content="{{ if .Description }}{{ .Description }}{{ else }}Vaqt tugaguncha test savollariga javob bering va rasmiy sertifikatga ega bo'ling.{{ end }}">
-    <meta name="twitter:image" content="https://cfmcontest.uz">
-
-    <!-- Schema.org Structured Data -->
-    <script type="application/ld+json">
-    {
-        "@context": "https://schema.org",
-        "@type": "WebSite",
-        "name": "CfM Contest",
-        "url": "https://cfmcontest.uz",
-        "description": "Dasturlashni sport qilib o'rganish uchun platforma. 700+ masala, haftalik musobaqalar, video kurslar.",
-        "potentialAction": {
-            "@type": "SearchAction",
-            "target": "https://cfmcontest.uzsearch?q={search_term_string}",
-            "query-input": "required name=search_term_string"
-        }
-    }
-    </script>
-
-    <!-- Alternate language versions -->
-    <link rel="alternate" href="https://cfmcontest.uz" hreflang="uz">
-    <link rel="alternate" href="https://cfmcontest.uzru/test/exam" hreflang="ru">
-    <link rel="alternate" href="https://cfmcontest.uzen/test/exam" hreflang="en">
-
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="data:image/svg+xml,<svg xmlns='http://w3.org' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
-    <link rel="icon" type="image/png" sizes="32x32" href="/static/img/cfm_logo.png">
-    <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/cfm_logo.png">
-    <link rel="apple-touch-icon" href="/static/img/cfm_logo.png">
-
-    <!-- Preconnect for performance -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-
-    <!-- Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
-
-    <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
-
-    <!-- Markdown & MathJax (Ilmiy formulalar va chiroyli matn renderi uchun) -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.5.0/github-markdown-light.min.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
     <script>
-        MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
-            svg: { fontCache: 'global' }
-        };
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
     </script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        ink: '#0b0f14', inksoft: '#5b6572', inkfaint: '#9aa3ad',
-                        line: '#e7eaee', 'line-soft': '#f0f2f4', surface: '#fafafa',
-                        'surface-2': '#f4f5f6', easy: '#17924f', 'easy-bg': '#eafbf1',
-                        medium: '#b5710a', 'medium-bg': '#fef6e7', hard: '#d0264a',
-                        'hard-bg': '#fdeced', info: '#1d5fd6', 'info-bg': '#eaf1fd',
-                        brand: '#6a3df5', 'brand-bg': '#f2eefe'
-                    },
-                    fontFamily: {
-                        display: ['Space Grotesk', 'Inter', 'sans-serif'],
-                        sans: ['Inter', 'ui-sans-serif', 'system-ui', 'sans-serif'],
-                        mono: ['JetBrains Mono', 'ui-monospace', 'monospace'],
-                    },
-                }
-            }
-        }
-    </script>
-
-    <!-- 🛠️ FIKS: ../../../ kabi nisbiy yo'llar mutloq tozalandi. Ildizdan toza /static va /assets ulandi -->
+    
     <link rel="stylesheet" href="/assets/css/style.css">
-
+    
     <style>
-        * {
-            box-sizing: border-box;
-            -webkit-tap-highlight-color: transparent;
-        }
-
-        .exam-container {
-            max-width: 1180px;
-            margin: 0 auto;
-            padding: 0 12px;
-        }
-
-        .markdown-body {
-            font-family: 'Inter', sans-serif;
-            font-size: 14px;
-            line-height: 1.7;
-            color: var(--ink);
-            background: transparent;
-        }
-        .markdown-body h1,
-        .markdown-body h2,
-        .markdown-body h3 {
-            font-family: 'Space Grotesk', sans-serif;
-            font-weight: 700;
-            margin-top: 16px;
-            margin-bottom: 8px;
-        }
-        .markdown-body p {
-            margin: 8px 0;
-        }
-        .markdown-body ul,
-        .markdown-body ol {
-            padding-left: 20px;
-            margin: 8px 0;
-        }
-        .markdown-body li {
-            margin: 3px 0;
-        }
-        .markdown-body code {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            background: #f6f8fa;
-            padding: 2px 5px;
-            border-radius: 4px;
-        }
-        .markdown-body pre {
-            background: #f6f8fa;
-            border-radius: 6px;
-            padding: 10px 12px;
-            border: 1px solid var(--line-soft);
-            overflow-x: auto;
-            font-size: 12px;
-        }
-        .markdown-body pre code {
-            background: transparent;
-            padding: 0;
-        }
-
-        /* ===== QUESTION DOT ===== */
         .q-dot {
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
             font-family: 'JetBrains Mono', monospace;
-            font-size: 12px;
-            font-weight: 700;
-            cursor: pointer;
-            transition: all 0.2s ease;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s ease;
             border: 2px solid var(--line);
             background: #fff;
             color: var(--ink-soft);
-            flex-shrink: 0;
+            user-select: none;
             position: relative;
-            user-select: none;
-            -webkit-touch-callout: none;
         }
-        .q-dot:active {
-            transform: scale(0.92);
-        }
-        .q-dot.active {
-            border-color: var(--info);
-            background: var(--info-bg);
-            color: var(--info);
-            box-shadow: 0 0 0 3px rgba(29, 95, 214, 0.15);
-        }
-        .q-dot.answered {
-            border-color: var(--easy);
-            background: var(--easy-bg);
-            color: var(--easy);
-        }
-        .q-dot.answered::after {
-            content: '✓';
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            font-size: 9px;
-            background: var(--easy);
-            color: #fff;
-            border-radius: 50%;
-            width: 14px;
-            height: 14px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-weight: 700;
-        }
-        .q-dot.flagged {
-            border-color: var(--hard);
-            background: var(--hard-bg);
-            color: var(--hard);
-        }
-        .q-dot.flagged::after {
-            content: '🚩';
-            position: absolute;
-            top: -6px;
-            right: -6px;
-            font-size: 10px;
-            background: var(--hard);
-            color: #fff;
-            border-radius: 50%;
-            width: 16px;
-            height: 16px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        .q-dot.current {
-            box-shadow: 0 0 0 3px rgba(29, 95, 214, 0.25);
-        }
-
-        .question-grid {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 6px;
-        }
-
-        /* ===== OPTION LABEL ===== */
+        .q-dot:active { transform: scale(0.92); }
+        .q-dot.active { border-color: var(--info); background: var(--info-bg); color: var(--info); box-shadow: 0 0 0 3px rgba(29,95,214,0.15); }
+        .q-dot.answered { border-color: var(--easy); background: var(--easy-bg); color: var(--easy); }
+        .q-dot.answered::after { content: '✓'; position: absolute; top: -5px; right: -5px; font-size: 9px; background: var(--easy); color: #fff; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+        .q-dot.flagged { border-color: var(--hard); background: var(--hard-bg); color: var(--hard); }
+        .q-dot.flagged::after { content: '🚩'; position: absolute; top: -6px; right: -6px; font-size: 10px; }
+        .q-dot.current { box-shadow: 0 0 0 3px rgba(29,95,214,0.25); }
+        
         .option-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 10px 12px;
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
             border: 2px solid var(--line);
-            border-radius: 8px;
-            cursor: pointer;
-            transition: all 0.15s ease;
+            border-radius: 10px;
+            cursor: pointer; transition: all 0.15s ease;
             background: #fff;
-            font-size: 13px;
-            -webkit-touch-callout: none;
+            font-size: 14px;
             user-select: none;
         }
-        .option-label:active {
-            transform: scale(0.98);
-        }
-        .option-label input[type="radio"] {
-            width: 16px;
-            height: 16px;
-            accent-color: var(--info);
-            flex-shrink: 0;
-            cursor: pointer;
-        }
+        .option-label:active { transform: scale(0.98); }
         .option-label .letter {
-            width: 24px;
-            height: 24px;
+            width: 28px; height: 28px;
             border-radius: 50%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: flex; align-items: center; justify-content: center;
             background: var(--surface-2);
-            font-weight: 700;
-            font-size: 11px;
+            font-weight: 700; font-size: 12px;
             color: var(--ink-soft);
             flex-shrink: 0;
         }
-        .option-label.selected {
-            border-color: var(--info);
-            background: var(--info-bg);
-        }
-        .option-label.selected .letter {
-            background: var(--info);
-            color: #fff;
-        }
-        .option-label.eliminated {
-            opacity: 0.35;
-            pointer-events: none;
-            text-decoration: line-through;
-        }
-
-        /* ===== STATS ===== */
-        .stats-bar {
+        .option-label.selected { border-color: var(--info); background: var(--info-bg); }
+        .option-label.selected .letter { background: var(--info); color: #fff; }
+        .option-label.eliminated { opacity: 0.35; pointer-events: none; text-decoration: line-through; }
+        
+        .timer-bar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            padding: 8px 16px;
             display: flex;
+            align-items: center;
+            justify-content: space-between;
             flex-wrap: wrap;
             gap: 4px;
-            padding: 6px 10px;
-            background: var(--surface);
-            border-radius: 8px;
-            border: 1px solid var(--line);
         }
-        .stats-bar .stat-item {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-            font-size: 10px;
-            color: var(--ink-soft);
+        
+        .option-label .markdown-inline {
+            background: transparent;
+            padding: 0;
+            font-size: inherit;
         }
-        .stats-bar .stat-item .num {
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-        }
-        .stats-bar .stat-item .num.green {
-            color: var(--easy);
-        }
-        .stats-bar .stat-item .num.red {
-            color: var(--hard);
-        }
-        .stats-bar .stat-item .num.gray {
-            color: var(--ink-faint);
-        }
-        .stats-bar .stat-item .num.blue {
-            color: var(--info);
-        }
-
-        .progress-ring {
-            width: 44px;
-            height: 44px;
-            position: relative;
-            flex-shrink: 0;
-        }
-        .progress-ring svg {
-            transform: rotate(-90deg);
-            width: 44px;
-            height: 44px;
-        }
-        .progress-ring .bg {
-            fill: none;
-            stroke: var(--line-soft);
-            stroke-width: 4;
-        }
-        .progress-ring .fill {
-            fill: none;
-            stroke: var(--info);
-            stroke-width: 4;
-            stroke-linecap: round;
-            transition: stroke-dashoffset 0.8s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        .progress-ring .center-text {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 10px;
-            font-weight: 700;
-            color: var(--ink);
-        }
-
-        /* ===== MOBILE DRAWER ===== */
-        .drawer-toggle {
+        
+        .sending-overlay {
             position: fixed;
-            bottom: 76px;
-            right: 12px;
-            z-index: 50;
+            inset: 0;
+            z-index: 100;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .sending-overlay.active { display: flex; }
+        .sending-overlay .spinner {
             width: 48px;
             height: 48px;
+            border: 4px solid var(--line);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .drawer-toggle {
+            position: fixed;
+            bottom: 80px; right: 16px;
+            z-index: 50;
+            width: 52px; height: 52px;
             border-radius: 50%;
             background: var(--ink);
             color: #fff;
             border: none;
-            box-shadow: 0 4px 20px rgba(11, 15, 20, 0.3);
+            box-shadow: 0 4px 20px rgba(11,15,20,0.3);
             cursor: pointer;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+            display: none;
+            align-items: center; justify-content: center;
             transition: transform 0.2s;
-            -webkit-tap-highlight-color: transparent;
         }
-        .drawer-toggle:active {
-            transform: scale(0.9);
-        }
-
+        .drawer-toggle:active { transform: scale(0.9); }
+        
         .question-drawer {
             position: fixed;
-            bottom: 0;
-            left: 0;
-            right: 0;
+            bottom: 0; left: 0; right: 0;
             z-index: 45;
             background: #fff;
             border-top: 1px solid var(--line);
-            box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
-            padding: 10px 12px 16px;
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+            padding: 12px 16px 20px;
             transform: translateY(100%);
-            transition: transform 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+            transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
             max-height: 55vh;
             overflow-y: auto;
             border-radius: 16px 16px 0 0;
-            -webkit-overflow-scrolling: touch;
         }
-        .question-drawer.open {
-            transform: translateY(0);
-        }
-        .question-drawer .drawer-handle {
-            width: 36px;
-            height: 4px;
-            border-radius: 99px;
-            background: var(--line);
-            margin: 0 auto 10px;
-            cursor: pointer;
-        }
-        .question-drawer .drawer-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-        .question-drawer .drawer-header .close-btn {
-            background: none;
-            border: none;
-            cursor: pointer;
-            color: var(--ink-soft);
-            padding: 8px;
-            border-radius: 50%;
-            transition: background 0.2s;
-            touch-action: manipulation;
-        }
-        .question-drawer .drawer-header .close-btn:active {
-            background: var(--line-soft);
-        }
-        .question-drawer .drawer-stats {
-            display: flex;
-            gap: 8px;
-            font-size: 11px;
-            color: var(--ink-soft);
-            margin-bottom: 8px;
-            flex-wrap: wrap;
-        }
-        .question-drawer .drawer-stats .stat {
-            display: flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .question-drawer .drawer-stats .num {
-            font-weight: 700;
-            font-family: 'JetBrains Mono', monospace;
-        }
-
-        /* ===== MODAL ===== */
-        .submit-confirm-modal .modal-box {
-            max-width: 360px;
-            text-align: center;
-            padding: 20px;
-        }
-        .submit-confirm-modal .modal-box .summary-stats {
-            display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 6px;
-            margin: 10px 0 12px;
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item {
-            background: var(--surface);
-            padding: 6px;
-            border-radius: 6px;
-            border: 1px solid var(--line);
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item .num {
-            font-family: 'JetBrains Mono', monospace;
-            font-size: 18px;
-            font-weight: 700;
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item .label {
-            font-size: 9px;
-            color: var(--ink-soft);
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item.green .num {
-            color: var(--easy);
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item.red .num {
-            color: var(--hard);
-        }
-        .submit-confirm-modal .modal-box .summary-stats .item.gray .num {
-            color: var(--ink-faint);
-        }
-
-        .material-icons {
-            font-size: 20px;
-            vertical-align: middle;
-        }
-        .material-icons.small {
-            font-size: 16px;
-        }
-
-        #flagBtn.active {
-            background: var(--hard-bg);
-            border-color: var(--hard);
-            color: var(--hard);
-        }
-        #lifelineBtn:disabled {
-            opacity: .4;
-            cursor: not-allowed;
-        }
-
-        /* ===== MOBILE TIMER BAR ===== */
-        .mobile-timer-bar {
-            position: sticky;
-            top: 57px;
-            z-index: 30;
-            background: #fff;
-            border-bottom: 1px solid var(--line);
-            padding: 6px 12px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            flex-wrap: wrap;
-            gap: 4px;
-            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
-        }
-        .mobile-timer-bar .time {
-            font-family: 'JetBrains Mono', monospace;
-            font-weight: 700;
-            font-size: 16px;
-            color: var(--hard);
-        }
-        .mobile-timer-bar .info {
-            font-size: 11px;
-            color: var(--ink-soft);
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            flex-wrap: wrap;
-        }
-        .mobile-timer-bar .info .num {
-            font-weight: 700;
-            color: var(--ink);
-        }
-
-        /* ============================================================
-           RESPONSIVE
-           ============================================================ */
-        @media (max-width: 1024px) {
-            .question-grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 5px;
-            }
-            .q-dot {
-                width: 34px;
-                height: 34px;
-                font-size: 11px;
-            }
-        }
-
+        .question-drawer.open { transform: translateY(0); }
+        
         @media (max-width: 768px) {
-            .exam-container {
-                padding: 0 10px;
-            }
-            .q-dot {
-                width: 30px;
-                height: 30px;
-                font-size: 10px;
-            }
-            .question-grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 4px;
-            }
-            .option-label {
-                padding: 8px 10px;
-                font-size: 12px;
-                gap: 8px;
-            }
-            .option-label .letter {
-                width: 20px;
-                height: 20px;
-                font-size: 10px;
-            }
-            .stats-bar {
-                font-size: 9px;
-                padding: 4px 8px;
-            }
-            .progress-ring {
-                width: 40px;
-                height: 40px;
-            }
-            .progress-ring svg {
-                width: 40px;
-                height: 40px;
-            }
-            .progress-ring .center-text {
-                font-size: 9px;
-            }
-            .lg\:block {
-                display: none;
-            }
-            .lg\:grid-cols-\[1fr_320px\] {
-                grid-template-columns: 1fr;
-            }
-            .mobile-timer-bar {
-                display: flex !important;
-            }
-            .drawer-toggle {
-                display: flex;
-            }
-            .submit-confirm-modal .modal-box .summary-stats {
-                grid-template-columns: repeat(3, 1fr);
-            }
-            .card {
-                border-radius: 10px;
-            }
+            .drawer-toggle { display: flex; }
+            .q-dot { width: 30px; height: 30px; font-size: 10px; }
+            .option-label { padding: 10px 12px; font-size: 13px; }
+            .option-label .letter { width: 24px; height: 24px; font-size: 11px; }
         }
-
         @media (max-width: 480px) {
-            .exam-container {
-                padding: 0 8px;
-            }
-            .q-dot {
-                width: 26px;
-                height: 26px;
-                font-size: 9px;
-                border-width: 1.5px;
-            }
-            .question-grid {
-                grid-template-columns: repeat(5, 1fr);
-                gap: 3px;
-            }
-            .option-label {
-                padding: 6px 8px;
-                font-size: 11px;
-                gap: 6px;
-            }
-            .option-label .letter {
-                width: 18px;
-                height: 18px;
-                font-size: 9px;
-            }
-            .option-label input[type="radio"] {
-                width: 14px;
-                height: 14px;
-            }
-            .q-dot::after {
-                width: 12px;
-                height: 12px;
-                font-size: 7px;
-                top: -4px;
-                right: -4px;
-            }
-            .mobile-timer-bar .time {
-                font-size: 14px;
-            }
-            .mobile-timer-bar .info {
-                font-size: 10px;
-                gap: 4px;
-            }
-            .question-drawer {
-                padding: 8px 10px 12px;
-            }
-            .question-drawer .drawer-stats {
-                font-size: 10px;
-                gap: 6px;
-            }
-            .question-drawer .q-dot {
-                width: 24px;
-                height: 24px;
-                font-size: 8px;
-            }
-            .question-drawer .question-grid {
-                gap: 3px;
-            }
-            .drawer-toggle {
-                width: 44px;
-                height: 44px;
-                bottom: 70px;
-                right: 10px;
-            }
-            .drawer-toggle .material-icons {
-                font-size: 22px;
-            }
-            .submit-confirm-modal .modal-box .summary-stats .item .num {
-                font-size: 14px;
-            }
-            .submit-confirm-modal .modal-box {
-                padding: 16px;
-            }
-            .submit-confirm-modal .modal-box .summary-stats {
-                gap: 4px;
-            }
-        }
-
-        @media (max-width: 380px) {
-            .q-dot {
-                width: 22px;
-                height: 22px;
-                font-size: 8px;
-                border-width: 1.5px;
-            }
-            .question-grid {
-                gap: 2px;
-            }
-            .option-label {
-                font-size: 10px;
-                padding: 5px 6px;
-            }
-            .option-label .letter {
-                width: 16px;
-                height: 16px;
-                font-size: 8px;
-            }
-            .mobile-timer-bar .info {
-                font-size: 9px;
-            }
-            .mobile-timer-bar .time {
-                font-size: 12px;
-            }
+            .q-dot { width: 26px; height: 26px; font-size: 9px; border-width: 1.5px; }
+            .option-label { padding: 8px 10px; font-size: 12px; }
+            .option-label .letter { width: 20px; height: 20px; font-size: 10px; }
+            .timer-bar .time { font-size: 14px; }
         }
     </style>
 </head>
-<body>
+<body class="bg-white">
 
-    <!-- ===== TOPBAR ===== -->
-    <!-- 🆕 Endi bu yerda faqat bitta bo'sh header — mazmuni main.js
-         (injectNavbar) tomonidan to'ldiriladi. Barcha sahifalarda
-         XUDDI SHU bitta qator yetarli, navbar HTML'ni qayta yozish
-         shart emas. -->
-    <header id="navbar" class="topbar" role="banner"></header>
-
-
-
-    <!-- ===== MOBILE TIMER BAR ===== -->
-    <div class="mobile-timer-bar">
-        <div class="time" id="mobileTimer">45:00</div>
-        <div class="info">
-            <span><span class="material-icons" style="font-size:14px;">description</span> <span class="num" id="mobileAnswered">0</span>/<span id="mobileTotal">30</span></span>
-            <span><span class="material-icons" style="font-size:14px;color:var(--hard);">flag</span> <span class="num red" id="mobileFlagged">0</span></span>
-            <span><span class="material-icons" style="font-size:14px;">trending_up</span> <span class="num" id="mobilePercent">0%</span></span>
+<!-- ===== TOP BAR WITH TIMER ===== -->
+<div class="timer-bar">
+    <div class="flex items-center gap-3">
+        <a href="/tests" class="p-1 rounded-lg hover:bg-surface-2 transition-colors">
+            <span class="material-icons">close</span>
+        </a>
+        <span class="text-sm font-medium hidden sm:inline" id="testTitle">Test</span>
+    </div>
+    
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-ink-soft">timer</span>
+            <span class="font-mono font-bold text-lg" id="timerDisplay">00:00</span>
         </div>
-        <button onclick="toggleDrawer()" class="btn btn-ghost btn-sm" style="padding:2px 6px;min-width:32px;min-height:32px;">
-            <span class="material-icons" style="font-size:18px;">list_alt</span>
+        <div class="hidden sm:flex items-center gap-2 text-sm text-ink-soft">
+            <span class="material-icons">check_circle</span>
+            <span class="font-mono font-bold" id="answeredCount">0</span>
+            <span>/</span>
+            <span id="totalQuestions">0</span>
+        </div>
+        <button class="btn btn-primary btn-sm" id="finishBtn">
+            <span class="material-icons text-sm">check</span>
+            <span class="hidden sm:inline">Yakunlash</span>
         </button>
     </div>
+</div>
 
-    <!-- ===== MAIN ===== -->
-    <main>
+<!-- ===== SENDING OVERLAY ===== -->
+<div class="sending-overlay" id="sendingOverlay">
+    <div class="spinner"></div>
+    <p class="mt-4 text-ink font-medium">Javoblar yuborilmoqda...</p>
+    <p class="text-sm text-ink-soft mt-1">Iltimos kuting</p>
+</div>
 
-        <div class="exam-container py-4 sm:py-6">
-
-            <!-- Breadcrumb -->
-            <div class="flex items-center gap-2 text-xs text-inksoft mb-4 flex-wrap">
-                <a href="/tests.html" class="hover:text-ink flex items-center gap-0.5">
-                    <span class="material-icons small" style="font-size:14px;">quiz</span> Testlar
-                </a>
-                <span class="material-icons small" style="font-size:12px;">chevron_right</span>
-                <span class="text-ink font-medium text-xs truncate max-w-[120px]" id="breadcrumbTitle">Python asoslari</span>
-                <span class="material-icons small" style="font-size:12px;">chevron_right</span>
-                <span class="text-inksoft font-medium text-xs">Test</span>
-            </div>
-
-            <!-- Layout -->
-            <div class="grid lg:grid-cols-[1fr_320px] gap-4">
-
-                <!-- LEFT: Question -->
-                <div>
-                    <div class="card p-3 sm:p-4">
-                        <div class="flex items-start justify-between mb-3 gap-2 flex-wrap">
-                            <span class="text-xs font-mono text-inksoft" id="questionCounter">Savol 1 / 30</span>
-                            <div class="flex items-center gap-1.5 flex-wrap">
-                                <span class="badge badge-medium text-[10px]" id="questionDifficulty">O'rtacha</span>
-                                <button id="flagBtn" type="button" class="btn btn-outline btn-sm" style="padding:2px 6px;min-width:28px;min-height:28px;font-size:10px;" title="Keyinroq qaytish uchun belgilash">
-                                    <span class="material-icons" style="font-size:16px;">flag</span>
-                                </button>
-                                <button id="lifelineBtn" type="button" class="btn btn-outline btn-sm" style="padding:2px 6px;min-width:28px;min-height:28px;font-size:9px;" title="50/50 — ikkita noto'g'ri variantni olib tashlaydi">
-                                    <span class="material-icons" style="font-size:14px;">emergency</span>
-                                    <span class="lifeline-count">3</span>
-                                </button>
-                            </div>
-                        </div>
-
-                        <div class="markdown-body mb-4" id="questionText">
-                            <p>Python'da o'zgaruvchi nomlari nima bilan boshlanishi mumkin emas?</p>
-                        </div>
-
-                        <div class="flex flex-col gap-2" id="optionsContainer"></div>
-
-                        <div class="flex items-center justify-between mt-4 pt-3 border-t border-line">
-                            <button id="prevBtn" class="btn btn-outline btn-sm" disabled style="padding:4px 10px;font-size:11px;">
-                                <span class="material-icons small" style="font-size:14px;">chevron_left</span> Oldingi
-                            </button>
-                            <span class="text-xs text-inksoft font-mono" id="questionNumber">1 / 30</span>
-                            <button id="nextBtn" class="btn btn-primary btn-sm" style="padding:4px 10px;font-size:11px;">
-                                Keyingi <span class="material-icons small" style="font-size:14px;">chevron_right</span>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- RIGHT: Desktop Sidebar -->
-                <div class="hidden lg:block lg:sticky lg:top-20 h-fit">
-                    <div class="card p-4">
-
-                        <div class="flex items-center justify-between mb-3 pb-3 border-b border-line">
-                            <span class="text-sm font-semibold flex items-center gap-1">
-                                <span class="material-icons" style="font-size:16px;">schedule</span> Qolgan vaqt
-                            </span>
-                            <span class="font-mono font-bold text-xl text-hard" id="examTimer">45:00</span>
-                        </div>
-
-                        <div class="flex items-center justify-between mb-3">
-                            <div class="flex items-center gap-3">
-                                <div class="progress-ring">
-                                    <svg viewBox="0 0 44 44">
-                                        <circle class="bg" cx="22" cy="22" r="18"/>
-                                        <circle class="fill" cx="22" cy="22" r="18" id="progressRing" stroke-dasharray="113.1" stroke-dashoffset="113.1"/>
-                                    </svg>
-                                    <span class="center-text" id="progressText">0%</span>
-                                </div>
-                                <div>
-                                    <div class="text-xs text-inksoft flex items-center gap-0.5">
-                                        <span class="material-icons" style="font-size:12px;">trending_up</span> Progress
-                                    </div>
-                                    <div class="text-xs font-mono font-bold" id="progressLabel">0/30</div>
-                                </div>
-                            </div>
-                            <div class="text-right">
-                                <div class="text-xs text-inksoft flex items-center gap-0.5">
-                                    <span class="material-icons" style="font-size:12px;">flag</span> O'tish
-                                </div>
-                                <div class="text-xs font-mono font-bold" id="passScore">60%</div>
-                            </div>
-                        </div>
-
-                        <div class="stats-bar mb-3">
-                            <span class="stat-item">
-                                <span class="material-icons" style="font-size:12px;color:var(--easy);">check_circle</span>
-                                <span class="num green" id="statAnswered">0</span>
-                            </span>
-                            <span class="stat-item">
-                                <span class="material-icons" style="font-size:12px;color:var(--hard);">flag</span>
-                                <span class="num red" id="statFlagged">0</span>
-                            </span>
-                            <span class="stat-item">
-                                <span class="material-icons" style="font-size:12px;color:var(--ink-faint);">remove_circle</span>
-                                <span class="num gray" id="statSkipped">0</span>
-                            </span>
-                            <span class="stat-item ml-auto">
-                                <span class="material-icons" style="font-size:12px;color:var(--info);">bar_chart</span>
-                                <span class="num blue" id="statPercent">0%</span>
-                            </span>
-                        </div>
-
-                        <div class="question-grid" id="questionGrid"></div>
-
-                        <div class="flex items-center justify-between mt-3 pt-3 border-t border-line text-xs text-inksoft flex-wrap gap-1">
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-easy"></span> Javob</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-hard"></span> Belgilangan</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
-                            <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
-                        </div>
-
-                        <button id="finishBtn" class="btn btn-primary btn-block mt-4">
-                            <span class="material-icons small">check</span> Testni yakunlash
+<!-- ===== MAIN CONTENT ===== -->
+<main class="container-rc mx-auto px-4 py-4 sm:py-6 max-w-3xl" id="mainContent">
+    
+    <div id="loadingState" class="text-center py-20">
+        <span class="material-icons text-4xl text-ink-faint animate-spin">hourglass_top</span>
+        <p class="mt-3 text-ink-soft">Yuklanmoqda...</p>
+    </div>
+    
+    <div id="missingState" class="text-center py-20" style="display:none;">
+        <span class="material-icons text-6xl text-ink-faint">link_off</span>
+        <h3 class="text-xl font-bold mt-4">Sessiya topilmadi</h3>
+        <p class="text-ink-soft mt-2">Iltimos, testni tafsilotlar sahifasidan qayta boshlang.</p>
+        <a href="/tests" class="btn btn-primary mt-6">Testlar ro'yxati</a>
+    </div>
+    
+    <div id="quizState" style="display:none;">
+        <div class="space-y-6">
+            <div class="flex flex-wrap gap-2" id="questionDots"></div>
+            
+            <div class="card p-5 sm:p-6">
+                <div class="flex items-start justify-between mb-4 gap-2 flex-wrap">
+                    <span class="text-sm font-mono text-ink-soft" id="questionCounter">Savol 1 / 0</span>
+                    <div class="flex items-center gap-2">
+                        <button class="btn btn-outline btn-sm p-1.5 min-w-[32px] min-h-[32px]" id="flagBtn" title="Belgilash">
+                            <span class="material-icons text-sm">flag</span>
                         </button>
-
+                        <button class="btn btn-outline btn-sm p-1.5 min-w-[32px] min-h-[32px]" id="lifelineBtn" title="50/50">
+                            <span class="material-icons text-sm">emergency</span>
+                            <span class="text-xs font-mono" id="lifelineCount">0</span>
+                        </button>
                     </div>
                 </div>
-
+                
+                <div class="prose max-w-none mb-5" id="questionText"></div>
+                
+                <div class="space-y-2.5" id="optionsContainer"></div>
             </div>
-
+            
+            <div class="flex items-center justify-between">
+                <button class="btn btn-outline" id="prevBtn" disabled>
+                    <span class="material-icons">arrow_back</span> Oldingi
+                </button>
+                <span class="text-sm text-ink-soft" id="navInfo">0/0 javob</span>
+                <button class="btn btn-primary" id="nextBtn">Keyingi <span class="material-icons">arrow_forward</span></button>
+            </div>
         </div>
+    </div>
+    
+    <div id="resultState" style="display:none;">
+        <div class="text-center py-6">
+            <div class="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-4 border-4" id="resultCircle">
+                <span class="font-mono text-3xl font-bold" id="resultPercentage">0%</span>
+            </div>
+            
+            <h2 class="font-display font-bold text-2xl mb-1" id="resultTitle"></h2>
+            <p class="text-ink-soft mb-6" id="resultDesc"></p>
+            
+            <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto mb-6">
+                <div class="bg-easy-bg text-easy p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultCorrect">0</div>
+                    <div class="text-xs">to'g'ri</div>
+                </div>
+                <div class="bg-hard-bg text-hard p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultWrong">0</div>
+                    <div class="text-xs">xato</div>
+                </div>
+                <div class="bg-surface-2 text-ink-soft p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultUnanswered">0</div>
+                    <div class="text-xs">javobsiz</div>
+                </div>
+            </div>
+            
+            <div class="badge badge-brand text-base px-6 py-2.5 mb-6" id="resultXp">
+                <span class="material-icons">bolt</span> +0 XP
+            </div>
+            
+            <div class="flex gap-3 justify-center flex-wrap">
+                <a href="#" class="btn btn-outline" id="resultBackBtn">Test sahifasiga qaytish</a>
+                <a href="/tests" class="btn btn-primary">Boshqa testlar</a>
+            </div>
+        </div>
+    </div>
+    
+</main>
 
-    </main>
+<button class="drawer-toggle" id="drawerToggle">
+    <span class="material-icons">list_alt</span>
+</button>
 
-    <!-- ===== MOBILE DRAWER ===== -->
-    <button class="drawer-toggle" id="drawerToggle" aria-label="Savollar ro'yxati">
-        <span class="material-icons">list_alt</span>
-    </button>
+<div class="question-drawer" id="questionDrawer">
+    <div class="flex items-center justify-between mb-3">
+        <span class="font-semibold flex items-center gap-2">
+            <span class="material-icons">list_alt</span> Savollar
+        </span>
+        <button class="p-1 rounded-lg hover:bg-surface-2" id="drawerCloseBtn">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    <div class="flex flex-wrap gap-2" id="drawerDots"></div>
+    <div class="flex items-center gap-4 mt-3 pt-3 border-t border-line text-xs text-ink-soft">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-easy"></span> Javob</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-hard"></span> Belgilangan</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
+    </div>
+</div>
 
-    <div class="question-drawer" id="questionDrawer">
-        <div class="drawer-handle" id="drawerHandle"></div>
-        <div class="drawer-header">
-            <span class="font-semibold text-sm flex items-center gap-1">
-                <span class="material-icons" style="font-size:18px;">list_alt</span> Savollar
-            </span>
-            <button class="close-btn" id="drawerCloseBtn" aria-label="Yopish">
-                <span class="material-icons">close</span>
+<div class="modal-overlay" id="finishModal">
+    <div class="modal-box max-w-sm text-center">
+        <span class="material-icons text-4xl text-info">fact_check</span>
+        <h3 class="font-bold text-lg mt-2 mb-1">Testni yakunlaysizmi?</h3>
+        <p class="text-sm text-ink-soft mb-2" id="finishModalInfo">0 / 0 savolga javob berdingiz.</p>
+        <p class="text-sm text-hard mb-4" id="finishModalWarning" style="display:none;">Javobsiz qoldirgan savollaringiz bo'ladi.</p>
+        <div class="flex gap-2">
+            <button class="btn btn-outline flex-1" onclick="Modal.close('finishModal')">Bekor qilish</button>
+            <button class="btn btn-primary flex-1" id="confirmFinishBtn">
+                <span class="material-icons">check</span> Yakunlash
             </button>
         </div>
-        <div class="drawer-stats">
-            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--easy);">check_circle</span> <span class="num green" id="drawerAnswered">0</span></span>
-            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--hard);">flag</span> <span class="num red" id="drawerFlagged">0</span></span>
-            <span class="stat"><span class="material-icons" style="font-size:12px;color:var(--ink-faint);">remove_circle</span> <span class="num gray" id="drawerSkipped">0</span></span>
-            <span class="stat ml-auto"><span class="material-icons" style="font-size:12px;color:var(--info);">bar_chart</span> <span class="num" id="drawerProgress">0%</span></span>
-        </div>
-        <div class="question-grid" id="questionDotsMobile"></div>
-        <div class="flex items-center justify-between mt-2 pt-2 border-t border-line text-xs text-inksoft flex-wrap gap-1">
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-easy"></span> Javob</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-hard"></span> Belgilangan</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
-            <span class="flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
-        </div>
     </div>
+</div>
 
-    <!-- ===== SUBMIT MODAL ===== -->
-    <div class="modal-overlay submit-confirm-modal" id="submitModal">
-        <div class="modal-box">
-            <div class="flex items-center justify-center mb-2">
-                <span class="material-icons text-info" style="font-size:28px;">fact_check</span>
-            </div>
-            <h3 class="font-display font-bold text-lg mb-1">Testni yakunlash</h3>
-            <p class="text-sm text-inksoft mb-2">Quyidagi ma'lumotlarni tekshirib, yakunlashni tasdiqlang.</p>
+<div id="toast-container"></div>
 
-            <div class="summary-stats" id="summaryStats">
-                <div class="item green">
-                    <div class="num" id="summaryCorrect">0</div>
-                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--easy);">check_circle</span> Javob</div>
+<script src="/assets/js/main.js"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    // ===== STATE =====
+    const state = {
+        sessionId: null,
+        slug: null,
+        testTitle: '',
+        questions: [],
+        answers: {},        // index -> choice_index
+        flags: {},          // index -> true/false
+        eliminated: {},     // index -> [eliminated_choice_ids]
+        currentIndex: 0,
+        lifelinesLeft: 0,
+        timeLeft: 0,
+        totalQuestions: 0,
+        drawerOpen: false,
+        timerInterval: null,
+        result: null,
+        sending: false,
+        finishInProgress: false,
+        initialized: false,
+        loadingSession: false,
+        phase: 'loading'
+    };
+    
+    // ===== DOM REFS =====
+    const $ = (id) => document.getElementById(id);
+    const dom = {
+        loadingState: $('loadingState'),
+        missingState: $('missingState'),
+        quizState: $('quizState'),
+        resultState: $('resultState'),
+        testTitle: $('testTitle'),
+        timerDisplay: $('timerDisplay'),
+        answeredCount: $('answeredCount'),
+        totalQuestions: $('totalQuestions'),
+        finishBtn: $('finishBtn'),
+        sendingOverlay: $('sendingOverlay'),
+        questionDots: $('questionDots'),
+        drawerDots: $('drawerDots'),
+        questionCounter: $('questionCounter'),
+        questionText: $('questionText'),
+        optionsContainer: $('optionsContainer'),
+        flagBtn: $('flagBtn'),
+        lifelineBtn: $('lifelineBtn'),
+        lifelineCount: $('lifelineCount'),
+        prevBtn: $('prevBtn'),
+        nextBtn: $('nextBtn'),
+        navInfo: $('navInfo'),
+        drawerToggle: $('drawerToggle'),
+        questionDrawer: $('questionDrawer'),
+        drawerCloseBtn: $('drawerCloseBtn'),
+        finishModalInfo: $('finishModalInfo'),
+        finishModalWarning: $('finishModalWarning'),
+        confirmFinishBtn: $('confirmFinishBtn'),
+        resultCircle: $('resultCircle'),
+        resultPercentage: $('resultPercentage'),
+        resultTitle: $('resultTitle'),
+        resultDesc: $('resultDesc'),
+        resultCorrect: $('resultCorrect'),
+        resultWrong: $('resultWrong'),
+        resultUnanswered: $('resultUnanswered'),
+        resultXp: $('resultXp'),
+        resultBackBtn: $('resultBackBtn')
+    };
+    
+    const Auth = window.Auth || {
+        getToken: () => localStorage.getItem('token') || '',
+        isLoggedIn: () => !!localStorage.getItem('token')
+    };
+    
+    // ===== API =====
+    async function callApi(path, opts) {
+        const base = window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1';
+        const token = Auth.getToken();
+        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        
+        const url = base + path;
+        const body = opts && opts.body ? JSON.stringify(opts.body) : undefined;
+        
+        console.log('📤 API:', url);
+        if (body) console.log('📤 Body:', body);
+        
+        const res = await fetch(url, { 
+            method: (opts && opts.method) || 'GET', 
+            headers, 
+            body 
+        });
+        
+        let data = null;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try { data = await res.json(); } catch (e) {}
+        }
+        
+        console.log('📥 Javob:', res.status, data);
+        
+        if (!res.ok) {
+            const err = new Error();
+            err.status = res.status;
+            err.detail = data && data.detail !== undefined ? data.detail : data;
+            err.message = (data && (data.message || data.detail?.message)) || res.statusText || 'Xatolik yuz berdi';
+            throw err;
+        }
+        return data;
+    }
+    
+    // ===== HELPERS =====
+    function formatTime(seconds) {
+        if (!seconds || seconds < 0) return '00:00';
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+    
+    function renderMarkdown(text) {
+        if (!text) return '';
+        try { return marked.parse(text); } catch (e) { return text; }
+    }
+    
+    function getAnsweredCount() { return Object.keys(state.answers).length; }
+    function getCurrentQuestion() { return state.questions[state.currentIndex] || null; }
+    
+    // ===== RENDER =====
+    function renderDots() {
+        let html = '';
+        state.questions.forEach((q, i) => {
+            let cls = 'q-dot';
+            if (i === state.currentIndex) cls += ' active current';
+            if (state.flags[i]) cls += ' flagged';
+            else if (state.answers[i] !== undefined) cls += ' answered';
+            html += `<div class="${cls}" data-index="${i}">${i + 1}</div>`;
+        });
+        dom.questionDots.innerHTML = html;
+        dom.drawerDots.innerHTML = html;
+        
+        dom.questionDots.querySelectorAll('.q-dot').forEach(el => {
+            el.addEventListener('click', () => goTo(parseInt(el.dataset.index)));
+        });
+        dom.drawerDots.querySelectorAll('.q-dot').forEach(el => {
+            el.addEventListener('click', () => { goTo(parseInt(el.dataset.index)); closeDrawer(); });
+        });
+    }
+    
+    function renderQuestion() {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        
+        dom.questionCounter.textContent = `Savol ${state.currentIndex + 1} / ${state.questions.length}`;
+        dom.questionText.innerHTML = renderMarkdown(q.text);
+        dom.flagBtn.classList.toggle('active', !!state.flags[state.currentIndex]);
+        dom.lifelineCount.textContent = state.lifelinesLeft;
+        dom.lifelineBtn.disabled = state.lifelinesLeft <= 0 || (state.eliminated[state.currentIndex] || []).length > 0;
+        
+        const elim = state.eliminated[state.currentIndex] || [];
+        let optionsHtml = '';
+        q.choices.forEach((choice, idx) => {
+            const selected = state.answers[state.currentIndex] === idx;
+            const isElim = elim.includes(choice.id);
+            let cls = 'option-label';
+            if (selected) cls += ' selected';
+            if (isElim) cls += ' eliminated';
+            optionsHtml += `
+                <div class="${cls}" data-choice-index="${idx}">
+                    <span class="letter">${String.fromCharCode(65 + idx)}</span>
+                    <span class="flex-1 markdown-inline">${renderMarkdown(choice.text)}</span>
                 </div>
-                <div class="item red">
-                    <div class="num" id="summaryFlagged">0</div>
-                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--hard);">flag</span> Belgilangan</div>
-                </div>
-                <div class="item gray">
-                    <div class="num" id="summarySkipped">0</div>
-                    <div class="label"><span class="material-icons" style="font-size:10px;color:var(--ink-faint);">remove_circle</span> Javobsiz</div>
-                </div>
-            </div>
-            <p class="text-[10px] text-inkfaint text-center mb-2">To'g'ri/noto'g'ri natija faqat yakunlangach ko'rsatiladi.</p>
+            `;
+        });
+        dom.optionsContainer.innerHTML = optionsHtml;
+        
+        dom.optionsContainer.querySelectorAll('.option-label:not(.eliminated)').forEach(el => {
+            el.addEventListener('click', () => { selectOption(parseInt(el.dataset.choiceIndex)); });
+        });
+        
+        dom.prevBtn.disabled = state.currentIndex === 0;
+        const isLast = state.currentIndex === state.questions.length - 1;
+        dom.nextBtn.textContent = isLast ? 'Yakunlash' : 'Keyingi';
+        dom.nextBtn.innerHTML = isLast ? 
+            '<span class="material-icons">check</span> Yakunlash' : 
+            'Keyingi <span class="material-icons">arrow_forward</span>';
+        
+        dom.navInfo.textContent = `${getAnsweredCount()}/${state.questions.length} javob`;
+        dom.answeredCount.textContent = getAnsweredCount();
+        dom.totalQuestions.textContent = state.questions.length;
+        
+        renderDots();
+        
+        if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise([dom.questionText, dom.optionsContainer]).catch(() => {});
+        }
+    }
+    
+    function renderResult() {
+        const r = state.result;
+        if (!r) return;
+        
+        dom.resultState.style.display = 'block';
+        dom.quizState.style.display = 'none';
+        
+        const passed = r.passed;
+        dom.resultCircle.className = `w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-4 border-4 ${passed ? 'border-easy bg-easy-bg text-easy' : 'border-hard bg-hard-bg text-hard'}`;
+        dom.resultPercentage.textContent = Math.round(r.percentage) + '%';
+        dom.resultTitle.textContent = passed ? '🎉 Tabriklaymiz!' : '😔 Afsuski...';
+        dom.resultDesc.textContent = passed ? 'Siz testdan muvaffaqiyatli o\'tdingiz!' : 'Qayta urinib ko\'ring!';
+        dom.resultCorrect.textContent = r.correct_count || 0;
+        dom.resultWrong.textContent = r.wrong_count || 0;
+        dom.resultUnanswered.textContent = r.unanswered_count || 0;
+        dom.resultXp.innerHTML = `<span class="material-icons">bolt</span> +${r.xp_earned || 0} XP`;
+        dom.resultBackBtn.href = '/test/' + state.slug;
+    }
+    
+    // ===== ACTIONS =====
+    function goTo(index) {
+        if (index < 0 || index >= state.questions.length) return;
+        state.currentIndex = index;
+        renderQuestion();
+        if (window.innerWidth < 768) closeDrawer();
+    }
+    
+    function selectOption(choiceIndex) {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        
+        // Agar bir xil variant tanlansa, uni o'chirish (deselect)
+        if (state.answers[state.currentIndex] === choiceIndex) {
+            delete state.answers[state.currentIndex];
+        } else {
+            state.answers[state.currentIndex] = choiceIndex;
+        }
+        
+        localStorage.setItem('quiz_answers_' + state.sessionId, JSON.stringify(state.answers));
+        renderQuestion();
+    }
+    
+    function toggleFlag() {
+        state.flags[state.currentIndex] = !state.flags[state.currentIndex];
+        renderQuestion();
+    }
+    
+    async function useLifeline() {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        if (state.lifelinesLeft <= 0 || (state.eliminated[state.currentIndex] || []).length > 0) return;
+        
+        try {
+            const result = await callApi('/test-session/session/' + state.sessionId + '/lifeline', {
+                method: 'POST',
+                body: { question_id: q.id }
+            });
+            state.eliminated[state.currentIndex] = result.eliminated_choice_ids;
+            state.lifelinesLeft = result.lifelines_left;
+            showToast('🛟 2 ta noto\'g\'ri variant olib tashlandi', 'info', 2000);
+            renderQuestion();
+        } catch (e) {
+            showToast('Lifeline ishlatmadi: ' + e.message, 'error');
+        }
+    }
+    
+    function toggleDrawer() {
+        state.drawerOpen = !state.drawerOpen;
+        dom.questionDrawer.classList.toggle('open', state.drawerOpen);
+        dom.drawerToggle.style.display = state.drawerOpen ? 'none' : 'flex';
+    }
+    
+    function closeDrawer() {
+        state.drawerOpen = false;
+        dom.questionDrawer.classList.remove('open');
+        dom.drawerToggle.style.display = 'flex';
+    }
+    
+    function confirmFinish() {
+        const total = state.questions.length;
+        const answered = getAnsweredCount();
+        dom.finishModalInfo.textContent = `${answered} / ${total} savolga javob berdingiz.`;
+        dom.finishModalWarning.style.display = answered < total ? 'block' : 'none';
+        Modal.open('finishModal');
+    }
+    
+    // ============================================================
+    // YAKUNLASH - BULK SINKHRON (Celery'siz)
+    // ============================================================
+    async function submitAndFinish() {
+        if (state.finishInProgress) return;
+        state.finishInProgress = true;
+        state.sending = true;
+        dom.sendingOverlay.classList.add('active');
 
-            <div class="flex items-center justify-between text-xs text-inksoft mb-3 px-1">
-                <span>Jami: <strong id="summaryTotal">30</strong></span>
-                <span><span class="material-icons" style="font-size:12px;">trending_up</span> <strong id="summaryPercent">0%</strong></span>
-            </div>
+        console.log('🚀 Yakunlash boshlandi...');
+        Modal.close('finishModal');
 
-            <div class="flex gap-2">
-                <button onclick="Modal.close('submitModal')" class="btn btn-outline flex-1 text-sm">Bekor qilish</button>
-                <button id="confirmSubmitBtn" class="btn btn-primary flex-1 text-sm">
-                    <span class="material-icons small">check</span> Yakunlash
-                </button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Toast -->
-    <div id="toast-container"></div>
-
-    <!-- Global JS -->
-    <script src="/assets/js/main.js"></script>
-
-    <!-- ===== EXAM JS ===== -->
-    <script>
-        (function() {
-            'use strict';
-
-            // ============================================================
-            // TEST DATA
-            // ============================================================
-            var testData = {
-                id: 1,
-                title: "Python asoslari — Yakuniy test",
-                slug: "py-basics-final",
-                duration: 45,
-                passScore: 60,
-                penalty: 0.33,
-                maxLifelines: 3,
-                xp: 186,
-                questions: []
-            };
-
-            var XP_BY_DIFFICULTY = { easy: 3, medium: 6, hard: 10 };
-
-            var baseQ = [
-                { text: "Python'da o'zgaruvchi nomlari nima bilan boshlanishi mumkin **emas**?",
-                    options: ["Harf bilan", "Pastki chiziq bilan", "Raqam bilan", "Kirill harflar bilan"], correct: 2,
-                    difficulty: 'medium'
-                },
-                { text: "Python'da qaysi biri to'g'ri kommentariya usuli?",
-                    options: ["`// comment`", "`<!-- comment -->`", "`# comment`", "`/* comment */`"], correct: 2,
-                    difficulty: 'easy'
-                },
-                { text: "Python'da `len()` funksiyasi nima uchun ishlatiladi?",
-                    options: ["Massivni saralash", "Uzunlikni olish", "Element qo'shish", "Element o'chirish"], correct: 1,
-                    difficulty: 'easy'
-                },
-                { text: "Python'da `for` sikli qanday ishlaydi?",
-                    options: ["Faqat sonlar bilan ishlaydi", "Iterable obyektlar ustida aylanish", "Faqat ro'yxatlar bilan ishlaydi",
-                        "Faqat lug'atlar bilan ishlaydi"
-                    ], correct: 1, difficulty: 'medium'
-                },
-                { text: "Python'da `try/except` bloki nima uchun ishlatiladi?",
-                    options: ["Sikllarni boshqarish", "Funksiyalarni chaqirish", "Xatoliklarni ushlash",
-                        "O'zgaruvchilarni e'lon qilish"
-                    ], correct: 2, difficulty: 'medium'
-                },
-                { text: "Python'da `list` va `tuple` orasidagi asosiy farq nima?",
-                    options: ["List tezroq ishlaydi", "Tuple o'zgarmas (immutable)", "List faqat sonlar saqlaydi",
-                        "Tuple faqat matn saqlaydi"
-                    ], correct: 1, difficulty: 'hard'
+        try {
+            // 1. Barcha javoblarni yig'amiz - FIX: question_id ni to'g'ri olish
+            const answersList = [];
+            for (const [index, choiceIndex] of Object.entries(state.answers)) {
+                const question = state.questions[parseInt(index)];
+                if (!question) {
+                    console.warn('⚠️ Savol topilmadi index:', index);
+                    continue;
                 }
-            ];
-
-            var diffCycle = ['easy', 'medium', 'hard', 'easy', 'medium', 'hard'];
-            for (var i = 0; i < 30; i++) {
-                var base = baseQ[i % baseQ.length];
-                var diff = diffCycle[i % diffCycle.length];
-                testData.questions.push({
-                    id: i + 1,
-                    text: base.text + (i >= 6 ? " (Savol #" + (i + 1) + ")" : ""),
-                    options: base.options.map(function(o, oi) {
-                        return { id: oi, text: o + (i >= 6 ? " — $E=mc^2$" : "") };
-                    }),
-                    correct: base.correct,
-                    difficulty: diff,
-                    xp: XP_BY_DIFFICULTY[diff] || 5
+                
+                const choice = question.choices[parseInt(choiceIndex)];
+                answersList.push({
+                    question_id: question.id,
+                    choice_id: choice ? choice.id : null
                 });
             }
 
-            // ============================================================
-            // STATE
-            // ============================================================
-            var state = {
-                currentQuestion: 0,
-                answers: {},
-                flags: {},
-                eliminated: {},
-                lifelinesUsed: 0,
-                isFinished: false,
-                timerInterval: null,
-                timeLeft: testData.duration * 60,
-                drawerOpen: false,
-                sessionId: null
-            };
+            console.log('📤 Javoblar:', answersList.length, 'ta');
+            console.log('📤 Tafsilot:', JSON.stringify(answersList, null, 2));
 
-            // ============================================================
-            // DOM REFS
-            // ============================================================
-            var breadcrumbTitle = document.getElementById('breadcrumbTitle');
-            var examTimer = document.getElementById('examTimer');
-            var questionCounter = document.getElementById('questionCounter');
-            var questionNumber = document.getElementById('questionNumber');
-            var questionText = document.getElementById('questionText');
-            var questionDifficulty = document.getElementById('questionDifficulty');
-            var optionsContainer = document.getElementById('optionsContainer');
-            var questionGrid = document.getElementById('questionGrid');
-            var drawerGrid = document.getElementById('questionDotsMobile');
-
-            var statAnswered = document.getElementById('statAnswered');
-            var statFlagged = document.getElementById('statFlagged');
-            var statSkipped = document.getElementById('statSkipped');
-            var statPercent = document.getElementById('statPercent');
-            var progressRing = document.getElementById('progressRing');
-            var progressText = document.getElementById('progressText');
-            var progressLabel = document.getElementById('progressLabel');
-            var passScore = document.getElementById('passScore');
-
-            var mobileTimer = document.getElementById('mobileTimer');
-            var mobileAnswered = document.getElementById('mobileAnswered');
-            var mobileTotal = document.getElementById('mobileTotal');
-            var mobileFlagged = document.getElementById('mobileFlagged');
-            var mobilePercent = document.getElementById('mobilePercent');
-
-            var drawerToggle = document.getElementById('drawerToggle');
-            var questionDrawer = document.getElementById('questionDrawer');
-            var drawerCloseBtn = document.getElementById('drawerCloseBtn');
-            var drawerHandle = document.getElementById('drawerHandle');
-
-            var prevBtn = document.getElementById('prevBtn');
-            var nextBtn = document.getElementById('nextBtn');
-            var finishBtn = document.getElementById('finishBtn');
-            var confirmSubmitBtn = document.getElementById('confirmSubmitBtn');
-
-            var summaryCorrect = document.getElementById('summaryCorrect');
-            var summaryFlagged = document.getElementById('summaryFlagged');
-            var summarySkipped = document.getElementById('summarySkipped');
-            var summaryTotal = document.getElementById('summaryTotal');
-            var summaryPercent = document.getElementById('summaryPercent');
-
-            var letters = ['A', 'B', 'C', 'D', 'E', 'F'];
-
-            // ============================================================
-            // HELPERS
-            // ============================================================
-            function escapeHtml(str) {
-                if (!str) return '';
-                var d = document.createElement('div');
-                d.textContent = str;
-                return d.innerHTML;
+            if (answersList.length === 0) {
+                showToast('Hech qanday javob yo\'q', 'warning');
+                dom.sendingOverlay.classList.remove('active');
+                state.finishInProgress = false;
+                return;
             }
 
-            function getDifficultyBadge(diff) {
-                var map = {
-                    easy: ['badge-easy', 'Oson'],
-                    medium: ['badge-medium', 'O\'rtacha'],
-                    hard: ['badge-hard', 'Murakkab']
-                };
-                var pair = map[diff] || map.medium;
-                return '<span class="badge ' + pair[0] + '">' + pair[1] + '</span>';
-            }
-
-            function renderMarkdown(el, content) {
-                if (!el || !content) return;
-                var html = marked.parse(content);
-                el.innerHTML = html;
-                if (window.MathJax && MathJax.typesetPromise) {
-                    MathJax.typesetPromise([el]).catch(function() {});
-                }
-            }
-
-            function getStats() {
-                var total = testData.questions.length;
-                var answered = Object.keys(state.answers).length;
-                var flagged = Object.keys(state.flags).filter(function(k) { return state.flags[k]; }).length;
-                var skipped = total - answered;
-                return { total: total, answered: answered, flagged: flagged, skipped: skipped };
-            }
-
-            function updateStats() {
-                var stats = getStats();
-                var percent = stats.total > 0 ? Math.round((stats.answered / stats.total) * 100) : 0;
-
-                statAnswered.textContent = stats.answered;
-                statFlagged.textContent = stats.flagged;
-                statSkipped.textContent = stats.skipped;
-                statPercent.textContent = percent + '%';
-                progressText.textContent = percent + '%';
-                progressLabel.textContent = stats.answered + '/' + stats.total;
-                passScore.textContent = testData.passScore + '%';
-
-                mobileTimer.textContent = examTimer.textContent;
-                mobileAnswered.textContent = stats.answered;
-                mobileTotal.textContent = stats.total;
-                mobileFlagged.textContent = stats.flagged;
-                mobilePercent.textContent = percent + '%';
-
-                document.getElementById('drawerAnswered').textContent = stats.answered;
-                document.getElementById('drawerFlagged').textContent = stats.flagged;
-                document.getElementById('drawerSkipped').textContent = stats.skipped;
-                document.getElementById('drawerProgress').textContent = percent + '%';
-
-                var circumference = 113.1;
-                var offset = circumference - (percent / 100) * circumference;
-                progressRing.style.strokeDashoffset = offset;
-
-                var lifelineBtn = document.getElementById('lifelineBtn');
-                if (lifelineBtn) {
-                    var left = testData.maxLifelines - state.lifelinesUsed;
-                    lifelineBtn.querySelector('.lifeline-count').textContent = left;
-                    lifelineBtn.disabled = left <= 0 || (state.eliminated[state.currentQuestion] || []).length > 0;
-                }
-                var flagBtn = document.getElementById('flagBtn');
-                if (flagBtn) flagBtn.classList.toggle('active', !!state.flags[state.currentQuestion]);
-
-                renderDots(questionGrid);
-                renderDots(drawerGrid);
-            }
-
-            function renderDots(container) {
-                var html = '';
-                testData.questions.forEach(function(q, idx) {
-                    var cls = 'q-dot';
-                    if (idx === state.currentQuestion) cls += ' active current';
-                    if (state.flags[idx]) cls += ' flagged';
-                    else if (state.answers[idx] !== undefined) cls += ' answered';
-                    html += '<div class="' + cls + '" data-index="' + idx + '">' + (idx + 1) + '</div>';
-                });
-                container.innerHTML = html;
-
-                // Click and touch handlers for dots
-                container.querySelectorAll('.q-dot').forEach(function(el) {
-                    var idx = parseInt(el.getAttribute('data-index'), 10);
-                    var handler = function(e) {
-                        e.preventDefault();
-                        goToQuestion(idx);
-                    };
-                    el.addEventListener('click', handler);
-                    el.addEventListener('touchstart', handler, { passive: false });
-                });
-            }
-
-            function renderExam() {
-                breadcrumbTitle.textContent = testData.title;
-
-                var q = testData.questions[state.currentQuestion];
-                if (!q) return;
-
-                questionCounter.textContent = 'Savol ' + (state.currentQuestion + 1) + ' / ' + testData.questions.length;
-                questionNumber.textContent = (state.currentQuestion + 1) + ' / ' + testData.questions.length;
-                renderMarkdown(questionText, q.text);
-                questionDifficulty.innerHTML = getDifficultyBadge(q.difficulty);
-
-                var elim = state.eliminated[state.currentQuestion] || [];
-                var optionsHtml = '';
-                q.options.forEach(function(opt, idx) {
-                    var selected = state.answers[state.currentQuestion] === idx;
-                    var isElim = elim.indexOf(idx) !== -1;
-                    var cls = 'option-label';
-                    if (selected) cls += ' selected';
-                    if (isElim) cls += ' eliminated';
-                    var optHtml = marked.parseInline(opt.text);
-
-                    optionsHtml += '<label class="' + cls + '" ' + (isElim ? '' : 'data-opt-index="' + idx + '"') + '>' +
-                        '<input type="radio" name="question" ' + (selected ? 'checked' : '') + ' ' + (isElim ?
-                            'disabled' : '') + '>' +
-                        '<span class="letter">' + letters[idx] + '</span>' +
-                        '<span class="flex-1 markdown-body" style="font-size:12px;background:transparent;padding:0;">' +
-                        optHtml + '</span>' +
-                        '</label>';
-                });
-                optionsContainer.innerHTML = optionsHtml;
-
-                // Attach click/touch handlers to options
-                optionsContainer.querySelectorAll('.option-label:not(.eliminated)').forEach(function(label) {
-                    var idx = parseInt(label.getAttribute('data-opt-index'), 10);
-                    var handler = function(e) {
-                        e.preventDefault();
-                        selectOption(idx);
-                    };
-                    label.addEventListener('click', handler);
-                    label.addEventListener('touchstart', handler, { passive: false });
-                });
-
-                if (window.MathJax && MathJax.typesetPromise) {
-                    MathJax.typesetPromise([optionsContainer]).catch(function() {});
-                }
-
-                prevBtn.disabled = state.currentQuestion === 0;
-                nextBtn.disabled = state.currentQuestion === testData.questions.length - 1;
-
-                updateStats();
-
-                if (window.innerWidth < 768 && state.drawerOpen) {
-                    closeDrawer();
-                }
-                mobileTimer.textContent = examTimer.textContent;
-            }
-
-            // ============================================================
-            // ACTIONS
-            // ============================================================
-            window.selectOption = function(idx) {
-                if (state.isFinished) return;
-                var elim = state.eliminated[state.currentQuestion] || [];
-                if (elim.indexOf(idx) !== -1) return;
-                state.answers[state.currentQuestion] = idx;
-                renderExam();
-                try { localStorage.setItem('exam_answers', JSON.stringify(state.answers)); } catch (e) {}
-            };
-
-            window.useLifeline = function() {
-                if (state.isFinished) return;
-                if (state.lifelinesUsed >= testData.maxLifelines) {
-                    showToast("Lifeline'lar tugadi", 'warning');
-                    return;
-                }
-                var idx = state.currentQuestion;
-                if ((state.eliminated[idx] || []).length > 0) return;
-                var q = testData.questions[idx];
-                var wrongIdx = q.options.map(function(o, i) { return i; }).filter(function(i) { return i !== q.correct; });
-                wrongIdx.sort(function() { return Math.random() - 0.5; });
-                var toRemove = wrongIdx.slice(0, Math.max(0, q.options.length - 2));
-                state.eliminated[idx] = toRemove;
-                state.lifelinesUsed++;
-                showToast('🛟 2 ta noto\'g\'ri variant olib tashlandi', 'info', 2000);
-                renderExam();
-            };
-
-            window.toggleFlag = function() {
-                var idx = state.currentQuestion;
-                state.flags[idx] = !state.flags[idx];
-                updateStats();
-            };
-
-            window.goToQuestion = function(idx) {
-                if (state.isFinished) return;
-                if (idx < 0 || idx >= testData.questions.length) return;
-                state.currentQuestion = idx;
-                renderExam();
-                // Close drawer on mobile after selection
-                if (window.innerWidth < 768 && state.drawerOpen) {
-                    closeDrawer();
-                }
-                if (window.innerWidth < 768) {
-                    document.querySelector('.card').scrollIntoView({ behavior: 'smooth', block: 'center' });
-                }
-            };
-
-            function prevQuestion() {
-                if (state.currentQuestion > 0) {
-                    state.currentQuestion--;
-                    renderExam();
-                }
-            }
-
-            function nextQuestion() {
-                if (state.currentQuestion < testData.questions.length - 1) {
-                    state.currentQuestion++;
-                    renderExam();
-                }
-            }
-
-            // ============================================================
-            // DRAWER CONTROL — FIXED FOR MOBILE
-            // ============================================================
-            function toggleDrawer() {
-                state.drawerOpen = !state.drawerOpen;
-                questionDrawer.classList.toggle('open', state.drawerOpen);
-                drawerToggle.style.display = state.drawerOpen ? 'none' : 'flex';
-            }
-
-            function closeDrawer() {
-                state.drawerOpen = false;
-                questionDrawer.classList.remove('open');
-                drawerToggle.style.display = 'flex';
-            }
-
-            // Expose globally
-            window.toggleDrawer = toggleDrawer;
-            window.closeDrawer = closeDrawer;
-
-            function openSubmitModal() {
-                var stats = getStats();
-                summaryCorrect.textContent = stats.answered;
-                summaryFlagged.textContent = stats.flagged;
-                summarySkipped.textContent = stats.skipped;
-                summaryTotal.textContent = stats.total;
-                var percent = stats.total > 0 ? Math.round((stats.answered / stats.total) * 100) : 0;
-                summaryPercent.textContent = percent + '%';
-                Modal.open('submitModal');
-            }
-
-            // ============================================================
-            // TIMER
-            // ============================================================
-            function startTimer() {
-                if (state.timerInterval) clearInterval(state.timerInterval);
-                state.timerInterval = setInterval(function() {
-                    state.timeLeft--;
-                    var mins = Math.floor(state.timeLeft / 60);
-                    var secs = state.timeLeft % 60;
-                    var timeStr = String(mins).padStart(2, '0') + ':' + String(secs).padStart(2, '0');
-                    examTimer.textContent = timeStr;
-                    mobileTimer.textContent = timeStr;
-
-                    if (state.timeLeft <= 60) {
-                        examTimer.style.color = 'var(--hard)';
-                        mobileTimer.style.color = 'var(--hard)';
-                    } else if (state.timeLeft <= 300) {
-                        examTimer.style.color = 'var(--medium)';
-                        mobileTimer.style.color = 'var(--medium)';
-                    } else {
-                        examTimer.style.color = '';
-                        mobileTimer.style.color = '';
-                    }
-
-                    if (state.timeLeft <= 0) {
-                        clearInterval(state.timerInterval);
-                        showToast('⏰ Vaqt tugadi!', 'warning', 4000);
-                        setTimeout(openSubmitModal, 1000);
-                    }
-                }, 1000);
-            }
-
-            // ============================================================
-            // FINISH
-            // ============================================================
-            function finishExam() {
-                if (state.isFinished) return;
-                state.isFinished = true;
-                if (state.timerInterval) clearInterval(state.timerInterval);
-
-                var timeSpent = testData.duration * 60 - state.timeLeft;
-                var results = {
-                    test_id: testData.id,
-                    test_slug: testData.slug,
-                    answers: state.answers,
-                    flags: state.flags,
-                    time_spent: timeSpent,
-                    total_questions: testData.questions.length,
-                    timestamp: new Date().toISOString(),
-                    source: 'local'
-                };
-
-                try {
-                    localStorage.setItem('exam_results', JSON.stringify(results));
-                    localStorage.setItem('exam_test_data', JSON.stringify(testData));
-                } catch (e) {}
-
-                showToast('📊 Test yakunlandi!', 'success', 2500);
-                setTimeout(function() {
-                    window.location.href = '/result.html?test=' + testData.slug;
-                }, 1000);
-            }
-
-            // ============================================================
-            // INIT
-            // ============================================================
-            document.addEventListener('DOMContentLoaded', function() {
-                try {
-                    var saved = localStorage.getItem('exam_answers');
-                    if (saved) {
-                        var parsed = JSON.parse(saved);
-                        if (Object.keys(parsed).length > 0) {
-                            state.answers = parsed;
-                            showToast('📂 Avvalgi holat tiklandi', 'info', 2000);
-                        }
-                    }
-                } catch (e) {}
-
-                renderExam();
-                startTimer();
-
-                // Button listeners
-                prevBtn.addEventListener('click', prevQuestion);
-                nextBtn.addEventListener('click', nextQuestion);
-
-                // ============================================================
-                // DRAWER TOGGLE — FIXED for mobile touch
-                // ============================================================
-                // Drawer toggle button (floating)
-                drawerToggle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleDrawer();
-                });
-                drawerToggle.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleDrawer();
-                }, { passive: false });
-
-                // Close button (X) — FIXED!
-                drawerCloseBtn.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleDrawer();
-                });
-                drawerCloseBtn.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    toggleDrawer();
-                }, { passive: false });
-
-                // Drawer handle (drag indicator)
-                drawerHandle.addEventListener('click', function(e) {
-                    e.preventDefault();
-                    toggleDrawer();
-                });
-                drawerHandle.addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    toggleDrawer();
-                }, { passive: false });
-
-                finishBtn.addEventListener('click', openSubmitModal);
-                confirmSubmitBtn.addEventListener('click', function() {
-                    Modal.close('submitModal');
-                    finishExam();
-                });
-
-                document.getElementById('lifelineBtn').addEventListener('click', useLifeline);
-                document.getElementById('lifelineBtn').addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    useLifeline();
-                }, { passive: false });
-
-                document.getElementById('flagBtn').addEventListener('click', toggleFlag);
-                document.getElementById('flagBtn').addEventListener('touchstart', function(e) {
-                    e.preventDefault();
-                    toggleFlag();
-                }, { passive: false });
-
-                // Close drawer on outside tap
-                document.addEventListener('click', function(e) {
-                    if (state.drawerOpen && window.innerWidth < 768) {
-                        var drawer = document.getElementById('questionDrawer');
-                        var toggle = document.getElementById('drawerToggle');
-                        if (!drawer.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
-                            closeDrawer();
-                        }
-                    }
-                });
-
-                // Close drawer on outside touch
-                document.addEventListener('touchstart', function(e) {
-                    if (state.drawerOpen && window.innerWidth < 768) {
-                        var drawer = document.getElementById('questionDrawer');
-                        var toggle = document.getElementById('drawerToggle');
-                        if (!drawer.contains(e.target) && e.target !== toggle && !toggle.contains(e.target)) {
-                            closeDrawer();
-                        }
-                    }
-                }, { passive: true });
-
-                // Keyboard shortcuts
-                document.addEventListener('keydown', function(e) {
-                    if (!state.isFinished) {
-                        if (e.key === 'ArrowLeft' && !prevBtn.disabled) {
-                            e.preventDefault();
-                            prevQuestion();
-                        }
-                        if (e.key === 'ArrowRight' && !nextBtn.disabled) {
-                            e.preventDefault();
-                            nextQuestion();
-                        }
-                        if (e.key >= '1' && e.key <= '4') {
-                            var idx = parseInt(e.key) - 1;
-                            var q = testData.questions[state.currentQuestion];
-                            if (q && q.options[idx]) {
-                                e.preventDefault();
-                                selectOption(idx);
-                            }
-                        }
-                        if (e.key === 'Escape' && state.drawerOpen) {
-                            closeDrawer();
-                        }
-                    }
-                });
-
-                setTimeout(function() {
-                    showToast('💡 1-4 tugmalar — javob | ← → — navigatsiya', 'info', 4000);
-                }, 1000);
+            // 2. BULK SINKHRON API ga yuboramiz
+            const result = await callApi('/test-session/session/' + state.sessionId + '/answers/bulk', {
+                method: 'POST',
+                body: { answers: answersList }
             });
 
-            // Expose
-            window.selectOption = selectOption;
-            window.goToQuestion = goToQuestion;
-            window.toggleDrawer = toggleDrawer;
-            window.useLifeline = useLifeline;
-            window.toggleFlag = toggleFlag;
+            console.log('✅ Bulk natija:', result);
 
-        })();
-    </script>
+            // 3. Testni yakunlaymiz (grading)
+            const finishResult = await callApi('/test-session/session/' + state.sessionId + '/finish', {
+                method: 'POST'
+            });
+
+            console.log('✅ Finish natija:', finishResult);
+
+            state.result = finishResult;
+            state.phase = 'result';
+            dom.sendingOverlay.classList.remove('active');
+            state.finishInProgress = false;
+
+            localStorage.removeItem('quiz_active_session');
+            localStorage.removeItem('quiz_answers_' + state.sessionId);
+
+            renderResult();
+            showToast('📊 Test yakunlandi!', 'success', 2500);
+
+        } catch (e) {
+            console.error('❌ Yakunlashda xatolik:', e);
+            console.error('Status:', e.status);
+            console.error('Detail:', e.detail);
+            
+            let errorMsg = e.message || 'Noma\'lum xato';
+            if (e.detail && typeof e.detail === 'string') {
+                errorMsg = e.detail;
+            } else if (e.detail && e.detail.message) {
+                errorMsg = e.detail.message;
+            }
+            
+            showToast('Yakunlashda xatolik: ' + errorMsg, 'error');
+            state.sending = false;
+            dom.sendingOverlay.classList.remove('active');
+            state.finishInProgress = false;
+        }
+    }
+    
+    // ============================================================
+    // START TIMER
+    // ============================================================
+    function startTimer() {
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+            state.timeLeft--;
+            dom.timerDisplay.textContent = formatTime(state.timeLeft);
+            dom.timerDisplay.className = 'font-mono font-bold text-lg ' + 
+                (state.timeLeft < 60 ? 'text-hard' : (state.timeLeft < 300 ? 'text-medium' : 'text-ink'));
+            if (state.timeLeft <= 0) {
+                clearInterval(state.timerInterval);
+                showToast('⏰ Vaqt tugadi!', 'warning', 3000);
+                submitAndFinish();
+            }
+        }, 1000);
+    }
+    
+    // ============================================================
+    // LOAD SESSION
+    // ============================================================
+    async function loadSession() {
+        if (state.loadingSession) return;
+        state.loadingSession = true;
+        
+        try {
+            const data = await callApi('/test-session/session/' + state.sessionId + '/questions');
+            
+            state.slug = data.test_slug;
+            state.questions = data.questions || [];
+            state.totalQuestions = state.questions.length;
+            state.timeLeft = data.duration_minutes * 60 || 0;
+            state.lifelinesLeft = data.lifelines || 0;
+            state.testTitle = data.test_title || 'Test';
+            dom.testTitle.textContent = state.testTitle;
+            
+            const savedAnswers = localStorage.getItem('quiz_answers_' + state.sessionId);
+            if (savedAnswers) {
+                try { 
+                    state.answers = JSON.parse(savedAnswers); 
+                    console.log('📂 Saqlangan javoblar:', state.answers);
+                } catch(e) {
+                    console.warn('Javoblarni yuklashda xatolik:', e);
+                }
+            }
+            
+            if (data.status === 'in_progress') {
+                const status = await callApi('/test-session/session/' + state.sessionId);
+                state.timeLeft = status.remaining_seconds || state.timeLeft;
+                state.phase = 'quiz';
+                dom.timerDisplay.textContent = formatTime(state.timeLeft);
+                dom.loadingState.style.display = 'none';
+                dom.quizState.style.display = 'block';
+                startTimer();
+                renderQuestion();
+            } else {
+                // Sessiya allaqachon yakunlangan - natijani olamiz
+                const finishResult = await callApi('/test-session/session/' + state.sessionId + '/finish', {
+                    method: 'POST',
+                });
+                state.result = finishResult;
+                state.phase = 'result';
+                dom.loadingState.style.display = 'none';
+                dom.resultState.style.display = 'block';
+                renderResult();
+            }
+            
+        } catch (e) {
+            console.error('loadSession xatosi:', e);
+            state.phase = 'missing';
+            dom.loadingState.style.display = 'none';
+            dom.missingState.style.display = 'block';
+        } finally {
+            state.loadingSession = false;
+        }
+    }
+    
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        if (state.initialized) return;
+        state.initialized = true;
+        
+        console.log('🚀 init boshlandi');
+        
+        const params = new URLSearchParams(window.location.search);
+        state.sessionId = params.get('session');
+        
+        if (state.sessionId) {
+            await loadSession();
+            return;
+        }
+        
+        const stored = localStorage.getItem('quiz_active_session');
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                state.sessionId = data.session_id;
+                state.slug = data.slug;
+                state.questions = data.questions || [];
+                state.timeLeft = data.duration_minutes * 60 || 0;
+                state.lifelinesLeft = data.lifelines || 0;
+                state.totalQuestions = state.questions.length;
+                state.testTitle = data.title || 'Test';
+                dom.testTitle.textContent = state.testTitle;
+                
+                const savedAnswers = localStorage.getItem('quiz_answers_' + state.sessionId);
+                if (savedAnswers) {
+                    try { state.answers = JSON.parse(savedAnswers); } catch(e) {}
+                }
+                
+                state.phase = 'quiz';
+                dom.loadingState.style.display = 'none';
+                dom.quizState.style.display = 'block';
+                dom.timerDisplay.textContent = formatTime(state.timeLeft);
+                startTimer();
+                renderQuestion();
+                return;
+            } catch (e) {}
+        }
+        
+        state.phase = 'missing';
+        dom.loadingState.style.display = 'none';
+        dom.missingState.style.display = 'block';
+    }
+    
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        dom.prevBtn.addEventListener('click', () => goTo(state.currentIndex - 1));
+        dom.nextBtn.addEventListener('click', () => {
+            if (state.currentIndex === state.questions.length - 1) {
+                confirmFinish();
+            } else {
+                goTo(state.currentIndex + 1);
+            }
+        });
+        dom.flagBtn.addEventListener('click', toggleFlag);
+        dom.lifelineBtn.addEventListener('click', useLifeline);
+        dom.finishBtn.addEventListener('click', confirmFinish);
+        dom.confirmFinishBtn.addEventListener('click', submitAndFinish);
+        dom.drawerToggle.addEventListener('click', toggleDrawer);
+        dom.drawerCloseBtn.addEventListener('click', toggleDrawer);
+        
+        document.addEventListener('keydown', function(e) {
+            if (state.phase !== 'quiz') return;
+            if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) {
+                e.preventDefault();
+                goTo(state.currentIndex - 1);
+            }
+            if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) {
+                e.preventDefault();
+                if (state.currentIndex === state.questions.length - 1) {
+                    confirmFinish();
+                } else {
+                    goTo(state.currentIndex + 1);
+                }
+            }
+            if (e.key >= '1' && e.key <= '4') {
+                const idx = parseInt(e.key) - 1;
+                const q = getCurrentQuestion();
+                if (q && q.choices[idx]) {
+                    e.preventDefault();
+                    selectOption(idx);
+                }
+            }
+            if (e.key === 'Escape') closeDrawer();
+        });
+        
+        init();
+    });
+    
+    // ===== TOAST =====
+    window.showToast = function(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const colors = {
+            info: 'bg-info-bg text-info border-info/20',
+            success: 'bg-easy-bg text-easy border-easy/20',
+            warning: 'bg-medium-bg text-medium border-medium/20',
+            error: 'bg-hard-bg text-hard border-hard/20'
+        };
+        const icons = { info: 'info', success: 'check_circle', warning: 'warning', error: 'error' };
+        const toast = document.createElement('div');
+        toast.className = `flex items-center gap-3 p-3 rounded-lg border shadow-sm ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span class="material-icons">${icons[type] || 'info'}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    };
+    
+    window.submitAndFinish = submitAndFinish;
+    
+})();
+</script>
 
 </body>
 </html>

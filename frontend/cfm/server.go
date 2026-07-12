@@ -79,7 +79,7 @@ func main() {
 	// Testlar sahifalari
 	mux.HandleFunc("/tests", app.Gettests)
 	mux.HandleFunc("/test/", app.GetTestDetail)
-	mux.HandleFunc("/tests/exam", app.GetTestExam)
+	mux.HandleFunc("/tests/", app.GetTestExam)
 	mux.HandleFunc("/tests/result", app.GetTestResult)
 	// Musobaqalar sahifalari
 	mux.HandleFunc("/contests", app.GetContests)

@@ -8,4 +8,4 @@ class SubmissionsConfig(AppConfig):
     verbose_name = "📤 Submission'lar"
 
     def ready(self):
-        import submissions.signals  # noqa: F401 — signallarni ro'yxatdan o'tkazish
+        import submissions.signals

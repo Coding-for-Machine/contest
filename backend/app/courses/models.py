@@ -158,7 +158,12 @@ class Lesson(TimeStampedModel):
         verbose_name=_("Tartib raqami"),
         help_text=_("Ushbu blok dars interfeysida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.")
     )
-    total_tasks_count = models.PositiveSmallIntegerField(default=0, verbose_name="Jami vazifalar soni")
+    total_tasks_count = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="Jami vazifalar soni",
+        editable=False,  # faqat signal orqali yangilanadi, admin panelda qo'lda o'zgartirilmasin
+        help_text="Problem + Question(lesson) + Lecture sonlarining avtomatik yig'indisi."
+    )
     def __str__(self):
         return f"kurs-{self.modul.course.title[:20]}:modul-{self.modul.title[:15]}:dasrlik-{self.title[:15]}"
     
@@ -183,7 +188,7 @@ class Enrollment(TimeStampedModel):
         verbose_name_plural = "✨ Kursga yozilishlar"
 
 
-class Lecture(models.Model):
+class Lecture(TimeStampedModel):
     lesson = models.ForeignKey(
         'courses.Lesson',
         on_delete=models.CASCADE,
@@ -242,8 +247,6 @@ class Lecture(models.Model):
         related_name='lecture',
     )
 
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name=_("Yaratilgan vaqti"))
-    updated_at = models.DateTimeField(auto_now=True, verbose_name=_("Yangilangan vaqti"))
 
     class Meta:
         verbose_name = _("📖 Ma'ruza va Video dars")

@@ -365,9 +365,6 @@ class ExecutionTestCase(models.Model):
 
 
 # -------------------- TestCase --------------------
-from django.db import models
-from django.conf import settings
-from problems.models import Problem  # Masala modelini import qilamiz
 
 class TestCase(models.Model):
     problem = models.ForeignKey(

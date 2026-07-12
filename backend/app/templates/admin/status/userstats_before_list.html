@@ -1,0 +1,104 @@
+{% load i18n unfold %}
+{# 
+    Bu fayl `list_before_template` orqali ulanadi (admin.py'dagi
+    UserStatsAdmin.list_before_template ga qarang). U Unfold'ning
+    standart changelist sahifasini TO'LIQ almashtirmaydi — faqat
+    natijalar jadvali tepasiga shu blokni qo'shadi. Jadval, colspan,
+    checkbox va actions ustunlari 100% Unfold default holatida qoladi.
+#}
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}👥 {% trans "Jami Foydalanuvchilar" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ us_total_users|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}⚡ {% trans "Jami XP" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ us_total_xp|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}📊 {% trans "O'rtacha XP" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ us_avg_xp|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+        {% component "unfold/components/text.html" %}🏆 {% trans "Top ro'yxat" %}{% endcomponent %}
+        {% component "unfold/components/title.html" %}{{ us_top_table.rows|length|default:0 }}{% endcomponent %}
+    {% endcomponent %}
+{% endcomponent %}
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
+    {% component "unfold/components/card.html" with class="lg:w-3/5" title=_("Darajalar taqsimoti") %}
+        <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+            {% for card in us_level_cards %}
+            <div class="text-center">
+                <div class="text-lg font-bold" style="color:{{ card.color }};">{{ card.icon }} {{ card.count }}</div>
+                <div class="text-[11px] font-medium text-gray-400">{{ card.label }}</div>
+                <div class="w-full h-1 rounded-full mt-2 overflow-hidden bg-gray-100 dark:bg-gray-800">
+                    <div class="h-full rounded-full" style="width:{{ card.percent }}%;background:{{ card.color }};"></div>
+                </div>
+            </div>
+            {% empty %}
+            <div class="text-sm text-gray-400 col-span-5">{% trans "Ma'lumot yo'q" %}</div>
+            {% endfor %}
+        </div>
+    {% endcomponent %}
+    {% component "unfold/components/card.html" with class="lg:w-2/5" title=_("Darajalar (grafik)") %}
+        <div style="position:relative;height:200px;">
+            <canvas id="usLevelChart"></canvas>
+        </div>
+    {% endcomponent %}
+{% endcomponent %}
+
+{% component "unfold/components/card.html" with class="mb-6" title=_("Haftalik faollik (jami XP)") %}
+    <div style="position:relative;height:220px;">
+        <canvas id="usWeeklyChart"></canvas>
+    </div>
+{% endcomponent %}
+
+{% component "unfold/components/card.html" with class="mb-6" title=_("Top 10 foydalanuvchilar") %}
+    {% component "unfold/components/table.html" with table=us_top_table card_included=1 striped=1 %}{% endcomponent %}
+{% endcomponent %}
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+<script>
+(function () {
+    function initUserStatsCharts() {
+        if (typeof Chart === "undefined") { setTimeout(initUserStatsCharts, 100); return; }
+        var isDark = document.documentElement.classList.contains("dark");
+        var tick = isDark ? "#94a3b8" : "#64748b";
+        var grid = isDark ? "rgba(148,163,184,0.1)" : "rgba(148,163,184,0.15)";
+
+        var weeklyEl = document.getElementById("usWeeklyChart");
+        if (weeklyEl && !weeklyEl.dataset.rendered) {
+            weeklyEl.dataset.rendered = "1";
+            new Chart(weeklyEl, {
+                type: "line",
+                data: JSON.parse('{{ us_weekly_chart_data|escapejs }}'),
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { ticks: { color: tick }, grid: { color: grid } },
+                        y: { ticks: { color: tick }, grid: { color: grid }, beginAtZero: true }
+                    }
+                }
+            });
+        }
+
+        var levelEl = document.getElementById("usLevelChart");
+        if (levelEl && !levelEl.dataset.rendered) {
+            levelEl.dataset.rendered = "1";
+            new Chart(levelEl, {
+                type: "doughnut",
+                data: JSON.parse('{{ us_level_chart_data|escapejs }}'),
+                options: {
+                    responsive: true, maintainAspectRatio: false,
+                    plugins: { legend: { position: "bottom", labels: { color: tick, boxWidth: 10, font: { size: 10 } } } }
+                }
+            });
+        }
+    }
+    document.addEventListener("DOMContentLoaded", initUserStatsCharts);
+    initUserStatsCharts();
+})();
+</script>

@@ -854,10 +854,17 @@
             }
 
             // ============================================================
-            // RUN / SUBMIT — backendga haqiqiy so'rov yuboradi
+            // RUN / SUBMIT — navbatga qo'yish + global SSE orqali natija olish
+            //
+            // 1) POST /run yoki /submit → backend darhol {task_id, queued:true}
+            //    qaytaradi (Celery navbatga qo'yadi, natija kutilmaydi)
+            // 2) main.js'dagi GLOBAL RCEvents ulanishi (butun sayt uchun bitta)
+            //    orqali shu task_id'ga tegishli eventlarga obuna bo'lamiz
+            // 3) Har bir testcase natijasi PistonStreamService formatidagi
+            //    STRING ko'rinishida keladi ("IJRO: [AC]\n[Natija]:\n...") —
+            //    buni window.parseVerdictString() orqali struktura qilamiz
             // ============================================================
 
-            // Har ikkalasi ham shu ikkitasidan foydalanadi: problem_id, language_id, code
             function buildBasePayload() {
                 return {
                     problem_id: problemData ? problemData.id : null,
@@ -866,7 +873,8 @@
                 };
             }
 
-            // Faqat RUN uchun — namunaviy (misol) testcase'lar ham qo'shiladi
+            // Faqat RUN uchun — namunaviy (misol) testcase'lar ham qo'shiladi.
+            // SUBMIT esa shu maydonsiz yuboriladi (yashirin testlar backendda).
             function buildRunPayload() {
                 var payload = buildBasePayload();
                 payload.testcases = safeArray(problemData ? problemData.exam : []).map(function(tc) {
@@ -875,140 +883,159 @@
                 return payload;
             }
 
-            function firstDefined() {
-                for (var i = 0; i < arguments.length; i++) {
-                    if (arguments[i] !== undefined && arguments[i] !== null) return arguments[i];
-                }
-                return undefined;
+            function appendConsoleLine(html) {
+                var el = document.getElementById('consoleOutput');
+                el.innerHTML += (el.innerHTML ? '\n' : '') + html;
+                el.scrollTop = el.scrollHeight;
             }
 
-            async function postJSON(path, payload) {
+            async function postQueue(path, payload) {
                 var token = window.Auth ? Auth.getToken() : (localStorage.getItem('cfm_auth_token') || null);
                 var headers = { 'Content-Type': 'application/json', Accept: 'application/json' };
                 if (token) headers.Authorization = 'Bearer ' + token;
 
-                var res = await fetch(API_BASE + path, {
-                    method: 'POST',
-                    headers: headers,
-                    body: JSON.stringify(payload)
-                });
-
+                var res = await fetch(API_BASE + path, { method: 'POST', headers: headers, body: JSON.stringify(payload) });
                 var data = null;
-                try { data = await res.json(); } catch (e) { data = null; }
+                try { data = await res.json(); } catch (e) {}
 
-                if (!res.ok) {
-                    var msg = (data && (data.error || data.detail || data.message)) || ('HTTP ' + res.status);
-                    throw new Error(msg);
-                }
+                if (!res.ok) throw new Error((data && (data.error || data.detail)) || ('HTTP ' + res.status));
+                if (!data || !(data.task_id || data.taskId)) throw new Error("Backend task_id qaytarmadi");
                 return data;
             }
 
-            async function runCode() {
+            // mode: 'run' | 'submit'
+            async function executeCode(mode) {
                 if (!problemData || currentLangId == null) {
                     showToast("Masala hali to'liq yuklanmadi", 'warning');
                     return;
                 }
+                if (!window.RCEvents) {
+                    showToast('Global RCEvents topilmadi (main.js)', 'error');
+                    return;
+                }
 
-                var btn = document.getElementById('runBtn');
+                var isRun = mode === 'run';
+                var btn = document.getElementById(isRun ? 'runBtn' : 'submitBtn');
+                var originalHtml = btn.innerHTML;
                 btn.disabled = true;
-                btn.innerHTML = '<span class="material-icons" style="font-size:16px;">hourglass_top</span> Bajarilmoqda...';
+                btn.innerHTML = '<span class="material-icons" style="font-size:16px;">hourglass_top</span> ' + (isRun ? 'Bajarilmoqda...' : 'Yuborilmoqda...');
 
-                var payload = buildRunPayload();
-                console.log('▶ [RUN] backendga yuborilayotgan ma\'lumot:', payload);
+                var payload = isRun ? buildRunPayload() : buildBasePayload();
 
                 var output = document.getElementById('resultOutput');
                 var consoleOut = document.getElementById('consoleOutput');
-                output.innerHTML = '<span class="info">▶ Yuborilmoqda...</span>';
+                output.innerHTML = '<span class="info">▶ Navbatga qo\'yilmoqda...</span>';
+                consoleOut.innerHTML = '';
+
+                document.querySelectorAll('.test-case-btn').forEach(function(b) { b.classList.remove('active', 'passed', 'failed'); });
+
+                console.log('▶ [' + mode.toUpperCase() + '] backendga yuborilayotgan ma\'lumot:', payload);
+
+                var results = [];
+                var unsubscribe = null;
+                var timeoutId = null;
+
+                function cleanupAndFinish() {
+                    if (unsubscribe) { unsubscribe(); unsubscribe = null; }
+                    if (timeoutId) { clearTimeout(timeoutId); timeoutId = null; }
+                    finalizeExecution(mode, results, btn, originalHtml);
+                }
 
                 try {
-                    // 🛠️ Endpoint nomini o'z backendingizga moslang: /problems/{slug}/run/
-                    var data = await postJSON('/problems/' + slug + '/run/', payload);
-                    console.log('◀ [RUN] backenddan kelgan javob:', data);
+                    // Agar ulanish hali ochilmagan bo'lsa (masalan sahifa juda tez ochilgan bo'lsa)
+                    if (!window.RCEvents.isConnected()) window.RCEvents.connect();
 
-                    var ok = !!firstDefined(data && data.status, data && data.passed, false);
-                    var passedCount = firstDefined(data && data.passed_count, data && data.passed_test_count, 0);
-                    var totalCount = firstDefined(data && data.total_count, data && data.total_test_count, payload.testcases.length);
-                    var time = firstDefined(data && data.time, data && data.execution_time, '—');
-                    var memory = firstDefined(data && data.memory, data && data.execution_memory, '—');
+                    // 🛠️ Endpoint nomini backendingizga moslang
+                    var queueRes = await postQueue('/code/' + '/' + (isRun ? 'run' : 'submit') + '/', payload);
+                    console.log('◀ [' + mode.toUpperCase() + '] navbatga qo\'yildi:', queueRes);
 
-                    if (ok) {
-                        output.innerHTML = '<span class="success">✓ Barcha misol testlar o\'tdi! (' + passedCount + '/' + totalCount + ')</span>\n' +
-                            '<span class="info">▶ Vaqt: ' + time + 'ms</span>\n<span class="info">▶ Xotira: ' + memory + 'MB</span>';
-                        document.querySelectorAll('.test-case-btn').forEach(function(b) {
-                            b.classList.remove('active', 'failed');
-                            b.classList.add('passed');
-                        });
-                        showToast('Testlar muvaffaqiyatli o\'tdi!', 'success');
-                    } else {
-                        output.innerHTML = '<span class="error">✗ Test kase\'laridan o\'ta olmadi (' + passedCount + '/' + totalCount + ')</span>';
-                        document.querySelectorAll('.test-case-btn').forEach(function(b, i) {
-                            b.classList.remove('active', 'passed');
-                            if (i < passedCount) b.classList.add('passed'); else b.classList.add('failed');
-                        });
-                        showToast('Testlardan biri o\'tmadi', 'error');
-                    }
-                    consoleOut.innerHTML = '<span class="info">$ ' + JSON.stringify(payload) + '</span>\n' +
-                        '<span class="' + (ok ? 'success' : 'error') + '">' + JSON.stringify(data) + '</span>';
+                    var taskId = queueRes.task_id || queueRes.taskId;
+                    output.innerHTML = '<span class="info">▶ Navbatda kutilmoqda (task: ' + escapeHtml(String(taskId)) + ')...</span>';
+
+                    // Xavfsizlik uchun: 60s ichida javob kelmasa, to'xtatamiz
+                    timeoutId = setTimeout(function() {
+                        console.warn('[' + mode.toUpperCase() + '] javob kutish vaqti tugadi (timeout)');
+                        showToast('Javob kutish vaqti tugadi, qayta urinib ko\'ring', 'warning');
+                        cleanupAndFinish();
+                    }, 60000);
+
+                    unsubscribe = window.RCEvents.onTask(taskId, function(envelope) {
+                        var data = envelope.data || {};
+
+                        // Yakuniy event — backend "type":"done" (yoki shunga o'xshash) deb belgilaydi
+                        if (data.type === 'done' || data.done === true || envelope.event === 'done') {
+                            cleanupAndFinish();
+                            return;
+                        }
+
+                        // Har bir testcase natijasi — string qolipida (PistonStreamService formatida)
+                        var resultStr = data.result || data.raw || '';
+                        var verdict = window.parseVerdictString(resultStr);
+                        var idx = (typeof data.index === 'number') ? data.index : results.length;
+
+                        results.push(verdict);
+                        console.log('[' + mode.toUpperCase() + '] testcase #' + (idx + 1) + ' → ' + verdict.code + ' (' + verdict.label + ')', verdict);
+
+                        var btnEl = document.querySelector('.test-case-btn[data-tc="' + idx + '"]');
+                        if (btnEl) btnEl.classList.add(verdict.passed ? 'passed' : 'failed');
+
+                        appendConsoleLine(
+                            '<span class="' + (verdict.passed ? 'success' : 'error') + '">' +
+                            (verdict.passed ? '✓' : '✗') + ' Test ' + (idx + 1) + ': [' + verdict.code + '] ' + escapeHtml(verdict.label) +
+                            (verdict.note ? ' (' + escapeHtml(verdict.note) + ')' : '') + '</span>'
+                        );
+                        if (verdict.body && !verdict.passed) {
+                            appendConsoleLine('<span class="error">' + escapeHtml(verdict.body) + '</span>');
+                        }
+                    });
                 } catch (err) {
-                    console.error('[RUN] xatolik:', err);
-                    output.innerHTML = '<span class="error">✗ ' + escapeHtml(err.message || 'Xatolik yuz berdi') + '</span>';
-                    showToast(err.message || 'Ishga tushirishda xatolik', 'error');
-                } finally {
+                    console.error('[' + mode.toUpperCase() + '] xatolik:', err);
+                    if (unsubscribe) unsubscribe();
+                    if (timeoutId) clearTimeout(timeoutId);
                     btn.disabled = false;
-                    btn.innerHTML = '<span class="material-icons" style="font-size:16px;">play_arrow</span> Ishga tushirish';
+                    btn.innerHTML = originalHtml;
+                    output.innerHTML = '<span class="error">✗ ' + escapeHtml(err.message || 'Xatolik yuz berdi') + '</span>';
+                    showToast(err.message || (isRun ? 'Ishga tushirishda xatolik' : 'Yuborishda xatolik'), 'error');
                 }
             }
 
-            async function submitCode() {
-                if (!problemData || currentLangId == null) {
-                    showToast("Masala hali to'liq yuklanmadi", 'warning');
+            function finalizeExecution(mode, results, btn, originalHtml) {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+
+                var total = results.length;
+                var passedCount = results.filter(function(r) { return r.passed; }).length;
+                var allPassed = total > 0 && passedCount === total;
+
+                var output = document.getElementById('resultOutput');
+
+                if (mode === 'run') {
+                    output.innerHTML = allPassed
+                        ? '<span class="success">✓ Barcha misol testlar o\'tdi! (' + passedCount + '/' + total + ')</span>'
+                        : '<span class="error">✗ Test kase\'laridan o\'ta olmadi (' + passedCount + '/' + total + ')</span>';
+                    showToast(allPassed ? 'Testlar muvaffaqiyatli o\'tdi!' : 'Testlardan biri o\'tmadi', allPassed ? 'success' : 'error');
                     return;
                 }
 
-                var btn = document.getElementById('submitBtn');
-                btn.disabled = true;
-                btn.innerHTML = '<span class="material-icons" style="font-size:16px;">hourglass_top</span> Yuborilmoqda...';
-
-                var payload = buildBasePayload();
-                console.log('▶ [SUBMIT] backendga yuborilayotgan ma\'lumot:', payload);
-
-                try {
-                    // 🛠️ Endpoint nomini o'z backendingizga moslang: /problems/{slug}/submit/
-                    var data = await postJSON('/problems/' + slug + '/submit/', payload);
-                    console.log('◀ [SUBMIT] backenddan kelgan javob:', data);
-
-                    var ok = !!firstDefined(data && data.status, data && data.solved, false);
-                    var time = firstDefined(data && data.time, data && data.execution_time, '—');
-                    var memory = firstDefined(data && data.memory, data && data.execution_memory, '—');
-
-                    btn.disabled = false;
-                    btn.innerHTML = '<span class="material-icons" style="font-size:16px;">send</span> Yuborish';
-
-                    if (ok) {
-                        problemData.solved = true;
-                        document.getElementById('pStatus').className = 'status-badge solved';
-                        document.getElementById('pStatus').innerHTML = '<span class="material-icons" style="font-size:14px;">check_circle</span> Yechilgan';
-                        document.getElementById('solvedSection').classList.remove('hidden');
-                        document.getElementById('resultTime').textContent = time + 'ms';
-                        document.getElementById('resultMemory').textContent = memory + 'MB';
-                        submissionsLoaded = false; // "Yechimlar" tabi qayta yuklanadi
-                        Modal.open('resultModal');
-                        showToast('🎉 Yechim qabul qilindi!', 'success');
-                    } else {
-                        document.getElementById('errorMessage').textContent =
-                            firstDefined(data && data.verdict, data && data.detail, "Test kase'laridan o'ta olmadingiz. Qayta urinib ko'ring.");
-                        Modal.open('errorModal');
-                        showToast('❌ Yechim qabul qilinmadi', 'error');
-                    }
-                } catch (err) {
-                    console.error('[SUBMIT] xatolik:', err);
-                    btn.disabled = false;
-                    btn.innerHTML = '<span class="material-icons" style="font-size:16px;">send</span> Yuborish';
-                    document.getElementById('errorMessage').textContent = err.message || 'Yuborishda xatolik yuz berdi.';
+                // SUBMIT
+                if (allPassed) {
+                    problemData.solved = true;
+                    document.getElementById('pStatus').className = 'status-badge solved';
+                    document.getElementById('pStatus').innerHTML = '<span class="material-icons" style="font-size:14px;">check_circle</span> Yechilgan';
+                    document.getElementById('solvedSection').classList.remove('hidden');
+                    submissionsLoaded = false; // "Yechimlar" tabi qayta yuklanadi
+                    Modal.open('resultModal');
+                    showToast('🎉 Yechim qabul qilindi!', 'success');
+                } else {
+                    document.getElementById('errorMessage').textContent =
+                        total > 0 ? ('Test kase\'lardan ' + passedCount + '/' + total + ' tasi o\'tdi. Qayta urinib ko\'ring.') : "Yuborishda xatolik yuz berdi.";
                     Modal.open('errorModal');
-                    showToast(err.message || 'Yuborishda xatolik', 'error');
+                    showToast('❌ Yechim qabul qilinmadi', 'error');
                 }
             }
+
+            function runCode() { return executeCode('run'); }
+            function submitCode() { return executeCode('submit'); }
 
             // ============================================================
             // BOOKMARK, LIKE, COPY, VIDEO
