@@ -132,92 +132,60 @@ class TestSession(models.Model):
         return max(0.0, (self.score / total_possible) * 100)
 
     def calculate_mathematical_score(self):
-        """
-        S = Sum(C*P) - Sum(W*P*K) salbiy baholash mantiqi.
-        Barcha hisob-kitob va XP berish bitta xavfsiz atomik blokda bajariladi.
-        """
-        # 1. Agar seans allaqachon yakunlangan bo'lsa, qayta hisoblamaslik (Xavfsizlik tizimi)
-        if self.status == self.Status.COMPLETED:
-            return self.score
-
-        # 2. 🛡️ CIRCULAR IMPORT HIMOYaSI: Faqat kerak bo'lganda metod ichida import qilinadi
-        from status.models import UserStats 
-
-        penalty_k = self.test.penalty_coefficient
-        correct_count = 0
-        wrong_count = 0
-        total_score = 0.0
-
-        # Testga tegishli barcha savollar ID-larini olish
-        test_question_ids = self.test.questions.values_list('id', flat=True)
-        
-        user_responses = UserResponse.objects.filter(
-            session_id=self.id, 
-            question_id__in=test_question_ids
-        ).select_related("question", "choice")
-
-        answered_question_ids = set()
-        for response in user_responses:
-            question_points = response.question.xp
-            answered_question_ids.add(response.question_id)
-
-            if response.choice is None:
-                continue
-                
-            if response.choice.is_correct:
-                correct_count += 1
-                total_score += question_points
-            else:
-                wrong_count += 1
-                total_score -= question_points * penalty_k
-
-        unanswered_count = len(test_question_ids) - len(answered_question_ids)
-        
-        rounded_score = round(total_score, 2)
-        new_xp_earned = max(0, int(rounded_score))
+        from status.models import UserStats
 
         with transaction.atomic():
-            # 3. 🛡️ CHEAT PROTECTION: Talabaning ushbu testdan oldingi eng yaxshi yakunlangan natijasini topish
+            session = TestSession.objects.select_for_update().get(pk=self.pk)
+            if session.status == session.Status.COMPLETED:
+                return session.score
+
+            penalty_k = session.test.penalty_coefficient
+            correct_count = wrong_count = 0
+            total_score = 0.0
+
+            test_question_ids = session.test.questions.values_list('id', flat=True)
+            user_responses = UserResponse.objects.filter(
+                session_id=session.id, question_id__in=test_question_ids
+            ).select_related("question", "choice")
+
+            answered_ids = set()
+            for r in user_responses:
+                answered_ids.add(r.question_id)
+                if r.choice is None:
+                    continue
+                if r.choice.is_correct:
+                    correct_count += 1
+                    total_score += r.question.xp
+                else:
+                    wrong_count += 1
+                    total_score -= r.question.xp * penalty_k
+
+            unanswered_count = len(test_question_ids) - len(answered_ids)
+            rounded_score = round(total_score, 2)
+            new_xp_earned = max(0, int(rounded_score))
+
             previous_best = TestSession.objects.filter(
-                user=self.user,
-                test=self.test,
-                status=self.Status.COMPLETED
+                user=session.user, test=session.test, status=session.Status.COMPLETED
             ).order_by('-total_xp_earned').first()
 
-            xp_to_add = 0
-            if previous_best:
-                # Agar yangi natija eski rekordan yuqori bo'lsa, faqat ijobiy farqi global profilga qo'shiladi
-                if new_xp_earned > previous_best.total_xp_earned:
-                    xp_to_add = new_xp_earned - previous_best.total_xp_earned
-            else:
-                # Agar birinchi marta topshirayotgan bo'lsa, hamma ball beriladi
-                xp_to_add = new_xp_earned
+            xp_to_add = new_xp_earned if not previous_best else max(0, new_xp_earned - previous_best.total_xp_earned)
 
-            # Global profil statistikasini yangilash
             if xp_to_add > 0:
-                stats, created = UserStats.objects.select_for_update().get_or_create(user=self.user)
-                stats.xp += xp_to_add
-                stats.level = stats.compute_level()
-                stats.save(update_fields=["xp", "level", "updated_at"])
+                UserStats.add_xp(user=session.user, xp_amount=xp_to_add)
 
-            # Seans natijalarini maydonlarga saqlash
-            self.score = rounded_score
-            self.correct_count = correct_count
-            self.wrong_count = wrong_count
-            self.unanswered_count = unanswered_count
-            self.total_xp_earned = new_xp_earned  # Ushbu urinishda ishlagan sof balli
-            self.status = self.Status.COMPLETED
-            self.completed_at = timezone.now()
-            self.save(
-                update_fields=[
-                    "score", "correct_count", "wrong_count", 
-                    "unanswered_count", "total_xp_earned", 
-                    "status", "completed_at"
-                ]
-            )
+            session.score = rounded_score
+            session.correct_count = correct_count
+            session.wrong_count = wrong_count
+            session.unanswered_count = unanswered_count
+            session.total_xp_earned = new_xp_earned
+            session.status = session.Status.COMPLETED
+            session.completed_at = timezone.now()
+            session.save(update_fields=[
+                "score", "correct_count", "wrong_count", "unanswered_count",
+                "total_xp_earned", "status", "completed_at"
+            ])
 
-        return self.score
-
+        return session.score
 class Test(models.Model):
     """Imtihonlar va bob (Modul) yakunidagi testlarni boshqaruvchi asosiy model."""
 
