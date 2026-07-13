@@ -1,4 +1,5 @@
 import asyncio
+from django.db import IntegrityError
 import httpx
 from collections.abc import AsyncIterable
 from django_bolt import Router, Request, Depends
@@ -152,32 +153,34 @@ async def mark_lecture_complete(
 ):
     if not request_user:
         raise HTTPException(status_code=401, detail="Tizimga kirish talab qilinadi!")
-
-    lecture = await (
+    lecture_data = await (
         Lecture.objects
         .filter(slug=lecture_slug, lesson__slug=lesson_slug)
-        .only('id')
+        .values('id', 'xp')
         .afirst()
     )
 
-    if not lecture:
+    if not lecture_data:
         raise HTTPException(status_code=404, detail="Ma'ruza topilmadi!")
 
-    already = await LectureStatus.objects.filter(
-        user_id=request_user.id, lecture_id=lecture.id
-    ).aexists()
+    lecture_id = lecture_data['id']
+    lecture_xp = lecture_data['xp']
 
-    if already:
-        raise HTTPException(status_code=204, detail="")
+    try:
+        # aget_or_create — parallel so'rovlar (Race Condition) oldini oladi
+        status, created = await LectureStatus.objects.aget_or_create(
+            user_id=request_user.id,
+            lecture_id=lecture_id,
+            defaults={'is_completed': True}
+        )
+    except IntegrityError:
+        created = False
 
-    # Signal: xp + LessonStatus
-    await LectureStatus.objects.acreate(
-        user_id=request_user.id,
-        lecture_id=lecture.id,
-        is_completed=True,
-    )
-
-    return {"ok": True}
+    return {
+        "ok": True, 
+        "already_completed": not created,
+        "xp": lecture_xp if created else 0
+    }
 
 
 # ─── 4. QUIZ SAVOL ────────────────────────────────────────────────────────────
@@ -243,7 +246,6 @@ async def get_single_quiz_api(
         "text":     question.text,
         "diff":     question.difficulty,
         "xp":       question.xp,
-        # prefetch cache → oddiy for
         "choices":  [{"id": c.id, "text": c.text} for c in question.choices.all()],
         "user_ans": user_answer,
         "exp_video": exp_video,

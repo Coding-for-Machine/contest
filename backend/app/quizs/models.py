@@ -186,6 +186,7 @@ class TestSession(models.Model):
             ])
 
         return session.score
+
 class Test(models.Model):
     """Imtihonlar va bob (Modul) yakunidagi testlarni boshqaruvchi asosiy model."""
 
@@ -309,16 +310,8 @@ class Test(models.Model):
     class Meta:
         verbose_name = "❓ Savol"
         verbose_name_plural = "❔ Savollar"
-        ordering = ["order", "created_at"]
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    models.Q(lesson__isnull=False, test__isnull=True)
-                    | models.Q(lesson__isnull=True, test__isnull=False)
-                ),
-                name="question_belongs_to_lesson_xor_test",
-            )
-        ]
+        ordering = ["-id", "created_at"]
+        
     def __str__(self):
         return f"Test — {self.title}"
 
@@ -411,7 +404,15 @@ class Question(models.Model):
         verbose_name = "❓ Savol"
         verbose_name_plural = "❔ Savollar"
         ordering = ["order", "created_at"]
-
+        constraints = [
+            models.CheckConstraint(
+                check=(
+                    models.Q(lesson__isnull=False, test__isnull=True)
+                    | models.Q(lesson__isnull=True, test__isnull=False)
+                ),
+                name="question_belongs_to_lesson_xor_test",
+            )
+        ]
     def __str__(self):
         # Markdown belgilari toza chiqishi uchun qisqartirib ko'rsatish
         return f"Savol #{self.id}: {self.text[:40]}..."

@@ -1,0 +1,169 @@
+{% load i18n unfold %}
+
+<!-- Google Material Symbols global ulanishi -->
+<link rel="stylesheet" href="https://googleapis.com" />
+
+<div class="mb-6 flex flex-col gap-4">
+
+    {# ---------- 1-QATOR: KPI CARD LAR ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {# Jami yechimlar kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">history</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Jami Yechimlar" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold" %}{{ total_submissions }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Accepted kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-green-50 dark:bg-green-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-green-500">task_alt</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Accepted (AC)" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-green-600 dark:text-green-400" %}{{ ac_count }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Wrong Answer kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-red-50 dark:bg-red-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-red-500">cancel</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Wrong Answer (WA)" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-red-600 dark:text-red-400" %}{{ wa_count }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# O'rtacha ijro vaqti kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-purple-50 dark:bg-purple-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-purple-500">speed</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "O'rtacha Vaqt" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-purple-600 dark:text-purple-400" %}{{ avg_time }} ms{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+    {# ---------- 2-QATOR: CHART.JS GRAFIKLARI (DOUGHNUT + LINE) ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+        
+        {# Verdictlar taqsimoti aylanma grafik #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Hukmlar (Verdict) taqsimoti") %}
+            <div class="flex flex-col sm:flex-row items-center justify-around gap-6 pt-2">
+                <div class="relative w-full max-w-[200px]" style="height: 200px;">
+                    <canvas id="verdictDoughnutChart"></canvas>
+                </div>
+                
+                {# 🚀 KATTALASHTIRILGAN O'LCHAMDAGI RO'YXAT BLOKI #}
+                <div class="flex flex-col gap-4 w-full max-w-[280px]">
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-green-600 w-6 h-6 flex items-center justify-center">check_circle</span>
+                            {% trans "Accepted" %}
+                        </span>
+                        <span class="text-green-600 font-extrabold text-lg">{{ ac_count }} ta</span>
+                    </div>
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-red-500 w-6 h-6 flex items-center justify-center">cancel</span>
+                            {% trans "Wrong Answer" %}
+                        </span>
+                        <span class="text-red-500 font-extrabold text-lg">{{ wa_count }} ta</span>
+                    </div>
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-amber-500 w-6 h-6 flex items-center justify-center">schedule</span>
+                            {% trans "Time Limit" %}
+                        </span>
+                        <span class="text-amber-500 font-extrabold text-lg">{{ tle_count }} ta</span>
+                    </div>
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Urinishlar oylik dinamikasi chiziqli grafik #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Yechimlar yuborilish dinamikasi (Oylik)") %}
+            <div class="relative w-full" style="height: 220px;">
+                <canvas id="submissionLineChart"></canvas>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const isDark = document.documentElement.classList.contains('dark');
+        
+        // 1. Verdict Doughnut Chart
+        const ctxDoughnut = document.getElementById('verdictDoughnutChart').getContext('2d');
+        new Chart(ctxDoughnut, {
+            type: 'doughnut',
+            data: {
+                labels: ["Accepted", "Wrong Answer", "Time Limit", "Boshqalar"],
+                datasets: [{
+                    data: [{{ ac_count|default:0 }}, {{ wa_count|default:0 }}, {{ tle_count|default:0 }}, {{ other_count|default:0 }}],
+                    backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#a855f7'],
+                    borderWidth: isDark ? 3 : 1,
+                    borderColor: isDark ? '#1f2937' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                cutout: '70%'
+            }
+        });
+
+        // 2. Submission Line Chart
+        const ctxLine = document.getElementById('submissionLineChart').getContext('2d');
+        const labels = JSON.parse('{{ chart_labels_json|safe }}');
+        const dataValues = JSON.parse('{{ chart_values_json|safe }}');
+
+        new Chart(ctxLine, {
+            type: 'line',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 3,
+                    fill: true,
+                    tension: 0.3,
+                    pointBackgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { display: false } },
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        grid: { color: isDark ? 'rgba(156, 163, 175, 0.05)' : 'rgba(156, 163, 175, 0.1)' },
+                        ticks: { color: isDark ? '#9ca3af' : '#4b5563' }
+                    },
+                    x: {
+                        grid: { display: false },
+                        ticks: { color: isDark ? '#9ca3af' : '#4b5563' }
+                    }
+                }
+            }
+        });
+    });
+</script>

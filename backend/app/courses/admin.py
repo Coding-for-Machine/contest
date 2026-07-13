@@ -226,12 +226,15 @@ class LessonAdmin(BaseOwnerAdmin):
     ordering = ('-id',)
     prepopulated_fields = {'slug': ('title',)}
 
+    # 🔒 KALIT QADAM: Editable=False bo'lgan maydonni readonly ro'yxatiga olamiz
+    readonly_fields = ('total_tasks_count',)
+
     fieldsets = (
         ("📝 Dars Ma'lumotlari", {
             'fields': (('title', 'slug'), 'modul'),
         }),
         ("📊 Statistika", {
-            'fields': ('total_tasks_count',),
+            'fields': ('total_tasks_count',),  # Endi bu yerda xato bermaydi!
             'classes': ('collapse',),
         }),
         ("👤 Yaratuvchi", {
@@ -267,7 +270,6 @@ class LessonAdmin(BaseOwnerAdmin):
     def owner_display(self, obj):
         return obj.owner.username if obj.owner else "-"
 
-    # ✅ QO'SHIMCHA: owner ni avtomatik o'rnatish
     def save_model(self, request, obj, form, change):
         if not change:
             obj.owner = request.user

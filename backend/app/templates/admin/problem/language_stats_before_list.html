@@ -1,0 +1,32 @@
+{% load i18n unfold %}
+
+<div class="mb-6">
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/2" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">terminal</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Jami dasturlash tillari" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ total_languages }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/2" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-blue-500">code</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Eng ko'p ishlatilgan til" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        <span class="text-base">
+                            {{ most_used_language_name|default:"—" }}
+                            <span class="text-sm text-gray-400">({{ most_used_language_count|default:"0" }})</span>
+                        </span>
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+</div>

@@ -395,6 +395,8 @@ class ContestRegistration(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
+        blank=True,
+        null=True,
         related_name='contests_registration',
         verbose_name="Qayd etgan admin",
         help_text="Ushbu yozuvni tizimga kiritgan/nazorat qiluvchi staff foydalanuvchi.",

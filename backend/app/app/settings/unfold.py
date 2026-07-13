@@ -514,7 +514,13 @@ def unfold():
                             "link": reverse_lazy("admin:quizs_testenrollment_changelist"),
                             "permission": lambda request: request.user.has_perm("quizs.view_testenrollment"),
                         },
-
+                        # UserResponseAdmin
+                        {
+                            "title": _("Foydalanovchi javoblari"),
+                            "icon": "groups_2",
+                            "link": reverse_lazy("admin:quizs_userresponse_changelist"),
+                            "permission": lambda request: request.user.has_perm("quizs.view_userresponse"),
+                        },
                     ],
                 },
                 # 

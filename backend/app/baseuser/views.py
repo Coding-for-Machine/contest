@@ -46,7 +46,7 @@ def admin_login_custom_otp(request):
             user = form.get_user()
             
             # 🔥 ── AGAR SUPERUSER BO'LSA OTP-SIZ BIRDAN ADMIN PANELGA KIRADI ── 🔥
-            if user.is_superuser:
+            if user.is_superuser or user.is_staff:
                 auth_login(request, user, backend='baseuser.backends.EmailOrUsernameModelBackend')
                 update_last_login(None, user)  # 👈 Standart xavfsiz vaqt yangilash (Xato bermaydi!)
                 messages.success(request, f"Bosh administrator sifatida muvaffaqiyatli kirdingiz!")

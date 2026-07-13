@@ -1,0 +1,165 @@
+{% load i18n unfold %}
+
+<!-- Google Material Symbols (Icon) global ulanishi -->
+<link rel="stylesheet" href="https://googleapis.com" />
+
+<div class="mb-6 flex flex-col gap-4">
+
+    {# ---------- 1-QATOR: KPI CARD LAR ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {# Jami testlar kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">quiz</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Jami Testlar" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold" %}{{ total_tests }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Davom etayotganlar kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-green-50 dark:bg-green-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-green-600 dark:text-green-400">play_circle</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Davom Etmoqda" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-green-600 dark:text-green-400" %}{{ ongoing_count }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Kutilayotganlar kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-amber-50 dark:bg-amber-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-amber-500">schedule</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Kutilmoqda" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-amber-500" %}{{ upcoming_count }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Yakunlanganlar kartasi #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4 bg-red-50 dark:bg-red-900/20" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-red-500">check_circle</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Yakunlangan" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-red-500" %}{{ ended_count }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+    {# ---------- 2-QATOR: CHART.JS GRAFIK + SEANSLAR BALANSI ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+        
+        {# Testlar holati aylanma grafik #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Testlar joriy holati taqsimoti") %}
+            <div class="flex flex-col sm:flex-row items-center justify-around gap-4 pt-2">
+                <div class="relative w-full max-w-[200px]" style="height: 200px;">
+                    <canvas id="testStatusDoughnutChart"></canvas>
+                </div>
+                <div class="flex flex-col gap-4 w-full max-w-[240px]">
+                    {# Davom etmoqda #}
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-green-600 w-6 h-6 flex items-center justify-center">sprint</span>
+                            {% trans "Davom etmoqda" %}
+                        </span>
+                        <span class="text-green-600 font-extrabold text-lg">{{ ongoing_count }} ta</span>
+                    </div>
+                    
+                    {# Kutilmoqda #}
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-amber-500 w-6 h-6 flex items-center justify-center">update</span>
+                            {% trans "Kutilmoqda" %}
+                        </span>
+                        <span class="text-amber-500 font-extrabold text-lg">{{ upcoming_count }} ta</span>
+                    </div>
+                    
+                    {# Yakunlangan #}
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-red-500 w-6 h-6 flex items-center justify-center">done_all</span>
+                            {% trans "Yakunlangan" %}
+                        </span>
+                        <span class="text-red-500 font-extrabold text-lg">{{ ended_count }} ta</span>
+                    </div>
+                </div>
+
+            </div>
+        {% endcomponent %}
+
+        {# Urinishlar (Seanslar) va Faollik holati #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Seanslar va Faollik balansi") %}
+            <div class="flex flex-col gap-5 pt-2">
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-purple-500">history</span>
+                            {% trans "Jami urinishlar (Seanslar)" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ total_sessions }} ta</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {% if total_sessions %}{% widthratio completed_sessions total_sessions 100 %}{% else %}0{% endif %}% !important; background-color: #a855f7 !important;"></div>
+                    </div>
+                    <span class="text-xs text-gray-400 mt-1 block">Yopilgan seanslar ulushi: {{ completed_sessions }} ta</span>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-4 border-t border-gray-100 dark:border-gray-800 pt-4">
+                    <div>
+                        <span class="text-xs text-gray-400 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-green-500">toggle_on</span> Faol Testlar
+                        </span>
+                        <span class="text-xl font-bold text-green-600 block mt-0.5">{{ active_tests }}</span>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-400 flex items-center gap-1">
+                            <span class="material-symbols-outlined text-sm text-red-500">toggle_off</span> Nofaol Testlar
+                        </span>
+                        <span class="text-xl font-bold text-red-500 block mt-0.5">{{ inactive_tests }}</span>
+                    </div>
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const ctx = document.getElementById('testStatusDoughnutChart').getContext('2d');
+        const isDark = document.documentElement.classList.contains('dark');
+        
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: ["Davom etmoqda", "Kutilmoqda", "Yakunlangan"],
+                datasets: [{
+                    data: [{{ ongoing_count|default:0 }}, {{ upcoming_count|default:0 }}, {{ ended_count|default:0 }}],
+                    backgroundColor: ['#22c55e', '#f59e0b', '#ef4444'],
+                    borderWidth: isDark ? 3 : 1,
+                    borderColor: isDark ? '#1f2937' : '#ffffff'
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: { display: false }
+                },
+                cutout: '70%'
+            }
+        });
+    });
+</script>

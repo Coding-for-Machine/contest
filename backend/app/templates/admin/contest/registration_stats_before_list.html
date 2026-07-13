@@ -1,0 +1,57 @@
+{% load i18n unfold %}
+
+<div class="mb-6">
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {% component "unfold/components/card.html" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">badge</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Jami ro'yxatdan o'tishlar" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ reg_total }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-amber-500">hourglass_top</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Jarayonda" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ reg_in_progress }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-green-600 dark:text-green-400">check_circle</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Yakunlangan" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ reg_completed }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-gray-500">timer_off</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Muddati o'tgan" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ reg_expired }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-red-600 dark:text-red-400">block</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Diskvalifikatsiya" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ reg_disqualified }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+</div>

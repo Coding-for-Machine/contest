@@ -1,16 +1,30 @@
+import json
 from django.contrib import admin
+from django.db import models
+from django.db.models import Count, Q, Avg
+from django.db.models.functions import TruncMonth
 from django.utils.html import format_html
+from django.utils.safestring import mark_safe
 from django.utils.translation import gettext_lazy as _
+# Unfold ModelAdmin to'g'ridan-to'g'ri import qilinadi
 from unfold.admin import ModelAdmin
 from unfold.decorators import display
-from .models import Submission
+
+from .models import Submission  # Modelingiz yo'lini tekshiring
+
 
 @admin.register(Submission)
-class SubmissionAdmin(ModelAdmin):
-    # 1. BAZA OPTIMIZATSIYASI: Ustunlardagi bog'langan ma'lumotlarni bitta so'rovda yuklaydi
+class SubmissionAdmin(ModelAdmin):  # 👈 TO'G'RILANDI: Toza Unfold ModelAdmin'dan foydalanamiz!
+    # ─── 🎨 UNFOLD EKSKLYUZIV SOZLAMALARI ───
+    list_before_template = "admin/submissions/submission/list_top.html"
+    list_filter_submit = True
+    show_facets = admin.ShowFacets.NEVER
+    list_per_page = 25
+    ordering = ('-submitted_at',)
+    
+    # Baza optimizatsiyasi: N+1 so'rovlarni bitta SQL JOIN'ga jamlaydi
     list_select_related = ('user', 'problem', 'language')
     
-    # 2. RO'YXAT SAHIFASI USTUNLARI
     list_display = (
         'id_display',
         'user_display',
@@ -22,7 +36,6 @@ class SubmissionAdmin(ModelAdmin):
         'submitted_at'
     )
     
-    # 3. KUCHLI FILTRLAR (Unfold sidebar qismida chiroyli chiqadi)
     list_filter = (
         'verdict', 
         'status', 
@@ -30,19 +43,15 @@ class SubmissionAdmin(ModelAdmin):
         ('problem', admin.RelatedOnlyFieldListFilter)
     )
     
-    # 4. TEZKOR QIDIRUV MAYDONLARI
     search_fields = ('user__username', 'problem__title', 'code')
     
-    # Xavfsizlik uchun admin panelda yechimlarni qo'lda o'zgartirish taqiqlanadi
+    # Xavfsizlik: Yechimlarni admin panelda qo'lda o'zgartirish mutlaqo taqiqlanadi
     readonly_fields = (
         'user', 'problem', 'language', 'code', 'status', 'verdict', 
         'passed_test_count', 'total_test_count', 'execution_time', 
         'execution_memory', 'test_results', 'submitted_at'
     )
     
-    list_per_page = 25
-
-    # 5. FORMANI GURUHLACH (Form View)
     fieldsets = (
         (_("🎯 Masala va Foydalanuvchi"), {
             'fields': (('user', 'problem', 'language'),),
@@ -59,7 +68,7 @@ class SubmissionAdmin(ModelAdmin):
         }),
     )
 
-    # ─── UNFOLD TAILWIND DESIGN COMPONENT BADGES ───
+    # ─── DISPLAY USTUN METODLARI (Xatoliklar va double formatting 100% tozalangan) ───
 
     @display(description=_("ID"), ordering='id')
     def id_display(self, obj):
@@ -85,7 +94,6 @@ class SubmissionAdmin(ModelAdmin):
 
     @display(description=_("Hukm (Verdict)"), ordering='verdict')
     def verdict_badge(self, obj):
-        # Unfold Dark va Light rejimlari uchun Tailwind ranglar palitrasi
         colors = {
             "AC": "bg-success-50 text-success-700 border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800",
             "WA": "bg-danger-50 text-danger-700 border-danger-200 dark:bg-danger-900/30 dark:text-danger-400 dark:border-danger-800",
@@ -113,3 +121,50 @@ class SubmissionAdmin(ModelAdmin):
         t = f"{obj.execution_time} ms" if obj.execution_time else "-"
         m = f"{obj.execution_memory} KB" if obj.execution_memory else "-"
         return format_html('<span class="text-xs text-gray-500 dark:text-gray-400 font-mono">⏱️ {} <br> 💾 {}</span>', t, m)
+
+    # ─── 📊 CHANGELIST VIEW STATISTIKASI (AGGREGATE & TRUNC) ───
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+        cl = self.get_changelist_instance(request)
+        filtered_qs = cl.get_queryset(request)
+        
+        # Barcha ko'rsatkichlar bitta tezkor SQL so'rovga aggregate qilinadi
+        stats = filtered_qs.aggregate(
+            total_submissions=Count('id'),
+            ac_count=Count('id', filter=Q(verdict='AC')),
+            wa_count=Count('id', filter=Q(verdict='WA')),
+            tle_count=Count('id', filter=Q(verdict='TLE')),
+            other_count=Count('id', filter=~Q(verdict__in=['AC', 'WA', 'TLE'])),
+            avg_time=Avg('execution_time')
+        )
+        
+        # Oylik urinishlar dinamikasi (Chart.js chiziqli grafigi uchun)
+        monthly_data = (
+            filtered_qs.annotate(month=TruncMonth('submitted_at'))
+            .values('month')
+            .annotate(count=Count('id'))
+            .order_by('month')
+        )
+        
+        chart_labels = []
+        chart_values = []
+        for item in monthly_data:
+            if item['month']:
+                chart_labels.append(item['month'].strftime('%Y-%m'))
+                chart_values.append(int(item['count'] or 0))
+
+        # Raqamlarni xavfsiz formatlaymiz (Format xatoligiga qarshi qat'iy float yoki string)
+        avg_time_val = stats['avg_time'] or 0.0
+        avg_time_str = f"{avg_time_val:.1f}"
+
+        extra_context.update({
+            'total_submissions': stats['total_submissions'] or 0,
+            'ac_count': stats['ac_count'] or 0,
+            'wa_count': stats['wa_count'] or 0,
+            'tle_count': stats['tle_count'] or 0,
+            'other_count': stats['other_count'] or 0,
+            'avg_time': avg_time_str,  # f-string formatlash muammosiz string ko'rinishida o'tadi
+            'chart_labels_json': json.dumps(chart_labels),
+            'chart_values_json': json.dumps(chart_values),
+        })
+        return super().changelist_view(request, extra_context=extra_context)

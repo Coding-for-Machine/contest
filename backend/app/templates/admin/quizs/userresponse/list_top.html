@@ -1,0 +1,200 @@
+{% load i18n unfold %}
+
+<div class="mb-6 flex flex-col gap-4">
+
+    {# ---------- 1-QATOR: KPI KARTALARI (Material Symbols ikonkalari bilan) ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {# Jami masalalar #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">quiz</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500 dark:text-gray-400" %}
+                        {% trans "Jami urinishlar" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-xl font-bold" %}
+                        {{ total_problems }}
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# To'g'ri javoblar #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-green-600 dark:text-green-400">check_circle</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500 dark:text-gray-400" %}
+                        {% trans "To'g'ri javoblar" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        <span class="text-xl font-bold text-green-600 dark:text-green-400">{{ active_problems }}</span>
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# Noto'g'ri javoblar #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-red-600 dark:text-red-400">cancel</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500 dark:text-gray-400" %}
+                        {% trans "Noto'g'ri javoblar" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        <span class="text-xl font-bold text-red-600 dark:text-red-400">{{ inactive_problems }}</span>
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {# O'rtacha XP / Ko'rsatkich #}
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-amber-500">military_tech</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500 dark:text-gray-400" %}
+                        {% trans "O'rtacha ball (XP)" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-xl font-bold" %}
+                        {{ avg_xp|default:"0" }}
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+    {# ---------- 2-QATOR: CHART.JS GRAFIK + PROGRESS BAR KARTALARI ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {# 1-Blok: Qiyinchilik taqsimoti — Doughnut (Aylanma) grafik #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Qiyinchilik darajalari taqsimoti (Grafik)") %}
+            <div class="relative w-full flex items-center justify-center p-2" style="height: 250px;">
+                <canvas id="difficultyDoughnutChart"></canvas>
+            </div>
+        {% endcomponent %}
+
+        {# 2-Blok: Qiyinchilik taqsimoti — Progress Bar ko'rinishida #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Qiyinchilik darajalari taqsimoti (Foizda)") %}
+            <div class="flex flex-col gap-5 p-1">
+                
+                {# Oson daraja #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-green-500">sentiment_satisfied</span>
+                            {% trans "Oson" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ easy_count }} ({{ easy_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ easy_percent|default:0 }}% !important; background-color: #22c55e !important;"></div>
+                    </div>
+                </div>
+
+                {# O'rta daraja #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-amber-500">sentiment_neutral</span>
+                            {% trans "O'rta" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ medium_count }} ({{ medium_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ medium_percent|default:0 }}% !important; background-color: #f59e0b !important;"></div>
+                    </div>
+                </div>
+
+                {# Qiyin daraja #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-red-500">sentiment_very_dissatisfied</span>
+                            {% trans "Qiyin" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ hard_count }} ({{ hard_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ hard_percent|default:0 }}% !important; background-color: #ef4444 !important;"></div>
+                    </div>
+                </div>
+
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+</div>
+
+{# ---------- CHART.JS KUTUBXONASI VA SCRIPT SOZLAMALARI ---------- #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+{# ---------- CHART.JS KUTUBXONASI VA SCRIPT SOZLAMALARI ---------- #}
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const ctx = document.getElementById('difficultyDoughnutChart').getContext('2d');
+        
+        // Django context-dan kelayotgan xavfsiz JSON arraylarni o'qiymiz
+        const labels = {{ chart_labels|safe|default:"[]" }};
+        const dataValues = {{ chart_data|safe|default:"[]" }};
+
+        // Dark mode (Unfold admin paneli mavzusiga qarab moslashuvchan dizayn)
+        const isDarkMode = document.documentElement.classList.contains('dark');
+        const textColor = isDarkMode ? '#9ca3af' : '#374151';
+        const borderColor = isDarkMode ? '#1f2937' : '#ffffff';
+
+        new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: [
+                        '#22c55e', // Oson -> Yashil
+                        '#f59e0b', // O'rta -> Sariq
+                        '#ef4444'  // Qiyin -> Qizil
+                    ],
+                    borderWidth: 2,
+                    borderColor: borderColor
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'bottom',
+                        labels: {
+                            color: textColor,
+                            font: {
+                                family: 'ui-sans-serif, system-ui, sans-serif',
+                                size: 12,
+                                weight: '500'
+                            },
+                            padding: 15,
+                            usePointStyle: true,
+                            pointStyle: 'circle'
+                        }
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                const value = context.raw || 0;
+                                return ` ${context.label}: ${value} ta javad`;
+                            }
+                        }
+                    }
+                },
+                cutout: '65%'
+            }
+        });
+    });
+</script>

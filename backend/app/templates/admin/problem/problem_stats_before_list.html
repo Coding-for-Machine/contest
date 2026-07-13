@@ -1,0 +1,155 @@
+{% load i18n unfold %}
+
+<div class="mb-6 flex flex-col gap-4">
+
+    {# ---------- 1-qator: KPI kartalar (Material Symbols ikonkalar bilan) ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">quiz</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Jami masalalar" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ total_problems }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-green-600 dark:text-green-400">check_circle</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Faol" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        <span class="text-green-600 dark:text-green-400">{{ active_problems }}</span>
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-red-600 dark:text-red-400">cancel</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "Nofaol" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}
+                        <span class="text-red-600 dark:text-red-400">{{ inactive_problems }}</span>
+                    {% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+        {% component "unfold/components/card.html" with class="lg:w-1/4" %}
+            <div class="flex items-center gap-3">
+                <span class="material-symbols-outlined text-3xl text-amber-500">military_tech</span>
+                <div class="flex flex-col">
+                    {% component "unfold/components/text.html" %}{% trans "O'rtacha XP" %}{% endcomponent %}
+                    {% component "unfold/components/title.html" %}{{ avg_xp|default:"0" }}{% endcomponent %}
+                </div>
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+    {# ---------- 2-qator: Chart.js grafik + progress kartasi ---------- #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+
+        {# Qiyinchilik taqsimoti — Doughnut chart #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Qiyinchilik taqsimoti (grafik)") %}
+            <div class="relative" style="height: 240px;">
+                <canvas id="difficultyDoughnutChart"></canvas>
+            </div>
+        {% endcomponent %}
+
+        {# Qiyinchilik taqsimoti — progress bar ko'rinishida #}
+        {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Qiyinchilik taqsimoti (son)") %}
+            <div class="flex flex-col gap-5">
+                
+                {# Oson #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-green-500">sentiment_satisfied</span>
+                            {% trans "Oson" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ easy_count }} ({{ easy_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ easy_percent|default:0 }}% !important; background-color: #22c55e !important;"></div>
+                    </div>
+                </div>
+
+                {# O'rta #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-amber-500">sentiment_neutral</span>
+                            {% trans "O'rta" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ medium_count }} ({{ medium_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        {# Toza CSS orqali majburiy rang berildi #}
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ medium_percent|default:0 }}% !important; background-color: #f59e0b !important;"></div>
+                    </div>
+                </div>
+
+                {# Qiyin #}
+                <div>
+                    <div class="flex items-center justify-between text-sm mb-1.5">
+                        <span class="flex items-center gap-1 font-medium text-gray-700 dark:text-gray-300">
+                            <span class="material-symbols-outlined text-base text-red-500">sentiment_very_dissatisfied</span>
+                            {% trans "Qiyin" %}
+                        </span>
+                        <span class="text-gray-500 dark:text-gray-400 font-bold">{{ hard_count }} ({{ hard_percent }}%)</span>
+                    </div>
+                    <div class="w-full bg-gray-100 dark:bg-gray-800 overflow-hidden rounded-full" style="height: 12px !important;">
+                        {# Toza CSS orqali majburiy rang berildi #}
+                        <div class="rounded-full transition-all duration-500" 
+                             style="display: block !important; height: 12px !important; width: {{ hard_percent|default:0 }}% !important; background-color: #ef4444 !important;"></div>
+                    </div>
+                </div>
+
+            </div>
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+    {# ---------- 3-qator: Top kategoriyalar jadvali (Unfold table komponenti) ---------- #}
+    {% if top_categories_table.rows %}
+        {% component "unfold/components/card.html" with title=_("Top kategoriyalar (masalalar soni bo'yicha)") %}
+            {% component "unfold/components/table.html" with table=top_categories_table card_included=1 striped=1 %}
+            {% endcomponent %}
+        {% endcomponent %}
+    {% endif %}
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+<script>
+(function () {
+    var ctx = document.getElementById('difficultyDoughnutChart');
+    if (!ctx || typeof Chart === 'undefined') return;
+
+    var isDark = document.documentElement.classList.contains('dark');
+    var labelColor = isDark ? '#d1d5db' : '#374151';
+
+    new Chart(ctx, {
+        type: 'doughnut',
+        data: {{ difficulty_chart_data|safe }},
+        options: {
+            responsive: true,
+            maintainAspectRatio: false,
+            plugins: {
+                legend: {
+                    position: 'bottom',
+                    labels: { color: labelColor, padding: 16, usePointStyle: true }
+                }
+            },
+            cutout: '65%'
+        }
+    });
+})();
+</script>
