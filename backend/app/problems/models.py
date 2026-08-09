@@ -6,7 +6,12 @@ from django.conf import settings
 from mdeditor.fields import MDTextField
 from baseuser.models import BaseUser
 from video.models import Video
-from contests.models import Contest
+from django.core.validators import MinValueValidator, MaxValueValidator
+from django.core.exceptions import ValidationError
+
+from django.contrib.postgres.fields import ArrayField
+from centers.models import CenterScopedMixin
+
 
 # -------------------- Category --------------------
 class Category(models.Model):
@@ -25,7 +30,7 @@ class Category(models.Model):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='categorys',
+        related_name='categories',
         verbose_name="Yaratuvchi admin"
     )
     class Meta:
@@ -61,7 +66,8 @@ class Tags(models.Model):
         return self.name
 
 
-# -------------------- Language Piston language list--------------------
+
+
 class Language(models.Model):
     name = models.CharField(
         max_length=250, 
@@ -71,7 +77,15 @@ class Language(models.Model):
     )
     version = models.CharField(
         max_length=50,
-        help_text="Piston API dagi aniq versiyasi (masalan: 3.10.0, 10.2.0)"
+        verbose_name="Versiyasi",
+        help_text="Piston API dagi aniq versiyasi (masalan: 3.12.0, 10.2.0)"
+    )
+    # null=True (Katta harf bilan) va ArrayField to'g'rilandi
+    aliases = ArrayField(
+        models.CharField(max_length=50), 
+        blank=True, 
+        null=True,
+        verbose_name="Taxalluslar"
     )
 
     class Meta:
@@ -85,7 +99,7 @@ class Language(models.Model):
 
 
 # -------------------- Problem --------------------
-class Problem(models.Model):
+class Problem(CenterScopedMixin, models.Model):
     class Difficulty(models.TextChoices):
         EASY = "easy", "Oson"
         MEDIUM = "medium", "O'rtacha"
@@ -157,17 +171,6 @@ class Problem(models.Model):
         verbose_name="Qiyinchilik darajasi",
         help_text="Masalaning murakkablik darajasini belgilang."
     )
-    contest = models.ForeignKey(
-        Contest,
-        on_delete=models.CASCADE,
-        related_name='problems',
-        null=True,
-        blank=True,
-        verbose_name="Musobaqa (Contest)",
-        help_text="Agar ushbu masala biror musobaqaga tegishli bo'lsa, tanlang."
-    )
-
-
     solution_video = models.ForeignKey(
         Video, 
         on_delete=models.SET_NULL, 
@@ -177,19 +180,25 @@ class Problem(models.Model):
         verbose_name="Yechim video tahlili",
         help_text="Masalaning kodli yoki g'oyaviy yechimi tushuntirilgan videoni biriktiring."
     )
+
     time_limit = models.IntegerField(
-        default=2000, 
-        null=True, 
-        blank=True, 
-        verbose_name="Vaqt cheklovi", 
-        help_text="Millisekundlarda belgilang (masalan: 2000 = 2 sekund)."
+        default=2000,
+        verbose_name="Vaqt cheklovi",
+        help_text="Millisekundlarda belgilang (100 ms dan 3000 ms gacha). Piston API maksimal 3000 ms qabul qiladi. Masalan: 2000 = 2 sekund.",
+        validators=[
+            MinValueValidator(100, message="Vaqt cheklovi kamida 100 ms bo'lishi kerak."),
+            MaxValueValidator(3000, message="Vaqt cheklovi Piston API limiti sababli 3000 ms dan oshmasligi kerak."),
+        ]
     )
+
     memory_limit = models.IntegerField(
-        default=256, 
-        null=True, 
-        blank=True, 
-        verbose_name="Xotira cheklovi", 
-        help_text="Megabaytlarda belgilang (masalan: 256 MB)."
+        default=256,
+        verbose_name="Xotira cheklovi",
+        help_text="Megabaytlarda belgilang (1 MB dan 512 MB gacha). Piston API xotira limitini qo'llab-quvvatlaydi. Masalan: 256 = 256 MB.",
+        validators=[
+            MinValueValidator(1, message="Xotira cheklovi kamida 1 MB bo'lishi kerak."),
+            MaxValueValidator(512, message="Xotira cheklovi 512 MB dan oshmasligi kerak."),
+        ]
     )
     likes_count = models.PositiveIntegerField(default=0, editable=False, verbose_name="Layklar soni")
     dislikes_count = models.PositiveIntegerField(default=0, editable=False, verbose_name="Dislayklar soni")
@@ -205,6 +214,11 @@ class Problem(models.Model):
         ),
         default=10, validators=[MinValueValidator(10), MaxValueValidator(100)]
     )
+    # yangi
+    # Global statistika — barcha contestlar bo'yicha yig'iladi
+    solved_count = models.PositiveIntegerField(default=0, verbose_name="Yechilgan marta")
+    attempt_count = models.PositiveIntegerField(default=0, verbose_name="Urinishlar soni")
+    
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
@@ -224,9 +238,26 @@ class Problem(models.Model):
     def __str__(self):
         return self.title
 
+    
+    def clean(self):
+        super().clean()
+        if self.time_limit and self.time_limit > 3000:
+            raise ValidationError({
+                "time_limit": "Vaqt cheklovi 3000 ms dan oshmasligi kerak."
+            })
+       
+        if self.memory_limit and self.memory_limit < 1:
+            self.memory_limit = 1
+
     def save(self, *args, **kwargs):
         if not self.slug:
-            self.slug = slugify(self.title)
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while Problem.objects.exclude(pk=self.pk).filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
 
         if not self.xp or self.xp == 0:
             xp_mapping = {

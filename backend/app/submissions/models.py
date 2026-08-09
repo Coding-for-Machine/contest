@@ -64,7 +64,14 @@ class Submission(models.Model):
         blank=True, 
         verbose_name=_("Ishlatilgan xotira (KB)")
     )
-
+    contest_registration = models.ForeignKey(
+        "contests.ContestRegistration",
+        on_delete=models.CASCADE,
+        related_name="submissions",
+        null=True, blank=True,
+        verbose_name=_("Musobaqa seansi"),
+        help_text=_("Bo'sh bo'lsa — bu Practice/mustaqil yechim."),
+    )
     # 5. BITTA-BITTA TESTLARNING BATAFSIL JSON JAVOBI
     test_results = models.JSONField(
         default=list, 
@@ -79,6 +86,14 @@ class Submission(models.Model):
         db_index=True,
         verbose_name=_("Yuborilgan vaqt")
     )
+    @property
+    def time_offset_seconds(self):
+        """Contest boshlangandan beri necha soniya o'tib yuborilgani."""
+        if not self.contest_registration_id:
+            return None
+        delta = self.submitted_at - self.contest_registration.started_at
+        return int(delta.total_seconds())
+
 
     class Meta:
         verbose_name = _("📥 Yechim (Submission)")

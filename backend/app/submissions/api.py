@@ -1,56 +1,35 @@
-# router.py
-"""
-HTTP endpointlar — /run va /submit.
-
-Bu ikkalasi ham BIR XIL naqshga amal qiladi:
-  1) task_id generatsiya qilinadi (uuid4)
-  2) Tegishli Celery vazifasi shu task_id bilan navbatga qo'yiladi
-     (натижа кутилмайди — .apply_async() darhol qaytadi)
-  3) {"queued": True, "task_id": task_id} javobi DARHOL (millisekundlarda)
-     qaytariladi
-
-Natijaning o'zi bu yerda YO'Q — u alohida, asinxron kanal (Celery worker
--> Redis PUBLISH -> Django Bolt SSE endpoint -> brauzerdagi global
-RCEvents) orqali keladi. Bu fayl faqat "ishni boshlash" nuqtasi.
-"""
-
-import uuid
+import asyncio
+import base64
 import msgspec
+import uuid
 
 from django_bolt import Depends, Router, Request
-from baseuser.authenticate import get_current_user
+from baseuser.authenticate import get_current_user, get_current_user_option
 from baseuser.models import BaseUser
 
-from .tasks import run_code_task, submit_code_task
+from .tasks import submit_code_task
+from .piston_client import piston
+
+from problems.models import Language, Problem, ExecutionTestCase, TestCase
 
 api = Router(tags=["Run!"])
-
-
-# ============================================================
-# SO'ROV STRUKTURALARI (msgspec.Struct — avtomatik validatsiya qiladi:
-# noto'g'ri tipdagi maydon kelsa, django_bolt o'zi 422 xatolik qaytaradi,
-# view funksiyasi ichida qo'lda tekshirish shart emas)
-# ============================================================
-
-class TestCaseStruct(msgspec.Struct):
-    """Frontend RUN so'rovida yuboradigan bitta namunaviy testcase."""
-    input: str
-    output: str
 
 
 class RunCode(msgspec.Struct):
     """
     POST /run tanasi.
 
-    `testcases` — FAQAT namunaviy (misol) testlar, ya'ni masala sahifasida
-    ko'rinib turgan Example 1/2/3. Bular frontend orqali keladi, chunki
-    ular ochiq ma'lumot — hech qanday sirni oshkor qilmaydi.
+    DIQQAT: `testcases` maydoni ATAYLAB YO'Q — frontend hech qanday test
+    ma'lumotini yubormaydi. Namuna testlar (`is_sample=True`) BAZADAN
+    o'qiladi, xuddi yashirin testlar submit'da bazadan olinganidek.
+
+    `stdin` — FAQAT konsol rejimida (masalada umuman test case yo'q holatda)
+    ishlatiladi: frontend to'plagan TO'LIQ input matni shu yerga qo'yiladi.
     """
     problem_id: int
     language_id: int
     code: str
-    testcases: list[TestCaseStruct] | None = None
-
+    stdin: str | None = None
 
 class SubmissionCode(msgspec.Struct):
     """
@@ -66,73 +45,235 @@ class SubmissionCode(msgspec.Struct):
     code: str
 
 
-# ============================================================
-# ENDPOINTLAR
-# ============================================================
+def _judge_result(run_info: dict, expected_output: str) -> str:
+    """Namuna test uchun to'liq solishtiruv: AC/WA/TLE/MLE/RE."""
+    stderr = run_info.get("stderr", "")
+    stdout = run_info.get("stdout", "").strip()
+    exit_code = run_info.get("code", 0)
+    signal = run_info.get("signal")
+    msg = str(run_info.get("message", "")).lower()
+
+    if signal == "SIGKILL" or "timeout" in msg:
+        return "TLE"
+    if "memory limit" in msg:
+        return "MLE"
+    if exit_code != 0 or stderr:
+        return "RE"
+    return "AC" if stdout == expected_output.strip() else "WA"
+
+
+def _judge_console_result(run_info: dict) -> str:
+    """Konsol rejimi uchun: WA yo'q, chunki solishtiradigan kutilgan
+    natija yo'q — faqat ijro xatolari tekshiriladi."""
+    stderr = run_info.get("stderr", "")
+    exit_code = run_info.get("code", 0)
+    signal = run_info.get("signal")
+    msg = str(run_info.get("message", "")).lower()
+
+    if signal == "SIGKILL" or "timeout" in msg:
+        return "TLE"
+    if "memory limit" in msg:
+        return "MLE"
+    if exit_code != 0 or stderr:
+        return "RE"
+    return "AC"
+
+
+def _needs_more_input(run_info: dict) -> bool:
+    """
+    Dastur STDIN tugagani sababli to'xtadimi (EOF) — demak frontend yana
+    bitta qator so'rashi kerak. Bir nechta keng tarqalgan til uchun EOF
+    belgilarini tekshiradi (Python, Java, Go va h.k.).
+
+    CHEKLOV: 100% aniq emas — ba'zi tillar EOF holatida xato bermasdan
+    jim to'xtashi mumkin, bunday holat oddiy tugash deb hisoblanadi.
+    """
+    if run_info.get("signal") or run_info.get("code", 0) == 0:
+        return False
+
+    stderr_lower = (run_info.get("stderr") or "").lower()
+    eof_markers = (
+        "eof when reading a line",
+        "eoferror",
+        "end of file",
+        "no line found",
+        "nosuchelementexception",
+        "unexpected eof",
+        "eof",
+    )
+    return any(marker in stderr_lower for marker in eof_markers)
+
+
+async def _run_single_sample(language, piston_time_limit, piston_memory_limit, text_full_code, tc):
+    """Bitta namuna testni ishga tushiradi va formatlangan natija qaytaradi.
+    `asyncio.gather` orqali barcha testlar bilan PARALLEL chaqiriladi."""
+    try:
+        piston_res = await piston.async_execute_code(
+            language=language.name,
+            version=language.version,
+            code=text_full_code,
+            stdin=tc.input_txt,
+            run_timeout=piston_time_limit,
+            run_memory_limit=piston_memory_limit,
+            encoding="utf8",
+        )
+    except Exception as api_err:
+        return {
+            "index": tc.order or tc.id,
+            "input": tc.input_txt,
+            "expected_output": tc.output_txt,
+            "output": "",
+            "status": "Server Error",
+            "memory": None,
+            "cpu_time": None,
+            "wall_time": None,
+            "message": str(api_err),
+        }
+
+    run_info = piston_res.get("run", {})
+    verdict = _judge_result(run_info, tc.output_txt)
+
+    return {
+        "index": tc.order or tc.id,
+        "input": tc.input_txt,
+        "expected_output": tc.output_txt,
+        "output": run_info.get("stdout", ""),
+        "status": verdict,
+        "memory": run_info.get("memory"),
+        "cpu_time": run_info.get("cpu_time"),
+        "wall_time": run_info.get("wall_time"),
+        "message": run_info.get("stderr", ""),
+    }
+
 
 @api.post("/run")
-async def run(request: Request, body: RunCode, request_user: BaseUser = Depends(get_current_user)):
+async def run(request: Request, body: RunCode, request_user: BaseUser = Depends(get_current_user_option)):
     """
-    Kodni NAMUNAVIY testlar ustida sinab ko'rish (natija bazaga yozilmaydi).
+    Kodni sinab ko'rish:
+      - Agar masalada test case umuman bo'lmasa -> KONSOL REJIMI
+        (frontend to'plagan `stdin` bilan ishga tushiriladi, EOF chiqsa
+        "input_required" qaytariladi).
+      - Aks holda -> faqat `is_sample=True` testlar BAZADAN olinib,
+        PARALLEL ishga tushiriladi.
     """
-    task_id = str(uuid.uuid4())
+    print("BODY:", body)
+    print(body.code, "\n", body.language_id, "\n", body.problem_id)
+    # 1) Til va masalani olamiz
+    try:
+        language = await Language.objects.aget(id=body.language_id)
+        problem = await Problem.objects.aget(id=body.problem_id)
+    except (Language.DoesNotExist, Problem.DoesNotExist) as e:
+        return {"status": "error", "message": f"Ma'lumot topilmadi: {str(e)}"}
 
-    # 🔑 task_id IKKI JOYDA ishlatiladi:
-    #   1) `apply_async(task_id=...)` — Celery buni O'ZINING vazifa ID'si
-    #      sifatida ham qabul qiladi, ya'ni kerak bo'lsa keyinchalik
-    #      `AsyncResult(task_id)` orqali holatini so'rash mumkin bo'ladi
-    #      (SSE biror sababga ko'ra ishlamay qolsa, zaxira variant sifatida).
-    #   2) `kwargs`dagi `task_id` — Celery worker Redisga PUBLISH qilganda
-    #      xuddi shu qiymatni xabar ichiga qo'shadi (`{"task_id": ...}`).
-    #      Frontend `RCEvents.onTask(taskId, ...)` orqali aynan shu
-    #      qiymatga obuna bo'ladi — ikkalasi (bu yerdagi va Redis xabaridagi)
-    #      BIR XIL bo'lishi SHART, aks holda natija hech qachon frontendga
-    #      "yetib bormaydi" (chunki task_id mos kelmasa, dispatch ishlamaydi).
-    run_code_task.apply_async(
-        task_id=task_id,
-        kwargs=dict(
-            task_id=task_id,
-            user_id=request_user.id,   # qaysi "sse:user:{id}" kanaliga PUBLISH qilishni bilish uchun
-            mode="run",
-            language_id=body.language_id,
-            code=body.code,
-            testcases=[
-                {"input": tc.input, "output": tc.output}
-                for tc in (body.testcases or [])
-            ],
-        ),
-    )
+    # 2) Wrapper kodlarni olamiz (bo'lmasa bo'sh — xavfsiz rejim)
+    try:
+        execode_testcase = await ExecutionTestCase.objects.aget(language=language, problem_id=body.problem_id)
+        top_code = execode_testcase.top_code or ""
+        bottom_code = execode_testcase.bottom_code or ""
+    except ExecutionTestCase.DoesNotExist:
+        top_code = ""
+        bottom_code = ""
 
-    # Darhol qaytadi — Celery worker hali ishni boshlagani ham yo'q.
-    # Frontend shu javobni olgach, `RCEvents.onTask(task_id, ...)` orqali
-    # natijalarni "tinglashni" boshlaydi.
-    return {"queued": True, "task_id": task_id}
+    # 3) base64 dekod -> wrap (qayta base64 YO'Q, Piston toza matn kutadi)
+    try:
+        decoded_user_code = base64.b64decode(body.code).decode("utf-8")
+    except Exception:
+        return {"status": "error", "message": "Foydalanuvchi kodi noto'g'ri Base64 formatida!"}
+    text_full_code = f"{top_code}\n{decoded_user_code}\n{bottom_code}"
+
+    piston_time_limit = int(problem.time_limit)
+    piston_memory_limit = int(problem.memory_limit)
+
+    # 4) Masalada UMUMAN test case bormi (sample + yashirin)?
+    total_test_count = await TestCase.objects.filter(problem_id=body.problem_id).acount()
+
+    # ============================================================
+    # KONSOL REJIMI — test case umuman yo'q
+    # ============================================================
+    if total_test_count == 0:
+        accumulated_stdin = body.stdin or ""
+
+        try:
+            piston_res = await piston.async_execute_code(
+                language=language.name, version=language.version,
+                code=text_full_code, stdin=accumulated_stdin,
+                run_timeout=piston_time_limit, run_memory_limit=piston_memory_limit,
+                encoding="utf8",
+            )
+        except Exception as api_err:
+            return {"status": "error", "message": f"Piston API xatosi: {api_err}"}
+
+        run_info = piston_res.get("run", {})
+
+        if _needs_more_input(run_info):
+            return {
+                "status": "input_required",
+                "partial_output": run_info.get("stdout", ""),
+                "stdin_so_far": accumulated_stdin,
+            }
+
+        verdict = _judge_console_result(run_info)
+        return {
+            "status": "done",
+            "problem_id": body.problem_id,
+            "language": language.name,
+            "results": [{
+                "index": 1,
+                "lang": language.name,
+                "ver": language.version,
+                "input": accumulated_stdin,
+                "expected_output": "",
+                "output": run_info.get("stdout", ""),
+                "status": verdict,
+                "memory": run_info.get("memory"),
+                "cpu_time": run_info.get("cpu_time"),
+                "wall_time": run_info.get("wall_time"),
+                "message": run_info.get("stderr", ""),
+            }],
+        }
+
+    # ============================================================
+    # ODDIY REJIM — faqat NAMUNA (is_sample=True) testlar, BAZADAN,
+    # PARALLEL ishga tushiriladi
+    # ============================================================
+    sample_tests = [
+        tc async for tc in TestCase.objects.filter(
+            problem_id=body.problem_id, is_sample=True
+        ).order_by("order")
+    ]
+
+    if not sample_tests:
+        # Masalada yashirin testlar bor, lekin sample yo'q — /run uchun
+        # ko'rsatadigan hech narsa yo'q, foydalanuvchiga aniq xabar beramiz.
+        return {
+            "status": "error",
+            "message": "Bu masala uchun namuna (sample) testlar mavjud emas. To'g'ridan-to'g'ri 'Submit' qiling.",
+        }
+
+    results = await asyncio.gather(*[
+        _run_single_sample(language, piston_time_limit, piston_memory_limit, text_full_code, tc)
+        for tc in sample_tests
+    ])
+
+    return {
+        "status": "done",
+        "problem_id": body.problem_id,
+        "language": language.name,
+        "results": results,
+    }
 
 
 @api.post("/submit")
 async def submit(request: Request, body: SubmissionCode, request_user: BaseUser = Depends(get_current_user)):
-    """
-    Kodni RASMIY yuborish — yashirin testlar ustida tekshiriladi,
-    natija Submission jadvaliga yoziladi.
-
-    ESLATMA: avvalgi versiyada bu funksiyada `request_user` UMUMAN yo'q edi
-    — bu jiddiy xato, chunki Celery vazifasiga `user_id` bermasak, u qaysi
-    Redis kanaliga natijani PUBLISH qilishni bilmaydi (demak natija
-    hech qachon brauzerga yetib bormaydi). Pastda tuzatilgan.
-    """
-    task_id = str(uuid.uuid4())
-
-    submit_code_task.apply_async(
-        task_id=task_id,
+    print("BODY:", body)
+    print(body.code, "\n", body.language_id, "\n", body.problem_id)
+    task_id = uuid.uuid4()
+    result = submit_code_task.apply_async(
         kwargs=dict(
-            task_id=task_id,
             user_id=request_user.id,
-            mode="submit",
             problem_id=body.problem_id,
             language_id=body.language_id,
             code=body.code,
-            # testcases YO'Q — submit_code_task ularni bazadan o'zi oladi
         ),
     )
-
-    return {"queued": True, "task_id": task_id}
+    return {"queued": True, "task_id": result.id}

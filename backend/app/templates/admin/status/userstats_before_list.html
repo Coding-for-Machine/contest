@@ -1,11 +1,4 @@
 {% load i18n unfold %}
-{# 
-    Bu fayl `list_before_template` orqali ulanadi (admin.py'dagi
-    UserStatsAdmin.list_before_template ga qarang). U Unfold'ning
-    standart changelist sahifasini TO'LIQ almashtirmaydi — faqat
-    natijalar jadvali tepasiga shu blokni qo'shadi. Jadval, colspan,
-    checkbox va actions ustunlari 100% Unfold default holatida qoladi.
-#}
 
 {% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
     {% component "unfold/components/card.html" with class="lg:w-1/4" %}

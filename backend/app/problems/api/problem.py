@@ -1,5 +1,7 @@
+import random
+
 import msgspec
-from typing import Annotated
+from typing import Annotated, Literal
 from django_bolt import Router, Request, Depends,  LimitOffsetPagination, paginate
 from django_bolt.params import Query
 from django_bolt.exceptions import HTTPException
@@ -9,17 +11,117 @@ from django.db.models import Prefetch, Count, Q, ExpressionWrapper, FloatField, 
 from django.db.models.functions import Cast
 
 
-from problems.models import Problem, Category, Tags, Hint, Challenge, Function, Language, TestCase
+from problems.models import Like, Problem, Category, Tags, Hint, Challenge, Function, Language, TestCase
 from submissions.models import Submission
 from baseuser.authenticate import get_current_user_option
 from baseuser.models import BaseUser
 
-api = Router(tags=["admin problem api"])
+api = Router(tags=["Problem api"])
 
+
+# =================================================================
+# 1. RANDOM — /{slug}/ dan OLDIN yozilishi SHART!
+# =================================================================
+
+class RandomParams(msgspec.Struct):
+    exclude_slug: str | None = None
+
+
+@api.get("/random/")
+async def get_random_problem(
+    request: Request,
+    params: Annotated[RandomParams, Query()],
+):
+    queryset = Problem.objects.filter(is_active=True, lesson_id__isnull=True)
+
+    if params.exclude_slug:
+        queryset = queryset.exclude(slug=params.exclude_slug)
+
+    count = await queryset.acount()
+    if count == 0:
+        raise HTTPException(status_code=404, detail="Mavjud masala topilmadi")
+
+    random_offset = random.randint(0, count - 1)
+    problem = await queryset[random_offset : random_offset + 1].only(
+        "slug", "title"
+    ).afirst()
+
+    if not problem:
+        raise HTTPException(status_code=404, detail="Masala topilmadi")
+
+    return {"slug": problem.slug, "title": problem.title}
+
+
+# =================================================================
+# 2. NAVIGATION — Prev / Next
+# =================================================================
+
+class NavigationParams(msgspec.Struct):
+    direction: Literal["prev", "next"]
+
+
+@api.get("/{slug}/navigation/")
+async def get_problem_navigation(
+    request: Request,
+    slug: str,
+    params: Annotated[NavigationParams, Query()],
+):
+    current_id = await (
+        Problem.objects
+        .filter(slug=slug, is_active=True, lesson_id__isnull=True)
+        .values_list("id", flat=True)
+        .afirst()
+    )
+
+    if not current_id:
+        raise HTTPException(status_code=404, detail="Masala topilmadi")
+
+    if params.direction == "prev":
+        neighbor = await (
+            Problem.objects
+            .filter(is_active=True, lesson_id__isnull=True, id__lt=current_id)
+            .order_by("-id")
+            .only("slug", "title")
+            .afirst()
+        )
+    else:
+        neighbor = await (
+            Problem.objects
+            .filter(is_active=True, lesson_id__isnull=True, id__gt=current_id)
+            .order_by("id")
+            .only("slug", "title")
+            .afirst()
+        )
+
+    if not neighbor:
+        raise HTTPException(status_code=404, detail="Qo'shni masala topilmadi")
+
+    return {"slug": neighbor.slug, "title": neighbor.title}
+
+
+# =================================================================
+# 3. QOLGAN ENDPOINTLAR (avvalgidek)
+# =================================================================
+# @api.get("/")
+# @api.get("/{slug}/")
+# ...
+
+# =================================================================
+# 3. AVVALGI ENDPOINTLAR (o'zgarmaydi, faqat tartib muhim)
+# =================================================================
+
+# Eslatma: /random/ va /{slug}/navigation/  >>>  /{slug}/  dan OLDIN
+# turishi kerak, aks holda "random" slug sifatida tutib qolinadi.
+
+# @api.get("/")
+# async def list_problems(...): ...
+
+# @api.get("/{slug}/")
+# async def get_problem(...): ...
 
 # http://localhost:8000/api/v1/problems/categories/
 @api.get("/categories/")
-async def list_categories(request: Request, request_user: BaseUser | None = Depends(get_current_user_option)):
+async def list_categories(request: Request):
     return [
         {"id": c.id, "name": c.name, "slug": c.slug}
         async for c in Category.objects.only('id', 'name', 'slug').order_by('name')
@@ -27,19 +129,27 @@ async def list_categories(request: Request, request_user: BaseUser | None = Depe
 
 # http://localhost:8000/api/v1/problems/tags/
 @api.get("/tags/")
-async def list_tags(request: Request, request_user: BaseUser | None = Depends(get_current_user_option)):
+async def list_tags(request: Request):
     return [
         {"id": t.id, "name": t.name}
         async for t in Tags.objects.only('id', 'name').order_by('name')
     ]
 
-class FilterParams(msgspec.Struct):
-    limit: int = 10
-    offset: int = 0
-    search: str | None = None
-    category_id: int | None = None  # Kategoriya bo'yicha filter
-    tag_id: int | None = None       # Tag bo'yicha filter
 
+MAX_LIMIT = 50  # bir so'rovda maksimal necha ta element (DoS'dan himoya)
+
+class FilterParams(msgspec.Struct):
+    limit: Annotated[int, msgspec.Meta(ge=1, le=MAX_LIMIT)] = 20
+    offset: Annotated[int, msgspec.Meta(ge=0)] = 0
+    search: str | None = None
+    category_id: int | None = None
+    tag_id: int | None = None
+    difficulty: Literal["easy", "medium", "hard"] | None = None
+
+
+class PaginationParams(msgspec.Struct):
+    limit: Annotated[int, msgspec.Meta(ge=1, le=MAX_LIMIT)] = 10
+    offset: Annotated[int, msgspec.Meta(ge=0)] = 0
 
 # http://localhost:8000/api/v1/problems/
 # problems list page uchin
@@ -51,9 +161,10 @@ async def list_problems(
 ):
     # 1. OPTIMAL KESH: Agar birorta filter ishlatilsa, kesh ishlamaydi (dinamik ma'lumot uchun)
     use_cache = (
-        params.search is None 
-        and params.category_id is None 
+        params.search is None
+        and params.category_id is None
         and params.tag_id is None
+        and params.difficulty is None
     )
     cache_key = f"problems_list_{params.limit}_off_{params.offset}"
 
@@ -91,7 +202,9 @@ async def list_problems(
             
         if params.tag_id:
             queryset = queryset.filter(tags__id=params.tag_id)
-
+        # list_problems'da:
+        if params.difficulty:
+            queryset = queryset.filter(difficulty=params.difficulty)
         # 4. ORDER_BY va PAGINATSIYA
         queryset = queryset.order_by("-id")[params.offset : params.offset + params.limit]
         
@@ -129,7 +242,6 @@ async def list_problems(
             {
                 **p, 
                 "solved": p["id"] in solved_ids,
-                "bookmarked": False 
             } for p in problems_list
         ]
     else:
@@ -137,7 +249,6 @@ async def list_problems(
             {
                 **p, 
                 "solved": False,
-                "bookmarked": False
             } for p in problems_list
         ]
 
@@ -285,10 +396,6 @@ async def get_problem(
         "solved":     is_solved,
     }
 
-
-class PaginationParams(msgspec.Struct):
-    limit: int = 10
-    offset: int = 0
     
 # http://localhost:8000/api/v1/problems/{slug}/submission?limit=10&offset=0
 @api.get("/{slug}/submission")
@@ -321,6 +428,19 @@ async def get_submission_list_for_user(
     # 4. Ma'lumotlarni asinxron tozalash
     submissions_list = []
     async for sub in queryset:
+        """
+        {
+            "id": 139,
+            "status": false,
+            "verdict": "WA",
+            "passed_count": 0,
+            "total_count": 2,
+            "time": 135,
+            "memory": 19168000,
+            "lang": "python",
+            "created_at": "2026-07-24 12:49"
+        }
+        """
         submissions_list.append({
             "id": sub.id,
             "status": sub.status,
@@ -395,4 +515,179 @@ async def problems_stats(request: Request, request_user: BaseUser | None = Depen
             d: {"total": totals_by_diff.get(d, 0), "solved": solved_by_diff.get(d, 0)}
             for d in ("easy", "medium", "hard")
         },
+    }
+
+
+# http://localhost:8000/api/v1/problems/{slug}/likes/
+@api.get("/{slug}/likes/")
+async def get_like_count(
+    request: Request,
+    slug: str,
+    request_user: BaseUser | None = Depends(get_current_user_option)
+):
+    try:
+        # 1. Masalaning jami reaksiyalarini bitta SQL so'rovda hisoblaymiz (Annotate yordamida)
+        problem = await (
+            Problem.objects
+            .filter(slug=slug, is_active=True)
+            .annotate(
+                likes_count=Count("problem_likes", filter=Q(problem_likes__like_or_dislike=True)),
+                dislikes_count=Count("problem_likes", filter=Q(problem_likes__like_or_dislike=False))
+            )
+            .only("id")  # Faqat ID yetarli, ortiqcha ustunlarni yuklamaymiz (Tezkorlik uchun)
+            .aget()
+        )
+    except Problem.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Masala topilmadi")
+
+    # 2. Foydalanuvchi tizimga kirgan bo'lsa, uning joriy reaksiyasini tekshiramiz
+    user_reaction = None
+    if request_user:
+        try:
+            like_obj = await Like.objects.only("like_or_dislike").aget(
+                problem_id=problem.id, 
+                user_id=request_user.id
+            )
+            user_reaction = "like" if like_obj.like_or_dislike else "dislike"
+        except Like.DoesNotExist:
+            user_reaction = None
+
+    # 3. Natijani qaytaramiz
+    return {
+        "likes": problem.likes_count,
+        "dislikes": problem.dislikes_count,
+        "user_reaction": user_reaction  # "like", "dislike" yoki null
+    }
+
+
+
+
+class LikeToggleIn(msgspec.Struct):
+    # True = Like, False = Dislike
+    like_or_dislike: bool = True
+
+
+# http://localhost:8000/api/v1/problems/{slug}/likes/
+@api.post("/{slug}/likes/")
+async def toggle_problem_like(
+    request: Request,
+    slug: str,
+    payload: LikeToggleIn,
+    request_user: BaseUser | None = Depends(get_current_user_option)
+):
+    # 1. Foydalanuvchi tizimga kirganligini tekshirish (Anonim foydalanuvchilar reaksiya qoldirolmaydi)
+    if not request_user:
+        raise HTTPException(status_code=401, detail="Ushbu amalni bajarish uchun tizimga kiring")
+
+    # 2. Masala mavjudligini tekshirish (Faqat id yuklanadi, tezkorlik uchun)
+    try:
+        problem = await Problem.objects.filter(slug=slug, is_active=True).only("id").aget()
+    except Problem.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Masala topilmadi")
+
+    # 3. 'unique_together' cheklovini hisobga olib, aget_or_create'dan foydalanamiz
+    like_obj, created = await Like.objects.aget_or_create(
+        problem_id=problem.id,
+        user_id=request_user.id,
+        defaults={"like_or_dislike": payload.like_or_dislike}
+    )
+
+    action_status = "created"
+    
+    if not created:
+        # Agar foydalanuvchi avval bosgan reaksiyasini yana qayta bossa -> Reaksiyani o'chiramiz (Toggle)
+        if like_obj.like_or_dislike == payload.like_or_dislike:
+            await like_obj.adelete()
+            action_status = "deleted"
+        # Agar reaksiyani o'zgartirsa (masalan Like -> Dislike) -> Yangilaymiz
+        else:
+            like_obj.like_or_dislike = payload.like_or_dislike
+            await like_obj.asave()
+            action_status = "updated"
+
+    # 4. Foydalanuvchiga real-vaqtdagi yangi jami hisob-kitobni bitta so'rovda qaytaramiz
+    updated_stats = await (
+        Problem.objects
+        .filter(id=problem.id)
+        .annotate(
+            likes_count=Count("problem_likes", filter=Q(problem_likes__like_or_dislike=True)),
+            dislikes_count=Count("problem_likes", filter=Q(problem_likes__like_or_dislike=False))
+        )
+        .only("id")
+        .aget()
+    )
+
+    # Joriy foydalanuvchining yangi reaksiya holati
+    current_reaction = None
+    if action_status != "deleted":
+        current_reaction = "like" if payload.like_or_dislike else "dislike"
+
+    return {
+        "status": action_status,
+        "likes": updated_stats.likes_count,
+        "dislikes": updated_stats.dislikes_count,
+        "user_reaction": current_reaction
+    }
+
+
+@api.get("/submission/{id}")
+async def get_submission_detail(
+    request: Request,
+    id: int,
+    request_user: BaseUser | None = Depends(get_current_user_option)
+):
+    """
+    Bitta taqdimotning batafsil ma'lumotlari.
+    Faqat o'zining yoki admin foydalanuvchining submission'ini ko'rish mumkin.
+    """
+    try:
+        submission = await (
+            Submission.objects
+            .select_related("user", "problem", "language")
+            .aget(id=id)
+        )
+    except Submission.DoesNotExist:
+        raise HTTPException(status_code=404, detail="Taqdimot topilmadi")
+
+    # XAVFSIZLIK: Faqat o'zining submission'ini ko'rish (admin bo'lmasa)
+    if request_user is None:
+        raise HTTPException(status_code=401, detail="Tizimga kiring")
+    
+    if submission.user_id != request_user.id and not request_user.is_staff:
+        raise HTTPException(status_code=403, detail="Bu ma'lumotni ko'rish huquqingiz yo'q")
+
+    # NULL safety bilan ma'lumotlarni tayyorlash
+    user_display = "Noma'lum"
+    if submission.user:
+        user_display = submission.user.username or str(submission.user.telegram_id or "Noma'lum")
+
+    problem_data = {"id": None, "title": "Noma'lum"}
+    if submission.problem:
+        problem_data = {
+            "id": submission.problem.id,
+            "title": submission.problem.title,
+        }
+
+    language_data = {"id": None, "name": "Noma'lum"}
+    if submission.language:
+        language_data = {
+            "id": submission.language.id,
+            "name": submission.language.name,
+        }
+
+    return {
+        "id": submission.id,
+        "user": user_display,
+        "xp": submission.problem.xp if submission.problem else 0,
+        "problem": problem_data,
+        "language": language_data,
+        "status": submission.status,
+        "verdict": submission.verdict or "WA",
+        "passed": submission.passed_test_count,
+        "total": submission.total_test_count,
+        "time": submission.execution_time if submission.execution_time is not None else "-",
+        "memory": submission.execution_memory if submission.execution_memory is not None else "-",
+        "code": submission.code or "",
+        "test_results": submission.test_results or [],
+        "submitted_at": submission.submitted_at.strftime("%Y-%m-%d %H:%M") if submission.submitted_at else None,
     }

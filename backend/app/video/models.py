@@ -8,7 +8,6 @@ from django.conf import settings
 from django.core.files.base import ContentFile
 from django.core.exceptions import ValidationError
 
-
 def validate_image_extension(value):
     """Admin noto'g'ri format yoki juda og'ir rasm yuklashini to'sish"""
     ext = os.path.splitext(value.name)[1]

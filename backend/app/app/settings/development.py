@@ -37,3 +37,18 @@ ALLOWED_HOSTS = ['*']
 #         },
 #     },
 # }
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+        },
+    },
+    'loggers': {
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'DEBUG',  # 💡 SQL so'rovlarini terminalda ko'rish uchun
+        },
+    },
+}

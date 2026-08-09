@@ -624,7 +624,7 @@ async def get_my_sessions_for_test(
 # =========================================================
 #   10. UMUMIY STATISTIKA WIDJETI   (GET /stats/)
 # =========================================================
-@session_api.get("/stats/")
+@session_api.get("/stats")
 async def test_stats(request: Request, request_user: BaseUser | None = Depends(get_current_user_option)):
     cache_key = "tests_stats_total_active"
     total_active = await cache.aget(cache_key)

@@ -1,169 +1,242 @@
 {% load i18n unfold %}
 
-<!-- Google Material Symbols global ulanishi -->
-<link rel="stylesheet" href="https://googleapis.com" />
+<!-- Material Symbols -->
+<link rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
 
 <div class="mb-6 flex flex-col gap-4">
 
-    {# ---------- 1-QATOR: KPI CARD LAR ---------- #}
-    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
+    {# Statistika barcha filtrlangan natijalar bo'yicha #}
+    <div class="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1 mb-1">
+        <span class="material-symbols-outlined text-sm">info</span>
+        <span>{% trans "Statistika filtrlangan barcha natijalar bo'yicha" %}</span>
+    </div>
 
-        {# Jami yechimlar kartasi #}
+    {# 1-QATOR: KPI KARTALARI #}
+    {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
         {% component "unfold/components/card.html" with class="lg:w-1/4" %}
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-3xl text-primary-600 dark:text-primary-400">history</span>
                 <div class="flex flex-col">
-                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Jami Yechimlar" %}{% endcomponent %}
-                    {% component "unfold/components/title.html" with class="text-2xl font-bold" %}{{ total_submissions }}{% endcomponent %}
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}
+                        {% trans "Jami Yechimlar" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold" %}
+                        {{ total_submissions }}
+                    {% endcomponent %}
                 </div>
             </div>
         {% endcomponent %}
 
-        {# Accepted kartasi #}
         {% component "unfold/components/card.html" with class="lg:w-1/4 bg-green-50 dark:bg-green-900/20" %}
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-3xl text-green-500">task_alt</span>
                 <div class="flex flex-col">
-                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Accepted (AC)" %}{% endcomponent %}
-                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-green-600 dark:text-green-400" %}{{ ac_count }}{% endcomponent %}
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}
+                        {% trans "Accepted (AC)" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-green-600 dark:text-green-400" %}
+                        {{ ac_count }}
+                    {% endcomponent %}
                 </div>
             </div>
         {% endcomponent %}
 
-        {# Wrong Answer kartasi #}
         {% component "unfold/components/card.html" with class="lg:w-1/4 bg-red-50 dark:bg-red-900/20" %}
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-3xl text-red-500">cancel</span>
                 <div class="flex flex-col">
-                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "Wrong Answer (WA)" %}{% endcomponent %}
-                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-red-600 dark:text-red-400" %}{{ wa_count }}{% endcomponent %}
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}
+                        {% trans "Wrong Answer (WA)" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-red-600 dark:text-red-400" %}
+                        {{ wa_count }}
+                    {% endcomponent %}
                 </div>
             </div>
         {% endcomponent %}
 
-        {# O'rtacha ijro vaqti kartasi #}
         {% component "unfold/components/card.html" with class="lg:w-1/4 bg-purple-50 dark:bg-purple-900/20" %}
             <div class="flex items-center gap-3">
                 <span class="material-symbols-outlined text-3xl text-purple-500">speed</span>
                 <div class="flex flex-col">
-                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}{% trans "O'rtacha Vaqt" %}{% endcomponent %}
-                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-purple-600 dark:text-purple-400" %}{{ avg_time }} ms{% endcomponent %}
+                    {% component "unfold/components/text.html" with class="text-sm text-gray-500" %}
+                        {% trans "O'rtacha Vaqt" %}
+                    {% endcomponent %}
+                    {% component "unfold/components/title.html" with class="text-2xl font-bold text-purple-600 dark:text-purple-400" %}
+                        {{ avg_time }} ms
+                    {% endcomponent %}
                 </div>
             </div>
         {% endcomponent %}
-
     {% endcomponent %}
 
-    {# ---------- 2-QATOR: CHART.JS GRAFIKLARI (DOUGHNUT + LINE) ---------- #}
+    {# 2-QATOR: GRAFIKLAR #}
     {% component "unfold/components/flex.html" with class="gap-4 flex-col lg:flex-row" %}
-        
-        {# Verdictlar taqsimoti aylanma grafik #}
         {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Hukmlar (Verdict) taqsimoti") %}
+            {% if total_submissions > 0 %}
             <div class="flex flex-col sm:flex-row items-center justify-around gap-6 pt-2">
                 <div class="relative w-full max-w-[200px]" style="height: 200px;">
                     <canvas id="verdictDoughnutChart"></canvas>
                 </div>
-                
-                {# 🚀 KATTALASHTIRILGAN O'LCHAMDAGI RO'YXAT BLOKI #}
                 <div class="flex flex-col gap-4 w-full max-w-[280px]">
                     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
                         <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
-                            <span class="material-symbols-outlined text-xl text-green-600 w-6 h-6 flex items-center justify-center">check_circle</span>
+                            <span class="material-symbols-outlined text-xl text-green-600">check_circle</span>
                             {% trans "Accepted" %}
                         </span>
                         <span class="text-green-600 font-extrabold text-lg">{{ ac_count }} ta</span>
                     </div>
                     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
                         <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
-                            <span class="material-symbols-outlined text-xl text-red-500 w-6 h-6 flex items-center justify-center">cancel</span>
+                            <span class="material-symbols-outlined text-xl text-red-500">cancel</span>
                             {% trans "Wrong Answer" %}
                         </span>
                         <span class="text-red-500 font-extrabold text-lg">{{ wa_count }} ta</span>
                     </div>
                     <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
                         <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
-                            <span class="material-symbols-outlined text-xl text-amber-500 w-6 h-6 flex items-center justify-center">schedule</span>
+                            <span class="material-symbols-outlined text-xl text-amber-500">schedule</span>
                             {% trans "Time Limit" %}
                         </span>
                         <span class="text-amber-500 font-extrabold text-lg">{{ tle_count }} ta</span>
                     </div>
+                    {% if other_count > 0 %}
+                    <div class="flex items-center justify-between border-b border-gray-200 dark:border-gray-800 pb-2">
+                        <span class="flex items-center gap-2 font-semibold text-gray-800 dark:text-gray-200 text-base">
+                            <span class="material-symbols-outlined text-xl text-purple-500">help</span>
+                            {% trans "Boshqalar" %}
+                        </span>
+                        <span class="text-purple-500 font-extrabold text-lg">{{ other_count }} ta</span>
+                    </div>
+                    {% endif %}
                 </div>
             </div>
+            {% else %}
+            <div class="flex items-center justify-center py-12 text-gray-400">
+                <span class="material-symbols-outlined text-4xl mr-2">bar_chart_off</span>
+                <span>{% trans "Ko'rsatish uchun ma'lumot yo'q" %}</span>
+            </div>
+            {% endif %}
         {% endcomponent %}
 
-        {# Urinishlar oylik dinamikasi chiziqli grafik #}
         {% component "unfold/components/card.html" with class="lg:w-1/2" title=_("Yechimlar yuborilish dinamikasi (Oylik)") %}
+            {% if chart_labels_json != "[]" %}
             <div class="relative w-full" style="height: 220px;">
                 <canvas id="submissionLineChart"></canvas>
             </div>
+            {% else %}
+            <div class="flex items-center justify-center py-12 text-gray-400">
+                <span class="material-symbols-outlined text-4xl mr-2">ssid_chart</span>
+                <span>{% trans "Oylik ma'lumot mavjud emas" %}</span>
+            </div>
+            {% endif %}
         {% endcomponent %}
-
     {% endcomponent %}
-
 </div>
+
+<!-- XAVFSIZ JSON uzatish -->
+{{ chart_labels_json|json_script:"chart-labels-data" }}
+{{ chart_values_json|json_script:"chart-values-data" }}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
 
 <script>
     document.addEventListener("DOMContentLoaded", function () {
         const isDark = document.documentElement.classList.contains('dark');
-        
-        // 1. Verdict Doughnut Chart
-        const ctxDoughnut = document.getElementById('verdictDoughnutChart').getContext('2d');
-        new Chart(ctxDoughnut, {
-            type: 'doughnut',
-            data: {
-                labels: ["Accepted", "Wrong Answer", "Time Limit", "Boshqalar"],
-                datasets: [{
-                    data: [{{ ac_count|default:0 }}, {{ wa_count|default:0 }}, {{ tle_count|default:0 }}, {{ other_count|default:0 }}],
-                    backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#a855f7'],
-                    borderWidth: isDark ? 3 : 1,
-                    borderColor: isDark ? '#1f2937' : '#ffffff'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                cutout: '70%'
-            }
-        });
+        const gridColor = isDark ? 'rgba(156, 163, 175, 0.05)' : 'rgba(156, 163, 175, 0.1)';
+        const tickColor = isDark ? '#9ca3af' : '#4b5563';
 
-        // 2. Submission Line Chart
-        const ctxLine = document.getElementById('submissionLineChart').getContext('2d');
-        const labels = JSON.parse('{{ chart_labels_json|safe }}');
-        const dataValues = JSON.parse('{{ chart_values_json|safe }}');
+        const labelsData = JSON.parse(document.getElementById('chart-labels-data').textContent);
+        const valuesData = JSON.parse(document.getElementById('chart-values-data').textContent);
 
-        new Chart(ctxLine, {
-            type: 'line',
-            data: {
-                labels: labels,
-                datasets: [{
-                    data: dataValues,
-                    borderColor: '#3b82f6',
-                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
-                    borderWidth: 3,
-                    fill: true,
-                    tension: 0.3,
-                    pointBackgroundColor: '#3b82f6'
-                }]
-            },
-            options: {
-                responsive: true,
-                maintainAspectRatio: false,
-                plugins: { legend: { display: false } },
-                scales: {
-                    y: {
-                        beginAtZero: true,
-                        grid: { color: isDark ? 'rgba(156, 163, 175, 0.05)' : 'rgba(156, 163, 175, 0.1)' },
-                        ticks: { color: isDark ? '#9ca3af' : '#4b5563' }
+        // Doughnut Chart
+        const dCanvas = document.getElementById('verdictDoughnutChart');
+        if (dCanvas) {
+            new Chart(dCanvas.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: ["Accepted", "Wrong Answer", "Time Limit", "Boshqalar"],
+                    datasets: [{
+                        data: [
+                            {{ ac_count|default:0 }},
+                            {{ wa_count|default:0 }},
+                            {{ tle_count|default:0 }},
+                            {{ other_count|default:0 }}
+                        ],
+                        backgroundColor: ['#22c55e', '#ef4444', '#f59e0b', '#a855f7'],
+                        borderWidth: isDark ? 3 : 1,
+                        borderColor: isDark ? '#1f2937' : '#ffffff',
+                        hoverOffset: 4
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    const total = ctx.dataset.data.reduce((a, b) => a + b, 0);
+                                    const pct = total > 0 ? Math.round((ctx.raw / total) * 100) : 0;
+                                    return `${ctx.label}: ${ctx.raw} ta (${pct}%)`;
+                                }
+                            }
+                        }
                     },
-                    x: {
-                        grid: { display: false },
-                        ticks: { color: isDark ? '#9ca3af' : '#4b5563' }
+                    cutout: '70%'
+                }
+            });
+        }
+
+        // Line Chart
+        const lCanvas = document.getElementById('submissionLineChart');
+        if (lCanvas && labelsData.length > 0) {
+            new Chart(lCanvas.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: labelsData,
+                    datasets: [{
+                        label: "{% trans 'Yechimlar soni' %}",
+                        data: valuesData,
+                        borderColor: '#3b82f6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        borderWidth: 3,
+                        fill: true,
+                        tension: 0.3,
+                        pointBackgroundColor: '#3b82f6',
+                        pointRadius: 4,
+                        pointHoverRadius: 6
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(ctx) {
+                                    return `${ctx.parsed.y} ta yechim`;
+                                }
+                            }
+                        }
+                    },
+                    interaction: { intersect: false, mode: 'index' },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: gridColor },
+                            ticks: { color: tickColor, stepSize: 1, precision: 0 }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: tickColor }
+                        }
                     }
                 }
-            }
-        });
+            });
+        }
     });
 </script>

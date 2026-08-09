@@ -8,6 +8,7 @@ from django.utils.timezone import now, timedelta
 from unfold.admin import ModelAdmin, TabularInline
 from unfold.decorators import display
 from mdeditor.fields import MDEditorWidget
+from mdeditor.fields import MDTextField
 import json
 
 from .models import Course, Lecture, Modul, Lesson, Enrollment
@@ -21,7 +22,7 @@ from baseuser.utils.admin import BaseOwnerAdmin, BaseOwnerInline
 class LessonInline(BaseOwnerInline):
     model = Lesson
     extra = 1
-    fields = ('title', 'slug')
+    fields = ('title', 'slug', 'order', 'is_active')
     prepopulated_fields = {'slug': ('title',)}
     tab = True
     classes = ('collapse',)
@@ -30,7 +31,16 @@ class LessonInline(BaseOwnerInline):
 class ModulInline(BaseOwnerInline):
     model = Modul
     extra = 1
-    fields = ('title', 'slug')
+    fields = ('title', 'slug', 'order', 'is_active')
+    prepopulated_fields = {'slug': ('title',)}
+    tab = True
+    classes = ('collapse',)
+
+
+class LectureInline(BaseOwnerInline):
+    model = Lecture
+    extra = 1
+    fields = ('title', 'slug', 'order', 'xp', 'video')
     prepopulated_fields = {'slug': ('title',)}
     tab = True
     classes = ('collapse',)
@@ -49,21 +59,21 @@ class CourseAdmin(BaseOwnerAdmin):
         'is_active',
         'display_image',
     )
-    list_filter = ('is_active', 'created_at')
+    list_filter = ('is_active', 'level', 'created_at')
     list_editable = ('is_active',)
-    search_fields = ('title', 'description', 'slug')
+    search_fields = ('title', 'description', 'slug', 'owner__username')
     prepopulated_fields = {'slug': ('title',)}
     list_per_page = 25
     ordering = ('-created_at',)
     inlines = [ModulInline]
 
     formfield_overrides = {
-        models.TextField: {"widget": MDEditorWidget},
+        MDTextField: {"widget": MDEditorWidget},
     }
 
     fieldsets = (
         ("📌 Asosiy ma'lumotlar", {
-            'fields': (('title', 'slug'), 'description', 'is_active'),
+            'fields': (('title', 'slug'), 'description', 'level', 'is_active'),
         }),
         ("💰 Narx va Chegirmalar", {
             'fields': (('price', 'discount_price'),),
@@ -73,7 +83,7 @@ class CourseAdmin(BaseOwnerAdmin):
             'fields': ('intro_video',),
         }),
         ("📊 Statistika", {
-            'fields': ('total_lessons_count', 'total_test_count'),
+            'fields': ('total_modules_count', 'total_lessons_count', 'total_test_count'),
             'classes': ('collapse',),
         }),
         ("👤 Yaratuvchi", {
@@ -82,7 +92,7 @@ class CourseAdmin(BaseOwnerAdmin):
         }),
     )
 
-    readonly_fields = ('total_lessons_count', 'total_test_count')
+    readonly_fields = ('total_modules_count', 'total_lessons_count', 'total_test_count')
 
     # ── Display metodlar ──────────────────────────────────────
 
@@ -115,15 +125,13 @@ class CourseAdmin(BaseOwnerAdmin):
             modul_count, student_count
         )
 
-    @display(description="Muqova")
+    @display(description="Rasm")
     def display_image(self, obj):
-        if hasattr(obj, 'image') and obj.image:
-            return format_html(
-                '<img src="{}" style="width:60px;height:40px;object-fit:cover;'
-                'border-radius:6px;border:1px solid #e2e8f0;" />',
-                obj.image.url
-            )
-        return format_html('<span style="color:#94a3b8;font-size:12px;">📷 Yo\'q</span>')
+        # Kurs modelida image maydoni yo'q, shuning uchun placeholder
+        return format_html(
+            '<span style="color:#94a3b8;font-size:12px;background:#f1f5f9;'
+            'padding:4px 10px;border-radius:4px;">📷 Rasm yo\'q</span>'
+        )
 
     # ── Changelist ────────────────────────────────────────────
 
@@ -147,18 +155,19 @@ class ModulAdmin(BaseOwnerAdmin):
         'title_display',
         'course_display',
         'lessons_count_display',
+        'is_active',
         'created_at_formatted',
     )
-    list_filter = ('course',)
-    search_fields = ('title', 'course__title')
+    list_filter = ('course', 'is_active')
+    search_fields = ('title', 'course__title', 'owner__username')
     list_per_page = 25
-    ordering = ('-created_at',)
+    ordering = ('course', 'order', 'id')
     inlines = [LessonInline]
     prepopulated_fields = {'slug': ('title',)}
 
     fieldsets = (
         ("📚 Modul Ma'lumotlari", {
-            'fields': (('title', 'slug'), 'course'),
+            'fields': (('title', 'slug'), 'course', 'order', 'is_active'),
         }),
         ("👤 Yaratuvchi", {
             'fields': ('owner',),
@@ -218,23 +227,27 @@ class LessonAdmin(BaseOwnerAdmin):
         'title_display',
         'modul_display',
         'total_tasks_count',
+        'is_active',
+        'estimated_minutes',
         'owner_display',
     )
-    list_filter = ('modul__course', 'modul')
-    search_fields = ('title', 'modul__title', 'modul__course__title')
+    list_filter = ('modul__course', 'modul', 'is_active')
+    search_fields = ('title', 'modul__title', 'modul__course__title', 'owner__username')
     list_per_page = 30
-    ordering = ('-id',)
+    ordering = ('modul', 'order', 'id')
     prepopulated_fields = {'slug': ('title',)}
 
-    # 🔒 KALIT QADAM: Editable=False bo'lgan maydonni readonly ro'yxatiga olamiz
     readonly_fields = ('total_tasks_count',)
 
     fieldsets = (
         ("📝 Dars Ma'lumotlari", {
-            'fields': (('title', 'slug'), 'modul'),
+            'fields': (('title', 'slug'), 'modul', 'order', 'is_active'),
+        }),
+        ("⏱️ Vaqt", {
+            'fields': ('estimated_minutes',),
         }),
         ("📊 Statistika", {
-            'fields': ('total_tasks_count',),  # Endi bu yerda xato bermaydi!
+            'fields': ('total_tasks_count',),
             'classes': ('collapse',),
         }),
         ("👤 Yaratuvchi", {
@@ -276,7 +289,10 @@ class LessonAdmin(BaseOwnerAdmin):
         super().save_model(request, obj, form, change)
 
 
+# ============================================================
 # LECTURE ADMIN
+# ============================================================
+
 @admin.register(Lecture)
 class LectureAdmin(BaseOwnerAdmin):
     list_display = (
@@ -285,16 +301,17 @@ class LectureAdmin(BaseOwnerAdmin):
         'display_type_badge',
         'xp_badge',
         'order_badge',
+        'reading_time',
         'updated_at_formatted',
     )
     list_filter = ('lesson__modul__course', 'lesson', 'created_at')
-    search_fields = ('title', 'body', 'lesson__title')
+    search_fields = ('title', 'body', 'lesson__title', 'owner__username')
     prepopulated_fields = {'slug': ('title',)}
     list_per_page = 40
-    ordering = ('lesson', 'order', '-id')
+    ordering = ('lesson', 'order', 'id')
 
     formfield_overrides = {
-        models.TextField: {"widget": MDEditorWidget},
+        MDTextField: {"widget": MDEditorWidget},
     }
 
     fieldsets = (
@@ -304,6 +321,9 @@ class LectureAdmin(BaseOwnerAdmin):
         ("🏆 Mukofot tizimi", {
             'fields': ('xp',),
             'description': "Ushbu ma'ruza muvaffaqiyatli yakunlanganda foydalanuvchiga beriladigan tajriba (XP) ochkosi.",
+        }),
+        ("⏱️ Vaqt", {
+            'fields': ('reading_time',),
         }),
         ("🎥 Video darslik integratsiyasi", {
             'fields': ('video',),
@@ -319,7 +339,6 @@ class LectureAdmin(BaseOwnerAdmin):
         }),
     )
 
-    # ✅ owner ni avtomatik o'rnatish
     def save_model(self, request, obj, form, change):
         if not change:
             obj.owner = request.user
@@ -355,9 +374,8 @@ class LectureAdmin(BaseOwnerAdmin):
             '📄 Faqat Matn</span>'
         )
 
-    @display(description="Mukofot XP")  # ✅ Yangi: Rangli chiroyli XP ko'rinishi
+    @display(description="Mukofot XP")
     def xp_badge(self, obj):
-        # XP miqdoriga qarab rangni o'zgartirish (ko'proq XP beradigan darslar yorqinroq ko'rinadi)
         bg_color = "#fef3c7" if obj.xp < 30 else ("#ffedd5" if obj.xp < 70 else "#fee2e2")
         text_color = "#b45309" if obj.xp < 30 else ("#c2410c" if obj.xp < 70 else "#b91c1c")
         return format_html(
@@ -370,16 +388,21 @@ class LectureAdmin(BaseOwnerAdmin):
     def order_badge(self, obj):
         return format_html('<b style="color:#475569;">#{}</b>', obj.order)
 
+    @display(description="O'qish vaqti")
+    def reading_time(self, obj):
+        return format_html('<span style="color:#64748b;">{} daq</span>', obj.reading_time)
+
     @display(description="Oxirgi yangilanish")
     def updated_at_formatted(self, obj):
         return obj.updated_at.strftime("%d-%m-%Y %H:%M") if obj.updated_at else "—"
 
+
 # ============================================================
-# ENROLLMENT ADMIN (owner yo'q → ModelAdmin)
+# ENROLLMENT ADMIN
 # ============================================================
 
 @admin.register(Enrollment)
-class EnrollmentAdmin(ModelAdmin):  # ✅ unfold.admin.ModelAdmin
+class EnrollmentAdmin(ModelAdmin):
     list_display = (
         'user_display',
         'course_display',
@@ -387,7 +410,7 @@ class EnrollmentAdmin(ModelAdmin):  # ✅ unfold.admin.ModelAdmin
         'progress_display',
         'created_at_formatted',
     )
-    list_filter = ('is_paid', 'is_completed', 'course', 'created_at')
+    list_filter = ('is_paid', 'course', 'created_at')
     search_fields = ('user__username', 'user__full_name', 'course__title')
     list_per_page = 30
     ordering = ('-created_at',)
@@ -400,20 +423,17 @@ class EnrollmentAdmin(ModelAdmin):  # ✅ unfold.admin.ModelAdmin
         ("💰 To'lov", {
             'fields': ('is_paid',),
         }),
-        ("📊 Progress", {
-            'fields': (('finished_darslar_soni', 'finished_test_soni'), 'is_completed', 'completed_at'),
-        }),
         ("📅 Vaqt", {
             'fields': (('created_at', 'updated_at'),),
             'classes': ('collapse',),
         }),
     )
 
-    readonly_fields = ('created_at', 'updated_at', 'completed_at')
+    readonly_fields = ('created_at', 'updated_at')
 
     @display(description="Foydalanuvchi", header=True)
     def user_display(self, obj):
-        name = obj.user.full_name or obj.user.username or f"User#{obj.user.telegram_id}"
+        name = obj.user.full_name or obj.user.username or f"User#{obj.user.id}"
         return [name, f"Telegram: @{obj.user.username or 'mavjud emas'}"]
 
     @display(description="Kurs")
@@ -439,7 +459,8 @@ class EnrollmentAdmin(ModelAdmin):  # ✅ unfold.admin.ModelAdmin
     @display(description="Progress")
     def progress_display(self, obj):
         total = obj.course.total_lessons_count or 1
-        pct = int((obj.finished_darslar_soni / total) * 100) if total > 0 else 0
+        # Hozircha faqat to'lov holatiga qarab progress ko'rsatamiz
+        pct = 100 if obj.is_paid else 0
         color = '#22c55e' if pct >= 80 else '#f59e0b' if pct >= 50 else '#3b82f6'
         return format_html(
             '<div style="display:flex;align-items:center;gap:8px;">'
@@ -485,6 +506,5 @@ class EnrollmentAdmin(ModelAdmin):  # ✅ unfold.admin.ModelAdmin
             }),
             "total_enrollments":     Enrollment.objects.count(),
             "paid_enrollments":      Enrollment.objects.filter(is_paid=True).count(),
-            "completed_enrollments": Enrollment.objects.filter(is_completed=True).count(),
         })
         return super().changelist_view(request, extra_context=extra_context)

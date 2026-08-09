@@ -1,0 +1,154 @@
+{% load i18n unfold %}
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col xl:flex-row" %}
+
+    {% component "unfold/components/card.html" with class="xl:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-primary-600 text-base align-middle mr-1">
+                school
+            </span>
+            {% trans "Jami kurs progresslari" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ cs_total|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="xl:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-green-600 text-base align-middle mr-1">
+                task_alt
+            </span>
+            {% trans "Tugatilgan kurslar" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ cs_completed|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="xl:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-amber-600 text-base align-middle mr-1">
+                pending_actions
+            </span>
+            {% trans "Jarayonda" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ cs_in_progress|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="xl:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-sky-600 text-base align-middle mr-1">
+                analytics
+            </span>
+            {% trans "Yakunlanish foizi" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ cs_percent|default:0 }}%
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="xl:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-red-600 text-base align-middle mr-1">
+                today
+            </span>
+            {% trans "Bugun tugatilgan" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ cs_today|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+{% endcomponent %}
+
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
+
+    {% component "unfold/components/card.html" with class="lg:w-2/5" title=_("Kurslar statistikasi") %}
+
+        <div style="position:relative;height:260px;">
+            <canvas id="courseStatusChart"></canvas>
+        </div>
+
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="lg:w-3/5" title=_("Eng ko'p tugatilgan kurslar") %}
+
+        {% component "unfold/components/table.html" with table=cs_top_table card_included=1 striped=1 %}
+        {% endcomponent %}
+
+    {% endcomponent %}
+
+{% endcomponent %}
+
+
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.4/chart.umd.min.js"></script>
+
+<script>
+(function(){
+
+    function initCourseStatusChart(){
+
+        if(typeof Chart==="undefined"){
+            setTimeout(initCourseStatusChart,100);
+            return;
+        }
+
+        const canvas=document.getElementById("courseStatusChart");
+
+        if(!canvas || canvas.dataset.rendered){
+            return;
+        }
+
+        canvas.dataset.rendered="1";
+
+        const dark=document.documentElement.classList.contains("dark");
+
+        new Chart(canvas,{
+            type:"doughnut",
+            data:{
+                labels:[
+                    "Completed",
+                    "In Progress"
+                ],
+                datasets:[{
+                    data:[
+                        {{ cs_completed|default:0 }},
+                        {{ cs_in_progress|default:0 }}
+                    ],
+                    backgroundColor:[
+                        "#22c55e",
+                        "#f59e0b"
+                    ],
+                    borderWidth:0,
+                    hoverOffset:8
+                }]
+            },
+            options:{
+                responsive:true,
+                maintainAspectRatio:false,
+                cutout:"72%",
+                plugins:{
+                    legend:{
+                        position:"bottom",
+                        labels:{
+                            color:dark ? "#CBD5E1" : "#475569",
+                            usePointStyle:true,
+                            pointStyle:"circle",
+                            padding:20
+                        }
+                    }
+                }
+            }
+        });
+
+    }
+
+    document.addEventListener("DOMContentLoaded",initCourseStatusChart);
+
+})();
+</script>

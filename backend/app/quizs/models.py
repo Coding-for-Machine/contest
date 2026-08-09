@@ -7,6 +7,7 @@ from django.utils import timezone
 from video.models import Video
 from baseuser.models import BaseUser
 from mdeditor.fields import MDTextField
+from centers.models import CenterScopedMixin
 
 class TestEnrollment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
@@ -99,6 +100,12 @@ class TestSession(models.Model):
         help_text="Ushbu seansda foydalanuvchi hozirgacha ishlatgan lifeline'lar soni "
                   "(faqat serverda hisoblanadi, frontend hisoblagichiga ishonilmaydi)."
     )
+    selected_question_ids = models.JSONField(
+        default=list, 
+        blank=True,
+        verbose_name="Tanlangan savollar IDlari",
+        help_text="Agar random savollar ishlatilgan bo'lsa, shu seansda qaysi savollar berilgani."
+    )
     started_at = models.DateTimeField(
         auto_now_add=True, 
         verbose_name="Boshlangan vaqti",
@@ -187,7 +194,7 @@ class TestSession(models.Model):
 
         return session.score
 
-class Test(models.Model):
+class Test(CenterScopedMixin, models.Model):
     """Imtihonlar va bob (Modul) yakunidagi testlarni boshqaruvchi asosiy model."""
 
     modul = models.ForeignKey(
@@ -308,8 +315,8 @@ class Test(models.Model):
     updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
     
     class Meta:
-        verbose_name = "❓ Savol"
-        verbose_name_plural = "❔ Savollar"
+        verbose_name = "📋 Test"
+        verbose_name_plural = "📋 Testlar"
         ordering = ["-id", "created_at"]
         
     def __str__(self):
@@ -483,6 +490,13 @@ class Choice(models.Model):
         verbose_name = "🔘 Javob varianti"
         verbose_name_plural = "✅ Javob variantlari"
         ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['question'],
+                condition=models.Q(is_correct=True),
+                name='unique_correct_choice_per_question'
+            ),
+        ]
 
     def __str__(self):
         # Markdown belgilari xalaqit bermasligi uchun qisqartirib ko'rsatish
@@ -491,6 +505,7 @@ class Choice(models.Model):
 
     def clean(self):
         super().clean()
+        
         if self.is_correct and self.question_id:
             qs = Choice.objects.filter(question=self.question, is_correct=True)
             if self.pk:

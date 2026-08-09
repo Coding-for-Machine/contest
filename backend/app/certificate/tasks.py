@@ -1,146 +1,245 @@
-# certificates/tasks.py
-
 import logging
-from celery import shared_task
-from celery.exceptions import Retry
+
+from celery import shared_task, group
+from celery.exceptions import MaxRetriesExceededError
 
 logger = logging.getLogger(__name__)
 
 
-@shared_task(
-    bind=True,
-    max_retries=3,
-    default_retry_delay=10,
-    name="certificates.tasks.generate_certificate_pdf",
-)
-def generate_certificate_pdf(self, certificate_id: str):
-    """
-    Sertifikat generatsiya - optimallashtirilgan
-    """
-    from .models import Certificate
-    
-    try:
-        cert = Certificate.objects.select_related(
-            "user",
-            "course",
-            "test",
-            "test_session",
-            "contest",
-            "contest_registration",
-        ).get(pk=certificate_id)
-        
-        update_fields = {}
-        
-        # QR generatsiya
-        if not cert.qr_code_image:
-            try:
-                cert._generate_qr()
-                update_fields["qr_code_image"] = cert.qr_code_image
-                logger.info(f"[CERT] QR yaratildi: {certificate_id}")
-            except Exception as e:
-                logger.error(f"[CERT] QR xatolik: {e}", exc_info=True)
-                # QR muhim emas, davom etish mumkin
-        
-        # PDF generatsiya
-        if not cert.pdf_file:
-            try:
-                cert._generate_pdf()
-                update_fields["pdf_file"] = cert.pdf_file
-                logger.info(f"[CERT] PDF yaratildi: {certificate_id}")
-            except Exception as e:
-                logger.error(f"[CERT] PDF xatolik: {e}", exc_info=True)
-                # PDF muhim, retry kerak
-                raise
-        
-        # Saqlash
-        if update_fields:
-            Certificate.objects.filter(pk=certificate_id).update(**update_fields)
-            logger.info(
-                "[CERT] %s saqlandi. Maydonlar: %s",
-                certificate_id,
-                list(update_fields.keys())
-            )
-        
-        return {"status": "success", "certificate_id": certificate_id}
-        
-    except Certificate.DoesNotExist:
-        logger.error(f"[CERT] Topilmadi: {certificate_id}")
-        return {"status": "error", "message": "Certificate not found"}
-        
-    except Exception as exc:
-        logger.exception(f"[CERT] Xatolik {certificate_id}: {exc}")
-        raise self.retry(exc=exc)
-
+# ============================================================
+# GENERATE CERTIFICATE FILES (ASOSIY TASK)
+# ============================================================
 
 @shared_task(
     bind=True,
     max_retries=3,
-    default_retry_delay=15,
-    name="certificates.tasks.regenerate_certificate",
+    retry_backoff=True,       # 60s, 120s, 240s... eksponensial
+    retry_backoff_max=600,
+    retry_jitter=True,
+    acks_late=True,           # crash bo'lsa qayta navbatga tushadi
+    soft_time_limit=300,
+    time_limit=360,
 )
-def regenerate_certificate(self, certificate_id: str):
-    """Sertifikatni qayta generatsiya qilish"""
-    from .models import Certificate
-    
-    try:
-        cert = Certificate.objects.get(pk=certificate_id)
-        
-        # Eski fayllarni o'chirish
-        if cert.qr_code_image:
-            try:
-                cert.qr_code_image.delete(save=False)
-                logger.info(f"[CERT] Eski QR o'chirildi: {certificate_id}")
-            except Exception as e:
-                logger.warning(f"[CERT] QR o'chirishda xatolik: {e}")
-            cert.qr_code_image = None
-        
-        if cert.pdf_file:
-            try:
-                cert.pdf_file.delete(save=False)
-                logger.info(f"[CERT] Eski PDF o'chirildi: {certificate_id}")
-            except Exception as e:
-                logger.warning(f"[CERT] PDF o'chirishda xatolik: {e}")
-            cert.pdf_file = None
-        
-        # Yangi fayllar
-        cert._generate_qr()
-        cert._generate_pdf()
-        
-        cert.save(update_fields=['qr_code_image', 'pdf_file'])
-        logger.info(f"[CERT] Qayta yaratildi: {certificate_id}")
-        
-        return {"status": "success", "certificate_id": certificate_id}
-        
-    except Certificate.DoesNotExist:
-        logger.error(f"[CERT] Topilmadi: {certificate_id}")
-        return {"status": "error", "message": "Certificate not found"}
-        
-    except Exception as exc:
-        logger.exception(f"[CERT] Regenerate xatolik: {exc}")
-        raise self.retry(exc=exc)
+def generate_certificate_files(self, certificate_id):
+    """
+    Certificate uchun QR va PDF yaratadi.
+    """
+    certificate = None
 
+    try:
+        from .models import Certificate
+
+        certificate = (
+            Certificate.objects
+            .select_related("user", "template", "course", "test", "contest")
+            .get(id=certificate_id)
+        )
+
+        # Agar allaqachon tayyor bo'lsa
+        if certificate.status == Certificate.Status.COMPLETED:
+            logger.info(f"Certificate already completed: {certificate.id}")
+            return {
+                "status": "already_completed",
+                "certificate_id": str(certificate.id),
+            }
+
+        # Asosiy generatsiya oqimi
+        certificate.generate_files()
+
+        logger.info(f"Certificate generated: {certificate.id}")
+
+        return {
+            "status": "completed",
+            "certificate_id": str(certificate.id),
+        }
+
+    except Certificate.DoesNotExist:
+        logger.error(f"Certificate not found: {certificate_id}")
+        return {"status": "not_found"}
+
+    except Exception as exc:
+        logger.error(
+            f"Certificate generation failed: {certificate_id}",
+            exc_info=True,
+        )
+
+        if certificate is not None:
+            try:
+                certificate.generation_failed(exc)
+            except Exception as e:
+                logger.exception(f"Failed to set generation_failed status: {e}")
+
+        # Retry qilish
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            logger.error(f"Max retries exceeded for certificate: {certificate_id}")
+            raise exc
+
+
+# ============================================================
+# REGENERATE CERTIFICATE
+# ============================================================
+
+@shared_task(
+    bind=True,
+    max_retries=3,
+    default_retry_delay=60,
+    soft_time_limit=300,
+    time_limit=360,
+)
+def regenerate_certificate(self, certificate_id):
+    """
+    Mavjud sertifikatni qayta generatsiya qiladi.
+    """
+    from .models import Certificate
+
+    certificate = None
+
+    try:
+        certificate = Certificate.objects.get(id=certificate_id)
+
+        # Model ichidagi method orqali tozalash va qayta boshlash
+        certificate.reset_for_regeneration()
+
+        # Asosiy generatsiya oqimi
+        certificate.generate_files()
+
+        logger.info(f"Certificate regenerated: {certificate_id}")
+        return {
+            "status": "completed",
+            "certificate_id": str(certificate_id),
+        }
+
+    except Certificate.DoesNotExist:
+        logger.error(f"Certificate not found: {certificate_id}")
+        return {"status": "not_found"}
+
+    except Exception as exc:
+        logger.error(
+            f"Certificate regeneration failed: {certificate_id}",
+            exc_info=True,
+        )
+
+        if certificate is not None:
+            try:
+                certificate.generation_failed(exc)
+            except Exception as e:
+                logger.exception(f"Failed to set generation_failed status: {e}")
+
+        try:
+            raise self.retry(exc=exc)
+        except MaxRetriesExceededError:
+            logger.error(f"Max retries exceeded for regeneration: {certificate_id}")
+            raise exc
+
+
+# ============================================================
+# BULK GENERATE CERTIFICATES (DEADLOCK MUAMMO YO'Q)
+# ============================================================
 
 @shared_task(
     bind=True,
     max_retries=2,
-    default_retry_delay=5,
-    name="certificates.tasks.bulk_regenerate_certificates",
+    default_retry_delay=30,
 )
-def bulk_regenerate_certificates(self, certificate_ids: list):
-    """Bir nechta sertifikatni qayta generatsiya qilish"""
-    success, failed = 0, 0
-    
-    for cert_id in certificate_ids:
-        try:
-            regenerate_certificate.delay(cert_id)
-            success += 1
-        except Exception as exc:
-            logger.error(f"[CERT] Navbatga qo'shib bo'lmadi {cert_id}: {exc}")
-            failed += 1
-    
-    logger.info(
-        "[CERT] Bulk: %d navbatga qo'yildi, %d xato (jami %d)",
-        success, failed, len(certificate_ids),
+def bulk_generate_certificates(self, certificate_ids):
+    """
+    Bir nechta sertifikatlarni parallel generatsiya qiladi.
+    .get() ISHLATILMAYDI — deadlock xavfi yo'q.
+    """
+    if not certificate_ids:
+        return {"status": "empty", "queued": 0}
+
+    # group() orqali parallel tasklar yaratish
+    jobs = [
+        generate_certificate_files.s(cert_id)
+        for cert_id in certificate_ids
+    ]
+
+    # Barchasini navbatga qo'shish
+    group(jobs).apply_async()
+
+    logger.info(f"Bulk generation queued: {len(certificate_ids)} certificates")
+    return {
+        "status": "queued",
+        "total": len(certificate_ids),
+    }
+
+
+# ============================================================
+# BULK REGENERATE CERTIFICATES
+# ============================================================
+
+@shared_task(
+    bind=True,
+    max_retries=2,
+    default_retry_delay=30,
+)
+def bulk_regenerate_certificates(self, certificate_ids):
+    """
+    Bir nechta sertifikatlarni parallel qayta generatsiya qiladi.
+    """
+    if not certificate_ids:
+        return {"status": "empty", "queued": 0}
+
+    jobs = [
+        regenerate_certificate.s(cert_id)
+        for cert_id in certificate_ids
+    ]
+
+    group(jobs).apply_async()
+
+    logger.info(f"Bulk regeneration queued: {len(certificate_ids)} certificates")
+    return {
+        "status": "queued",
+        "total": len(certificate_ids),
+    }
+
+
+# ============================================================
+# CLEANUP OLD FILES
+# ============================================================
+
+@shared_task
+def cleanup_old_certificate_files(days=30):
+    """
+    Eski sertifikat fayllarini tozalash.
+    """
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Certificate
+
+    threshold = timezone.now() - timedelta(days=days)
+
+    old_certificates = Certificate.objects.filter(
+        issued_at__lt=threshold,
+        status__in=[Certificate.Status.COMPLETED, Certificate.Status.FAILED]
     )
-    
-    return {"queued": success, "failed": failed}
+
+    deleted_count = 0
+    for cert in old_certificates:
+        try:
+            cert.clear_files()
+            cert.save(update_fields=["pdf_file", "qr_code_image"])
+            deleted_count += 1
+        except Exception as e:
+            logger.error(f"Failed to delete files for {cert.id}: {e}")
+
+    logger.info(f"Cleaned up {deleted_count} old certificate files")
+    return {"deleted": deleted_count}
+
+@shared_task
+def recover_stuck_certificates(stale_minutes=15):
+    from django.utils import timezone
+    from datetime import timedelta
+    from .models import Certificate
+
+    threshold = timezone.now() - timedelta(minutes=stale_minutes)
+    stuck = Certificate.objects.filter(
+        status=Certificate.Status.PROCESSING,
+        issued_at__lt=threshold,
+    )
+    for cert in stuck:
+        regenerate_certificate.delay(str(cert.id))
+    return {"recovered": stuck.count()}

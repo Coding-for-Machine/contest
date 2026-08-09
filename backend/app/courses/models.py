@@ -2,6 +2,7 @@ from django.db import models
 from django.utils.text import slugify
 from django.utils import timezone
 from django.conf import settings
+from centers.models import CenterScopedMixin
 from baseuser.models import BaseUser
 from problems.models import Problem
 from mdeditor.fields import MDTextField
@@ -17,7 +18,7 @@ class TimeStampedModel(models.Model):
         ordering = ['-created_at']
 
 
-class Course(TimeStampedModel):
+class Course(CenterScopedMixin, TimeStampedModel):
     title = models.CharField(
         "Kurs nomi",
         max_length=200,
@@ -62,16 +63,19 @@ class Course(TimeStampedModel):
         on_delete=models.CASCADE,
         related_name='courses',
     )
+    level = models.CharField(max_length=20, choices=[('beginner','Boshlang\'ich'),('intermediate','O\'rta'),('advanced','Yuqori')], default='beginner')
+    total_modules_count = models.PositiveSmallIntegerField(default=0, editable=False)
     total_lessons_count = models.PositiveSmallIntegerField(default=0, verbose_name="Jami darslar soni")
     total_test_count = models.PositiveSmallIntegerField(default=0, verbose_name="Jami test soni")
 
     class Meta:
         verbose_name = "✨ Kurs"
         verbose_name_plural = "✨ Kurslar"
+        ordering = ['-created_at'] 
 
     @property
     def current_price(self):
-        if self.discount_price and self.discount_price < self.price:
+        if self.discount_price is not None and self.discount_price < self.price:
             return self.discount_price
         return self.price
 
@@ -107,7 +111,19 @@ class Modul(TimeStampedModel):
         "Slug",
         max_length=255,
         blank=True,
+        db_index=True,
         help_text="Modul URL uchun (ixtiyoriy, avtomatik hosil bo'ladi)"
+    )
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Tartib raqami"),
+        help_text=_("Ushbu blok dars interfeysida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.")
+    )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name=_("Faol"),
+        help_text=_("Agar false bo'lsa, bu modul foydalanuvchilarga ko'rinmaydi.")
     )
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -116,6 +132,7 @@ class Modul(TimeStampedModel):
     )
 
     class Meta:
+        ordering = ["order", "id"]
         verbose_name = "📚 Kurs Bobi"
         verbose_name_plural = "📚 Kurs boblari"
 
@@ -138,7 +155,7 @@ class Lesson(TimeStampedModel):
     modul = models.ForeignKey(
         Modul,
         on_delete=models.CASCADE,
-        related_name='lessons',  # Ko'plik shakliga keltirildi
+        related_name='lessons',
         verbose_name="Modul",
         help_text="Dars qaysi modulga tegishli"
     )
@@ -146,6 +163,7 @@ class Lesson(TimeStampedModel):
     slug = models.SlugField(
         "Slug",
         blank=True,
+        db_index=True,
         help_text="URL uchun slug, avtomatik hosil qilinadi"
     )
     owner = models.ForeignKey(
@@ -158,18 +176,70 @@ class Lesson(TimeStampedModel):
         verbose_name=_("Tartib raqami"),
         help_text=_("Ushbu blok dars interfeysida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.")
     )
+    is_active = models.BooleanField(
+        default=True,
+        db_index=True,
+        verbose_name=_("Faol"),
+        help_text=_("Agar false bo'lsa, bu dars foydalanuvchilarga ko'rinmaydi.")
+    )
     total_tasks_count = models.PositiveSmallIntegerField(
         default=0,
         verbose_name="Jami vazifalar soni",
-        editable=False,  # faqat signal orqali yangilanadi, admin panelda qo'lda o'zgartirilmasin
+        editable=False,
         help_text="Problem + Question(lesson) + Lecture sonlarining avtomatik yig'indisi."
     )
+    estimated_minutes = models.PositiveSmallIntegerField(default=10, verbose_name="Taxminiy vaqt (daqiqa)")
+
     def __str__(self):
-        return f"kurs-{self.modul.course.title[:20]}:modul-{self.modul.title[:15]}:dasrlik-{self.title[:15]}"
+        return f"kurs-{self.modul.course.title[:20]}:modul-{self.modul.title[:15]}:dars-{self.title[:15]}"
     
     class Meta:
+        ordering = ["order", "id"]
         verbose_name = "📝 Dars"
         verbose_name_plural = "📝 Darslar"
+
+    async def get_previous(self):
+        """Shu darsdan oldingi bitta darsni qaytaradi."""
+        prev = await Lesson.objects.filter(
+            modul=self.modul, order__lt=self.order, is_active=True
+        ).order_by("-order").afirst()
+        if prev:
+            return prev
+        prev_modul = await Modul.objects.filter(
+            course=self.modul.course, order__lt=self.modul.order, is_active=True
+        ).order_by("-order").afirst()
+        if prev_modul:
+            return await Lesson.objects.filter(
+                modul=prev_modul, is_active=True
+            ).order_by("-order").afirst()
+        return None
+
+    async def get_next(self):
+        """Shu darsdan keyingi bitta darsni qaytaradi."""
+        next_lesson = await Lesson.objects.filter(
+            modul=self.modul, order__gt=self.order, is_active=True
+        ).order_by("order").afirst()
+        if next_lesson:
+            return next_lesson
+        next_modul = await Modul.objects.filter(
+            course=self.modul.course, order__gt=self.modul.order, is_active=True
+        ).order_by("order").afirst()
+        if next_modul:
+            return await Lesson.objects.filter(
+                modul=next_modul, is_active=True
+            ).order_by("order").afirst()
+        return None
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while Lesson.objects.filter(modul=self.modul, slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
 
 class Enrollment(TimeStampedModel):
@@ -177,13 +247,12 @@ class Enrollment(TimeStampedModel):
     course = models.ForeignKey(Course, on_delete=models.CASCADE, related_name='enrollments')
     is_paid = models.BooleanField("To'langan", default=False)
 
-    finished_darslar_soni = models.PositiveSmallIntegerField(default=0)
-    finished_test_soni = models.PositiveSmallIntegerField(default=0)
-    is_completed = models.BooleanField(default=False, db_index=True)
-    completed_at = models.DateTimeField(null=True, blank=True)
-
     class Meta:
         unique_together = ('user', 'course')
+        indexes = [
+            models.Index(fields=["user", "-created_at"]),
+            models.Index(fields=["course", "is_paid"]),
+        ]
         verbose_name = "✨ Kursga yozilish"
         verbose_name_plural = "✨ Kursga yozilishlar"
 
@@ -220,16 +289,23 @@ class Lecture(TimeStampedModel):
     )
     body = MDTextField(
         verbose_name=_("Ma'ruza matni (Konspekt)"),
-        blank=True,  # Video bor joyda matn majburiy bo'lmasligi uchun True qilindi
+        blank=True,
         null=True,
         help_text=_("Markdown formatida ma'ruza matnini, qoidalarni va kod namunalarini yozing.")
     )
-
+    is_active = models.BooleanField(default=True)
     order = models.PositiveIntegerField(
         default=0,
         verbose_name=_("Tartib raqami"),
         help_text=_("Ushbu blok dars interfeysida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.")
     )
+
+    reading_time = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name=_("O'qish vaqti (daqiqa)"),
+        help_text=_("Faqat matnni o'qish uchun taxminiy vaqt.")
+    )
+    
     xp = models.PositiveIntegerField(
         verbose_name=_("XP mukofoti"),
         default=10, 
@@ -244,14 +320,13 @@ class Lecture(TimeStampedModel):
     owner = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.CASCADE,
-        related_name='lecture',
+        related_name='lectures',
     )
-
 
     class Meta:
         verbose_name = _("📖 Ma'ruza va Video dars")
         verbose_name_plural = _("📖 Ma'ruzalar va Video darslar")
-        ordering = ['order', 'created_at']
+        ordering = ["order", "id"]
         indexes = [
             models.Index(fields=['lesson', 'order']),
             models.Index(fields=['slug']),

@@ -10,7 +10,7 @@ from django.utils.safestring import mark_safe
 from django.utils.timezone import now
 from unfold.admin import ModelAdmin
 
-from .models import UserStats, UserActivityDaily, LessonStatus, LectureStatus
+from .models import CourseStatus, ModuleStatus, ProblemStatus, UserStats, UserActivityDaily, LessonStatus, LectureStatus
 
 logger = logging.getLogger(__name__)
 
@@ -428,3 +428,647 @@ class LectureStatusAdmin(ModelAdmin):
             "lc_today_completed": today_completed,
         })
         return super().changelist_view(request, extra_context=extra_context)
+
+
+
+@admin.register(ProblemStatus)
+class ProblemStatusAdmin(ModelAdmin):
+    list_before_template = "admin/status/problemstatus_before_list.html"
+
+    list_display = (
+        "user_display",
+        "problem_display",
+        "status_badge",
+        "attempts_display",
+        "started_at_display",
+        "solved_at_display",
+    )
+
+    list_filter = (
+        "solved",
+        "problem__difficulty",
+        "problem__category",
+        "solved_at",
+    )
+
+    search_fields = (
+        "user__username",
+        "user__full_name",
+        "user__telegram_id",
+        "problem__title",
+    )
+
+    ordering = ("-solved_at",)
+    list_per_page = 30
+
+    autocomplete_fields = (
+        "user",
+        "problem",
+        "best_submission",
+    )
+
+    fieldsets = (
+        (
+            "👤 Talaba",
+            {
+                "fields": (
+                    "user",
+                    "problem",
+                )
+            },
+        ),
+        (
+            "📊 Progress",
+            {
+                "fields": (
+                    ("solved", "attempts"),
+                    "best_submission",
+                )
+            },
+        ),
+        (
+            "🕒 Vaqt",
+            {
+                "fields": (
+                    "started_at",
+                    "solved_at",
+                )
+            },
+        ),
+    )
+
+    readonly_fields = (
+        "started_at",
+        "solved_at",
+    )
+
+    # ---------------------------------------------------
+    # LIST DISPLAY
+    # ---------------------------------------------------
+
+    @admin.display(description="Talaba")
+    def user_display(self, obj):
+        name = obj.user.full_name or obj.user.username or f"User#{obj.user.telegram_id}"
+
+        return format_html(
+            '<div class="flex flex-col">'
+            '<span class="font-semibold">{}</span>'
+            '<span class="text-xs text-gray-400">ID: {}</span>'
+            "</div>",
+            name,
+            obj.user.telegram_id,
+        )
+
+    @admin.display(description="Masala")
+    def problem_display(self, obj):
+        return format_html(
+            '<a href="/admin/problems/problem/{}/change/" '
+            'class="text-primary-600 hover:underline">'
+            "🧩 {}"
+            "</a>",
+            obj.problem.id,
+            obj.problem.title[:45],
+        )
+
+    @admin.display(description="Holat", ordering="solved")
+    def status_badge(self, obj):
+        if obj.solved:
+            return mark_safe(
+                '<span class="inline-flex px-3 py-1 rounded-full '
+                'text-xs font-semibold" '
+                'style="background:#dcfce7;color:#15803d;">'
+                "✅ Yechilgan"
+                "</span>"
+            )
+
+        return mark_safe(
+            '<span class="inline-flex px-3 py-1 rounded-full '
+            'text-xs font-semibold" '
+            'style="background:#fee2e2;color:#b91c1c;">'
+            "⏳ Jarayonda"
+            "</span>"
+        )
+
+    @admin.display(description="Urinishlar", ordering="attempts")
+    def attempts_display(self, obj):
+        color = "#22c55e" if obj.solved else "#f59e0b"
+
+        return format_html(
+            '<span class="inline-flex items-center px-2.5 py-1 '
+            'rounded-full text-xs font-semibold" '
+            'style="background:{}20;color:{};">'
+            "🎯 {} ta"
+            "</span>",
+            color,
+            color,
+            obj.attempts,
+        )
+
+    @admin.display(description="Boshlangan")
+    def started_at_display(self, obj):
+        if not obj.started_at:
+            return "—"
+
+        return obj.started_at.strftime("%d-%m-%Y %H:%M")
+
+    @admin.display(description="Yechilgan")
+    def solved_at_display(self, obj):
+        if not obj.solved_at:
+            return "—"
+
+        return obj.solved_at.strftime("%d-%m-%Y %H:%M")
+
+    # ---------------------------------------------------
+    # DASHBOARD
+    # ---------------------------------------------------
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        total = ProblemStatus.objects.count()
+
+        solved = ProblemStatus.objects.filter(
+            solved=True
+        ).count()
+
+        unsolved = total - solved
+
+        percent = round(
+            solved * 100 / total,
+            1,
+        ) if total else 0
+
+        today = now().date()
+
+        solved_today = ProblemStatus.objects.filter(
+            solved=True,
+            solved_at__date=today,
+        ).count()
+
+        most_attempted = (
+            ProblemStatus.objects
+            .values("problem__title")
+            .annotate(total=Count("id"))
+            .order_by("-total")[:10]
+        )
+
+        rows = [
+            [item["problem__title"][:45], item["total"]]
+            for item in most_attempted
+        ]
+
+        extra_context.update({
+            "ps_total": total,
+            "ps_solved": solved,
+            "ps_unsolved": unsolved,
+            "ps_percent": percent,
+            "ps_today": solved_today,
+            "ps_top_table": {
+                "headers": [
+                    "Masala",
+                    "Yechgan foydalanuvchilar",
+                ],
+                "rows": rows,
+            },
+        })
+
+        return super().changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+
+@admin.register(ModuleStatus)
+class ModuleStatusAdmin(ModelAdmin):
+    list_before_template = "admin/status/modulestatus_before_list.html"
+
+    list_display = (
+        "user_display",
+        "module_display",
+        "progress_display",
+        "status_badge",
+        "completed_at_display",
+    )
+
+    list_filter = (
+        "is_completed",
+        "modul__course",
+        "completed_at",
+    )
+
+    search_fields = (
+        "user__username",
+        "user__full_name",
+        "user__telegram_id",
+        "modul__title",
+        "modul__course__title",
+    )
+
+    ordering = ("-completed_at",)
+    list_per_page = 30
+
+    autocomplete_fields = (
+        "user",
+        "modul",
+    )
+
+    fieldsets = (
+        (
+            "👤 Talaba",
+            {
+                "fields": (
+                    "user",
+                    "modul",
+                )
+            },
+        ),
+        (
+            "📚 Progress",
+            {
+                "fields": (
+                    ("completed_lessons", "completed_tests"),
+                    "is_completed",
+                )
+            },
+        ),
+        (
+            "🕒 Vaqt",
+            {
+                "fields": (
+                    "started_at",
+                    "completed_at",
+                )
+            },
+        ),
+    )
+
+    readonly_fields = (
+        "started_at",
+        "completed_at",
+    )
+
+    # -------------------------------------------------
+
+    @admin.display(description="Talaba")
+    def user_display(self, obj):
+        name = obj.user.full_name or obj.user.username or f"User#{obj.user.telegram_id}"
+
+        return format_html(
+            '<div class="flex flex-col">'
+            '<span class="font-semibold">{}</span>'
+            '<span class="text-xs text-gray-400">ID: {}</span>'
+            '</div>',
+            name,
+            obj.user.telegram_id,
+        )
+
+    @admin.display(description="Modul")
+    def module_display(self, obj):
+        return format_html(
+            '<a href="/admin/courses/modul/{}/change/" '
+            'class="text-primary-600 hover:underline">'
+            '{}'
+            '</a>',
+            obj.modul.id,
+            obj.modul.title[:45],
+        )
+
+    @admin.display(description="Progress")
+    def progress_display(self, obj):
+        total_lessons = obj.modul.lessons.count()
+        total_tests = obj.modul.tests.count()
+
+        total = total_lessons + total_tests
+        finished = obj.completed_lessons + obj.completed_tests
+
+        percent = round(finished * 100 / total, 1) if total else 0
+
+        color = (
+            "#ef4444"
+            if percent < 40
+            else "#f59e0b"
+            if percent < 80
+            else "#22c55e"
+        )
+
+        return format_html(
+            '<div class="w-40">'
+            '<div class="flex justify-between text-xs">'
+            '<span>{}/{}</span>'
+            '<span>{}%</span>'
+            '</div>'
+            '<div class="mt-1 h-2 rounded-full bg-gray-200 dark:bg-gray-700">'
+            '<div class="h-2 rounded-full" '
+            'style="width:{}%;background:{};"></div>'
+            '</div>'
+            '</div>',
+            finished,
+            total,
+            percent,
+            percent,
+            color,
+        )
+
+    @admin.display(description="Holat")
+    def status_badge(self, obj):
+
+        if obj.is_completed:
+            return mark_safe(
+                '<span class="inline-flex items-center px-3 py-1 '
+                'rounded-full text-xs font-semibold '
+                'bg-green-100 text-green-700">'
+                'Completed'
+                '</span>'
+            )
+
+        return mark_safe(
+            '<span class="inline-flex items-center px-3 py-1 '
+            'rounded-full text-xs font-semibold '
+            'bg-yellow-100 text-yellow-700">'
+            'In Progress'
+            '</span>'
+        )
+
+    @admin.display(description="Tugatilgan")
+    def completed_at_display(self, obj):
+        if obj.completed_at:
+            return obj.completed_at.strftime("%d-%m-%Y %H:%M")
+        return "—"
+
+    # -------------------------------------------------
+
+    def changelist_view(self, request, extra_context=None):
+        extra_context = extra_context or {}
+
+        total = ModuleStatus.objects.count()
+
+        completed = ModuleStatus.objects.filter(
+            is_completed=True
+        ).count()
+
+        percent = round(
+            completed * 100 / total,
+            1,
+        ) if total else 0
+
+        today = now().date()
+
+        today_completed = ModuleStatus.objects.filter(
+            is_completed=True,
+            completed_at__date=today,
+        ).count()
+
+        top_modules = (
+            ModuleStatus.objects.filter(
+                is_completed=True
+            )
+            .values("modul__title")
+            .annotate(
+                total=Count("id")
+            )
+            .order_by("-total")[:10]
+        )
+
+        rows = [
+            [
+                item["modul__title"][:45],
+                item["total"],
+            ]
+            for item in top_modules
+        ]
+
+        extra_context.update({
+            "ms_total": total,
+            "ms_completed": completed,
+            "ms_in_progress": total - completed,
+            "ms_percent": percent,
+            "ms_today": today_completed,
+            "ms_top_table": {
+                "headers": [
+                    "Modul",
+                    "Tugatgan talabalar",
+                ],
+                "rows": rows,
+            },
+        })
+
+        return super().changelist_view(
+            request,
+            extra_context=extra_context,
+        )
+
+@admin.register(CourseStatus)
+class CourseStatusAdmin(ModelAdmin):
+    list_before_template = "admin/status/coursestatus_before_list.html"
+
+    list_display = (
+        "user_display",
+        "course_display",
+        "progress_display",
+        "status_badge",
+        "completed_at_display",
+    )
+
+    list_filter = (
+        "is_completed",
+        "course",
+        "completed_at",
+    )
+
+    search_fields = (
+        "user__username",
+        "user__full_name",
+        "user__telegram_id",
+        "course__title",
+    )
+
+    ordering = ("-completed_at",)
+    list_per_page = 30
+
+    autocomplete_fields = (
+        "user",
+        "course",
+    )
+
+    fieldsets = (
+        (
+            "👤 Talaba",
+            {
+                "fields": (
+                    "user",
+                    "course",
+                )
+            },
+        ),
+        (
+            "📊 Progress",
+            {
+                "fields": (
+                    ("completed_modules", "completed_lessons"),
+                    ("completed_tests", "completed_problems"),
+                    "is_completed",
+                )
+            },
+        ),
+        (
+            "🕒 Vaqt",
+            {
+                "fields": (
+                    "started_at",
+                    "completed_at",
+                )
+            },
+        ),
+    )
+
+    readonly_fields = (
+        "started_at",
+        "completed_at",
+    )
+
+    # ---------------------------------------------------
+
+    @admin.display(description="Talaba")
+    def user_display(self, obj):
+        name = obj.user.full_name or obj.user.username or f"User#{obj.user.telegram_id}"
+
+        return format_html(
+            '<div class="flex flex-col">'
+            '<span class="font-semibold">{}</span>'
+            '<span class="text-xs text-gray-400">ID: {}</span>'
+            "</div>",
+            name,
+            obj.user.telegram_id,
+        )
+
+    @admin.display(description="Kurs")
+    def course_display(self, obj):
+        return format_html(
+            '<a href="/admin/courses/course/{}/change/" '
+            'class="text-primary-600 hover:underline">'
+            "{}"
+            "</a>",
+            obj.course.id,
+            obj.course.title[:50],
+        )
+
+    @admin.display(description="Progress")
+    def progress_display(self, obj):
+
+        total_modules = obj.course.modullar.count()
+
+        finished = obj.completed_modules
+
+        percent = round(
+            finished * 100 / total_modules,
+            1,
+        ) if total_modules else 0
+
+        color = (
+            "#ef4444"
+            if percent < 40
+            else "#f59e0b"
+            if percent < 80
+            else "#22c55e"
+        )
+
+        return format_html(
+            '<div class="w-44">'
+            '<div class="flex justify-between text-xs">'
+            '<span>{}/{}</span>'
+            '<span>{}%</span>'
+            '</div>'
+            '<div class="mt-1 h-2 rounded-full bg-gray-200 dark:bg-gray-700">'
+            '<div class="h-2 rounded-full" '
+            'style="width:{}%;background:{};"></div>'
+            '</div>'
+            '</div>',
+            finished,
+            total_modules,
+            percent,
+            percent,
+            color,
+        )
+
+    @admin.display(description="Holat")
+    def status_badge(self, obj):
+
+        if obj.is_completed:
+            return mark_safe(
+                '<span class="inline-flex items-center px-3 py-1 '
+                'rounded-full text-xs font-semibold '
+                'bg-green-100 text-green-700">'
+                'Completed'
+                '</span>'
+            )
+
+        return mark_safe(
+            '<span class="inline-flex items-center px-3 py-1 '
+            'rounded-full text-xs font-semibold '
+            'bg-yellow-100 text-yellow-700">'
+            'In Progress'
+            '</span>'
+        )
+
+    @admin.display(description="Tugatilgan")
+    def completed_at_display(self, obj):
+        if obj.completed_at:
+            return obj.completed_at.strftime("%d-%m-%Y %H:%M")
+        return "—"
+
+    # ---------------------------------------------------
+
+    def changelist_view(self, request, extra_context=None):
+
+        extra_context = extra_context or {}
+
+        total = CourseStatus.objects.count()
+
+        completed = CourseStatus.objects.filter(
+            is_completed=True
+        ).count()
+
+        percent = round(
+            completed * 100 / total,
+            1,
+        ) if total else 0
+
+        today_completed = CourseStatus.objects.filter(
+            completed_at__date=now().date(),
+            is_completed=True,
+        ).count()
+
+        top_courses = (
+            CourseStatus.objects
+            .filter(is_completed=True)
+            .values("course__title")
+            .annotate(total=Count("id"))
+            .order_by("-total")[:10]
+        )
+
+        rows = [
+            [
+                row["course__title"][:50],
+                row["total"],
+            ]
+            for row in top_courses
+        ]
+
+        extra_context.update({
+            "cs_total": total,
+            "cs_completed": completed,
+            "cs_in_progress": total - completed,
+            "cs_percent": percent,
+            "cs_today": today_completed,
+            "cs_top_table": {
+                "headers": [
+                    "Kurs",
+                    "Bitirgan talabalar",
+                ],
+                "rows": rows,
+            },
+        })
+
+        return super().changelist_view(
+            request,
+            extra_context=extra_context,
+        )

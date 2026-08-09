@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<title>{{ organization_name|default:"CfM Contest" }} — {{ code }}</title>
+<style>
+
+@page {
+    size: A4 landscape;
+    margin: 0;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+html, body {
+    width: 297mm;
+    height: 210mm;
+}
+
+body {
+    font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
+    color: #1e293b;
+    background: #faf8f3;
+    position: relative;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+}
+
+/* ============================================
+   ASOSIY KONTEYNER
+   ============================================ */
+.certificate {
+    position: relative;
+    width: 297mm;
+    height: 210mm;
+    background: #faf8f3;
+    overflow: hidden;
+}
+
+/* ============================================
+   GUILLOCHE FON NAQSHI (Security pattern)
+   ============================================ */
+.bg-pattern {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background:
+        repeating-linear-gradient(
+            0deg,
+            transparent,
+            transparent 2mm,
+            rgba(184, 149, 78, 0.03) 2mm,
+            rgba(184, 149, 78, 0.03) 2.1mm
+        ),
+        repeating-linear-gradient(
+            90deg,
+            transparent,
+            transparent 2mm,
+            rgba(184, 149, 78, 0.03) 2mm,
+            rgba(184, 149, 78, 0.03) 2.1mm
+        ),
+        repeating-linear-gradient(
+            45deg,
+            transparent,
+            transparent 3mm,
+            rgba(30, 41, 59, 0.012) 3mm,
+            rgba(30, 41, 59, 0.012) 3.15mm
+        ),
+        repeating-linear-gradient(
+            -45deg,
+            transparent,
+            transparent 3mm,
+            rgba(30, 41, 59, 0.012) 3mm,
+            rgba(30, 41, 59, 0.012) 3.15mm
+        );
+    z-index: 0;
+}
+
+/* ============================================
+   KATTA WATERMARK (CfM Contest)
+   ============================================ */
+.watermark-bg {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 72pt;
+    font-weight: 900;
+    color: #000;
+    opacity: 0.022;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 0;
+    pointer-events: none;
+}
+
+.watermark-bg-2 {
+    position: absolute;
+    top: 35%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(-30deg);
+    font-family: Georgia, serif;
+    font-size: 72pt;
+    font-weight: 900;
+    color: #000;
+    opacity: 0.015;
+    letter-spacing: 12px;
+    text-transform: uppercase;
+    white-space: nowrap;
+    z-index: 0;
+    pointer-events: none;
+}
+
+/* ============================================
+   TASHQI RAMKA (Zarhal border)
+   ============================================ */
+.frame-outer {
+    position: absolute;
+    top: 6mm; left: 6mm; right: 6mm; bottom: 6mm;
+    border: 1.8pt solid #b8954e;
+    z-index: 1;
+}
+
+.frame-mid {
+    position: absolute;
+    top: 8mm; left: 8mm; right: 8mm; bottom: 8mm;
+    border: 0.9pt solid #b8954e;
+    opacity: 0.6;
+    z-index: 1;
+}
+
+.frame-inner {
+    position: absolute;
+    top: 10.5mm; left: 10.5mm; right: 10.5mm; bottom: 10.5mm;
+    border: 0.35pt solid #b8954e;
+    opacity: 0.35;
+    z-index: 1;
+}
+
+/* ============================================
+   BURCHAK NAQSHLARI (Intricate flourishes)
+   ============================================ */
+.corner-ornament {
+    position: absolute;
+    width: 42mm;
+    height: 42mm;
+    z-index: 2;
+    pointer-events: none;
+}
+.corner-tl { top: 2mm; left: 2mm; }
+.corner-tr { top: 2mm; right: 2mm; transform: scaleX(-1); }
+.corner-bl { bottom: 2mm; left: 2mm; transform: scaleY(-1); }
+.corner-br { bottom: 2mm; right: 2mm; transform: scale(-1, -1); }
+
+/* ============================================
+   YON TOMON NAQSHLARI (Side filigree)
+   ============================================ */
+.side-ornament {
+    position: absolute;
+    width: 8mm;
+    height: 70mm;
+    z-index: 1;
+    pointer-events: none;
+    opacity: 0.25;
+}
+.side-left {
+    left: 12mm;
+    top: 50%;
+    transform: translateY(-50%);
+}
+.side-right {
+    right: 12mm;
+    top: 50%;
+    transform: translateY(-50%) scaleX(-1);
+}
+
+/* ============================================
+   YUQORI/PASTKI MARKAZIY NAQSH
+   ============================================ */
+.top-center-ornament {
+    position: absolute;
+    top: 5mm;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 2;
+    width: 50mm;
+    height: 12mm;
+    opacity: 0.7;
+}
+
+.bottom-center-ornament {
+    position: absolute;
+    bottom: 5mm;
+    left: 50%;
+    transform: translateX(-50%) rotate(180deg);
+    z-index: 2;
+    width: 50mm;
+    height: 12mm;
+    opacity: 0.7;
+}
+
+/* ============================================
+   KONTENT MAYDONI
+   ============================================ */
+.content {
+    position: absolute;
+    top: 20mm;
+    left: 28mm;
+    right: 28mm;
+    bottom: 18mm;
+    z-index: 3;
+}
+
+/* ============================================
+   HEADER
+   ============================================ */
+.header {
+    position: relative;
+    height: 16mm;
+    margin-bottom: 3mm;
+}
+
+.brand {
+    position: absolute;
+    left: 0;
+    top: 0;
+    display: table;
+}
+
+.brand-mark {
+    display: table-cell;
+    vertical-align: middle;
+    width: 12mm;
+    height: 12mm;
+    border-radius: 50%;
+    border: 1.2pt solid #b8954e;
+    overflow: hidden;
+    text-align: center;
+    background: #fff;
+}
+
+.brand-mark img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.brand-mark .fallback {
+    font-size: 9pt;
+    font-weight: 800;
+    color: #1e293b;
+    line-height: 11mm;
+    display: block;
+}
+
+.brand-text {
+    display: table-cell;
+    vertical-align: middle;
+    padding-left: 3mm;
+}
+
+.brand-name {
+    font-size: 11pt;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+}
+
+.brand-sub {
+    font-size: 6.5pt;
+    color: #8b7355;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    margin-top: 0.6mm;
+}
+
+.id-box {
+    position: absolute;
+    right: 0;
+    top: 0;
+    text-align: right;
+}
+
+.id-label {
+    font-size: 6pt;
+    color: #8b7355;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    font-weight: 700;
+}
+
+.id-value {
+    font-size: 8pt;
+    font-weight: 700;
+    color: #1e293b;
+    font-family: 'Courier New', monospace;
+    margin-top: 0.5mm;
+    letter-spacing: 0.5px;
+}
+
+.id-date {
+    font-size: 7pt;
+    color: #64748b;
+    margin-top: 0.8mm;
+}
+
+/* ============================================
+   SARLAVHA
+   ============================================ */
+.title-block {
+    text-align: center;
+    margin-bottom: 4mm;
+    position: relative;
+}
+
+.cert-badge {
+    display: inline-block;
+    font-size: 6.5pt;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: #8b7355;
+    border: 0.6pt solid #d4c4a8;
+    border-radius: 5mm;
+    padding: 1.2mm 7mm;
+    background: rgba(184, 149, 78, 0.06);
+    margin-bottom: 2.5mm;
+}
+
+.cert-title {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 32pt;
+    font-weight: bold;
+    color: #1e293b;
+    letter-spacing: 10px;
+    text-transform: uppercase;
+    line-height: 1.1;
+    margin: 2mm 0;
+}
+
+.cert-subtitle {
+    font-size: 8pt;
+    color: #8b7355;
+    letter-spacing: 3.5px;
+    text-transform: uppercase;
+    font-weight: 500;
+}
+
+/* ============================================
+   BEZAK CHIZIQLARI
+   ============================================ */
+.divider {
+    display: table;
+    margin: 3mm auto;
+    width: 60mm;
+}
+
+.divider-line {
+    display: table-cell;
+    vertical-align: middle;
+    width: 50%;
+    height: 0.6pt;
+    background: linear-gradient(to right, transparent, #b8954e, transparent);
+}
+
+.divider-icon {
+    display: table-cell;
+    vertical-align: middle;
+    width: 8mm;
+    text-align: center;
+    font-size: 11pt;
+    color: #b8954e;
+}
+
+/* ============================================
+   QABUL QILUVCHI
+   ============================================ */
+.recipient-block {
+    text-align: center;
+    margin-bottom: 4mm;
+}
+
+.presented-label {
+    font-size: 8pt;
+    color: #8b7355;
+    letter-spacing: 2.5px;
+    text-transform: uppercase;
+    margin-bottom: 2mm;
+    font-weight: 600;
+}
+
+.recipient-name {
+    font-family: Georgia, 'Times New Roman', serif;
+    font-size: 22pt;
+    font-weight: bold;
+    color: #1e293b;
+    font-style: italic;
+    padding-bottom: 2mm;
+    border-bottom: 0.8pt solid #b8954e;
+    display: inline-block;
+    min-width: 95mm;
+    max-width: 220mm;
+    letter-spacing: 0.5px;
+}
+
+/* ============================================
+   TAVSIF
+   ============================================ */
+.desc-block {
+    text-align: center;
+    max-width: 210mm;
+    margin: 0 auto 3.5mm;
+    font-size: 9.5pt;
+    line-height: 1.6;
+    color: #475569;
+}
+
+.desc-block strong {
+    color: #1e293b;
+    font-weight: 600;
+}
+
+.congrats-text {
+    text-align: center;
+    font-style: italic;
+    color: #8b7355;
+    font-size: 10pt;
+    font-family: Georgia, serif;
+    margin-bottom: 3mm;
+    max-width: 200mm;
+    margin-left: auto;
+    margin-right: auto;
+    line-height: 1.4;
+}
+
+/* ============================================
+   INFO TAGS
+   ============================================ */
+.info-tags {
+    text-align: center;
+    margin-bottom: 3mm;
+}
+
+.info-tag {
+    display: inline-block;
+    font-size: 7.5pt;
+    color: #5a4a3a;
+    border: 0.5pt solid #e2d5c0;
+    border-radius: 2.5mm;
+    padding: 1mm 4mm;
+    margin: 0 1mm;
+    background: rgba(184, 149, 78, 0.05);
+    font-weight: 500;
+}
+
+/* ============================================
+   NATIJALAR
+   ============================================ */
+.score-block {
+    display: table;
+    margin: 0 auto 3mm;
+    border-collapse: separate;
+    border-spacing: 5mm 0;
+}
+
+.score-item {
+    display: table-cell;
+    text-align: center;
+    padding: 2.5mm 6mm;
+    border: 0.6pt solid #e2d5c0;
+    border-radius: 2mm;
+    background: linear-gradient(to bottom, rgba(184,149,78,0.05), rgba(184,149,78,0.01));
+    min-width: 30mm;
+}
+
+.score-value {
+    font-size: 14pt;
+    font-weight: bold;
+    color: #1e293b;
+    font-family: Georgia, serif;
+}
+
+.score-label {
+    font-size: 6pt;
+    color: #8b7355;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    margin-top: 0.8mm;
+    font-weight: 700;
+}
+
+/* ============================================
+   FOOTER
+   ============================================ */
+.footer {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 24mm;
+    display: table;
+    width: 100%;
+    table-layout: fixed;
+    z-index: 3;
+}
+
+.footer-col {
+    display: table-cell;
+    vertical-align: bottom;
+    text-align: center;
+    width: 33.33%;
+}
+
+.qr-wrap {
+    text-align: center;
+}
+
+.qr-img {
+    width: 16mm;
+    height: 16mm;
+    border: 0.6pt solid #d0c8b8;
+    padding: 1mm;
+    background: #fff;
+    display: block;
+    margin: 0 auto;
+}
+
+.qr-label {
+    font-size: 6pt;
+    color: #8b7355;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    margin-top: 1.5mm;
+    font-weight: 700;
+}
+
+.qr-url {
+    font-size: 5.5pt;
+    color: #94a3b8;
+    margin-top: 0.6mm;
+    max-width: 48mm;
+    margin-left: auto;
+    margin-right: auto;
+    word-break: break-all;
+    line-height: 1.3;
+}
+
+/* MUHR (Gold Seal with starburst) */
+.seal-wrap {
+    position: relative;
+    height: 100%;
+}
+
+.seal {
+    width: 20mm;
+    height: 20mm;
+    margin: 0 auto 1mm;
+    position: relative;
+    display: table;
+}
+
+.seal-outer {
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    border: 1.5pt solid #b8954e;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 35%, #fdfbf5, #f0e6cc 55%, #e6d5b0);
+}
+
+.seal-outer::before {
+    content: "";
+    position: absolute;
+    top: 1.5mm; left: 1.5mm; right: 1.5mm; bottom: 1.5mm;
+    border: 0.5pt dashed #b8954e;
+    border-radius: 50%;
+    opacity: 0.7;
+}
+
+.seal-text {
+    display: table-cell;
+    vertical-align: middle;
+    text-align: center;
+    line-height: 1.2;
+    position: relative;
+    z-index: 1;
+}
+
+.seal-line1 {
+    font-size: 5pt;
+    font-weight: 800;
+    color: #1e293b;
+    letter-spacing: 0.5px;
+    text-transform: uppercase;
+}
+
+.seal-line2 {
+    font-size: 4pt;
+    color: #8b7355;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-top: 0.4mm;
+}
+
+.seal-code {
+    font-size: 5.5pt;
+    font-weight: bold;
+    color: #1e293b;
+    margin-top: 1mm;
+    font-family: 'Courier New', monospace;
+    letter-spacing: 0.3px;
+}
+
+/* IMZO */
+.sig-wrap {
+    text-align: center;
+}
+
+.sig-img {
+    height: 9mm;
+    max-width: 45mm;
+    object-fit: contain;
+    margin: 0 auto 1.2mm;
+    display: block;
+    filter: grayscale(100%) contrast(1.1);
+}
+
+.sig-line {
+    border-top: 0.8pt solid #1e293b;
+    padding-top: 1.5mm;
+    margin: 0 10mm;
+}
+
+.sig-name {
+    font-size: 8pt;
+    font-weight: 700;
+    color: #1e293b;
+    letter-spacing: 0.3px;
+}
+
+.sig-role {
+    font-size: 6.5pt;
+    color: #8b7355;
+    letter-spacing: 0.5px;
+    margin-top: 0.4mm;
+}
+
+.rank-badge {
+    text-align: center;
+    margin-bottom: 2.5mm;
+    font-size: 10pt;
+    font-weight: 700;
+    color: #b8954e;
+    letter-spacing: 1px;
+}
+
+@media print {
+    body { background: #faf8f3 !important; }
+    .certificate { box-shadow: none !important; }
+}
+
+</style>
+</head>
+<body>
+
+<div class="certificate">
+
+    <!-- Fon naqshlari -->
+    <div class="bg-pattern"></div>
+    <div class="watermark-bg">CfM Contest</div>
+    <div class="watermark-bg-2" style="top:65%;">CfM Contest</div>
+
+    <!-- Ramkalar -->
+    <div class="frame-outer"></div>
+    <div class="frame-mid"></div>
+    <div class="frame-inner"></div>
+
+    <!-- ========== BURCHAK NAQSHLARI (Intricate) ========== -->
+    <div class="corner-ornament corner-tl">
+        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+            <!-- Asosiy burchak -->
+            <path d="M0,0 L40,0 Q35,5 30,10 Q25,15 20,25 Q15,35 10,45 Q5,55 0,70 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
+            <!-- Ichki naqsh -->
+            <path d="M5,5 L30,5 Q26,10 22,16 Q18,22 14,30 Q10,38 5,50 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
+            <!-- Spiral naqsh -->
+            <path d="M0,20 Q15,15 20,0" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
+            <path d="M0,35 Q25,25 35,0" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <!-- Nuqtalar -->
+            <circle cx="8" cy="8" r="2" fill="#b8954e" opacity="0.4"/>
+            <circle cx="18" cy="4" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <circle cx="4" cy="18" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <!-- Gullar -->
+            <path d="M12,12 Q16,8 20,12 Q16,16 12,12" fill="#b8954e" opacity="0.25"/>
+            <path d="M25,25 Q30,20 35,25 Q30,30 25,25" fill="#b8954e" opacity="0.2"/>
+            <!-- Zigzag -->
+            <polyline points="0,50 5,45 10,50 15,45 20,50 25,45 30,50 35,45 40,50" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+            <polyline points="50,0 45,5 50,10 45,15 50,20 45,25 50,30 45,35 50,40" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+    </div>
+    <div class="corner-ornament corner-tr">
+        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+            <path d="M160,0 L120,0 Q125,5 130,10 Q135,15 140,25 Q145,35 150,45 Q155,55 160,70 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
+            <path d="M155,5 L130,5 Q134,10 138,16 Q142,22 146,30 Q150,38 155,50 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
+            <path d="M160,20 Q145,15 140,0" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
+            <path d="M160,35 Q135,25 125,0" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="152" cy="8" r="2" fill="#b8954e" opacity="0.4"/>
+            <circle cx="142" cy="4" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <circle cx="156" cy="18" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <path d="M148,12 Q144,8 140,12 Q144,16 148,12" fill="#b8954e" opacity="0.25"/>
+            <path d="M135,25 Q130,20 125,25 Q130,30 135,25" fill="#b8954e" opacity="0.2"/>
+            <polyline points="160,50 155,45 150,50 145,45 140,50 135,45 130,50 125,45 120,50" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+            <polyline points="110,0 115,5 110,10 115,15 110,20 115,25 110,30 115,35 110,40" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+    </div>
+    <div class="corner-ornament corner-bl">
+        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+            <path d="M0,160 L40,160 Q35,155 30,150 Q25,145 20,135 Q15,125 10,115 Q5,105 0,90 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
+            <path d="M5,155 L30,155 Q26,150 22,144 Q18,138 14,130 Q10,122 5,110 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
+            <path d="M0,140 Q15,145 20,160" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
+            <path d="M0,125 Q25,135 35,160" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="8" cy="152" r="2" fill="#b8954e" opacity="0.4"/>
+            <circle cx="18" cy="156" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <circle cx="4" cy="142" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <path d="M12,148 Q16,152 20,148 Q16,144 12,148" fill="#b8954e" opacity="0.25"/>
+            <path d="M25,135 Q30,140 35,135 Q30,130 25,135" fill="#b8954e" opacity="0.2"/>
+            <polyline points="0,110 5,115 10,110 15,115 20,110 25,115 30,110 35,115 40,110" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+            <polyline points="50,160 45,155 50,150 45,145 50,140 45,135 50,130 45,125 50,120" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+    </div>
+    <div class="corner-ornament corner-br">
+        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
+            <path d="M160,160 L120,160 Q125,155 130,150 Q135,145 140,135 Q145,125 150,115 Q155,105 160,90 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
+            <path d="M155,155 L130,155 Q134,150 138,144 Q142,138 146,130 Q150,122 155,110 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
+            <path d="M160,140 Q145,145 140,160" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
+            <path d="M160,125 Q135,135 125,160" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="152" cy="152" r="2" fill="#b8954e" opacity="0.4"/>
+            <circle cx="142" cy="156" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <circle cx="156" cy="142" r="1.5" fill="#b8954e" opacity="0.3"/>
+            <path d="M148,148 Q144,152 140,148 Q144,144 148,148" fill="#b8954e" opacity="0.25"/>
+            <path d="M135,135 Q130,140 125,135 Q130,130 135,135" fill="#b8954e" opacity="0.2"/>
+            <polyline points="160,110 155,115 150,110 145,115 140,110 135,115 130,110 125,115 120,110" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+            <polyline points="110,160 115,155 110,150 115,145 110,140 115,135 110,130 115,125 110,120" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        </svg>
+    </div>
+
+    <!-- ========== YON TOMON NAQSHLARI ========== -->
+    <div class="side-ornament side-left">
+        <svg width="8mm" height="70mm" viewBox="0 0 30 260" xmlns="http://www.w3.org/2000/svg">
+            <line x1="15" y1="0" x2="15" y2="260" stroke="#b8954e" stroke-width="0.8" opacity="0.4"/>
+            <line x1="8" y1="20" x2="8" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
+            <line x1="22" y1="20" x2="22" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
+            <circle cx="15" cy="30" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="15" cy="130" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="15" cy="230" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <path d="M10,50 Q15,45 20,50 Q15,55 10,50" fill="#b8954e" opacity="0.2"/>
+            <path d="M10,150 Q15,145 20,150 Q15,155 10,150" fill="#b8954e" opacity="0.2"/>
+            <path d="M10,210 Q15,205 20,210 Q15,215 10,210" fill="#b8954e" opacity="0.2"/>
+        </svg>
+    </div>
+    <div class="side-ornament side-right">
+        <svg width="8mm" height="70mm" viewBox="0 0 30 260" xmlns="http://www.w3.org/2000/svg">
+            <line x1="15" y1="0" x2="15" y2="260" stroke="#b8954e" stroke-width="0.8" opacity="0.4"/>
+            <line x1="8" y1="20" x2="8" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
+            <line x1="22" y1="20" x2="22" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
+            <circle cx="15" cy="30" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="15" cy="130" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <circle cx="15" cy="230" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
+            <path d="M10,50 Q15,45 20,50 Q15,55 10,50" fill="#b8954e" opacity="0.2"/>
+            <path d="M10,150 Q15,145 20,150 Q15,155 10,150" fill="#b8954e" opacity="0.2"/>
+            <path d="M10,210 Q15,205 20,210 Q15,215 10,210" fill="#b8954e" opacity="0.2"/>
+        </svg>
+    </div>
+
+    <!-- ========== YUQORI MARKAZIY NAQSH ========== -->
+    <div class="top-center-ornament">
+        <svg width="50mm" height="12mm" viewBox="0 0 180 40" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="20" x2="70" y2="20" stroke="#b8954e" stroke-width="1"/>
+            <line x1="110" y1="20" x2="180" y2="20" stroke="#b8954e" stroke-width="1"/>
+            <circle cx="90" cy="20" r="5" fill="none" stroke="#b8954e" stroke-width="1"/>
+            <circle cx="90" cy="20" r="2" fill="#b8954e" opacity="0.8"/>
+            <path d="M90,5 L93,12 L90,19 L87,12 Z" fill="#b8954e" opacity="0.6"/>
+            <path d="M90,35 L93,28 L90,21 L87,28 Z" fill="#b8954e" opacity="0.6"/>
+            <path d="M75,20 L82,17 L82,23 Z" fill="#b8954e" opacity="0.5"/>
+            <path d="M105,20 L98,17 L98,23 Z" fill="#b8954e" opacity="0.5"/>
+            <circle cx="60" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+            <circle cx="120" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+        </svg>
+    </div>
+
+    <!-- ========== PASTKI MARKAZIY NAQSH ========== -->
+    <div class="bottom-center-ornament">
+        <svg width="50mm" height="12mm" viewBox="0 0 180 40" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="20" x2="70" y2="20" stroke="#b8954e" stroke-width="1"/>
+            <line x1="110" y1="20" x2="180" y2="20" stroke="#b8954e" stroke-width="1"/>
+            <circle cx="90" cy="20" r="5" fill="none" stroke="#b8954e" stroke-width="1"/>
+            <circle cx="90" cy="20" r="2" fill="#b8954e" opacity="0.8"/>
+            <path d="M90,5 L93,12 L90,19 L87,12 Z" fill="#b8954e" opacity="0.6"/>
+            <path d="M90,35 L93,28 L90,21 L87,28 Z" fill="#b8954e" opacity="0.6"/>
+            <path d="M75,20 L82,17 L82,23 Z" fill="#b8954e" opacity="0.5"/>
+            <path d="M105,20 L98,17 L98,23 Z" fill="#b8954e" opacity="0.5"/>
+            <circle cx="60" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+            <circle cx="120" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+        </svg>
+    </div>
+
+    <!-- ============================================
+         ASOSIY KONTENT
+         ============================================ -->
+    <div class="content">
+
+        <!-- HEADER -->
+        <div class="header">
+            <div class="brand">
+                <div class="brand-mark">
+                    {% if logo_base64 %}
+                    <img src="data:image/png;base64,{{ logo_base64 }}" alt="logo">
+                    {% else %}
+                    <span class="fallback">CF</span>
+                    {% endif %}
+                </div>
+                <div class="brand-text">
+                    <div class="brand-name">{{ organization_name|default:"CfM Contest" }}</div>
+                    <div class="brand-sub">Rasmiy Sertifikat</div>
+                </div>
+            </div>
+
+            <div class="id-box">
+                <div class="id-label">Sertifikat ID</div>
+                <div class="id-value">{{ code }}</div>
+                <div class="id-date">{{ issued_date|default:"—" }}</div>
+            </div>
+        </div>
+
+        <!-- SARLAVHA -->
+        <div class="title-block">
+            <div class="cert-badge">
+                {% if source_type == "course" %}Kurs Sertifikati
+                {% elif source_type == "test" %}Test Sertifikati
+                {% elif source_type == "contest" %}Olimpiada Sertifikati
+                {% else %}Rasmiy Yutuq
+                {% endif %}
+            </div>
+
+            <div class="cert-title">Sertifikat</div>
+            <div class="cert-subtitle">
+                {% if source_type == "course" %}Muvaffaqiyatli Tamomlaganlik Hujjati
+                {% elif source_type == "test" %}Muvaffaqiyatli Topshirganlik Hujjati
+                {% elif source_type == "contest" %}Faol Ishtirok Etganlik Hujjati
+                {% else %}Muvaffaqiyatli Yakunlaganlik Hujjati
+                {% endif %}
+            </div>
+        </div>
+
+        <!-- BEZAK CHIZIG'I -->
+        <div class="divider">
+            <div class="divider-line"></div>
+            <div class="divider-icon">◆</div>
+            <div class="divider-line"></div>
+        </div>
+
+        <!-- QABUL QILUVCHI -->
+        <div class="recipient-block">
+            <div class="presented-label">Ushbu sertifikat faxr bilan topshiriladi</div>
+            <div class="recipient-name">{{ full_name }}</div>
+        </div>
+
+        <!-- TAVSIF -->
+        <div class="desc-block">
+            <strong>{{ full_name }}</strong>
+            {% if source_type == "course" %}
+                ushbu sertifikatni <strong>&laquo;{{ title }}&raquo;</strong> kursini muvaffaqiyatli tamomlagani uchun oldi.
+            {% elif source_type == "test" %}
+                ushbu sertifikatni <strong>&laquo;{{ title }}&raquo;</strong> testini muvaffaqiyatli topshirgani uchun oldi.
+            {% elif source_type == "contest" %}
+                ushbu sertifikatni <strong>&laquo;{{ title }}&raquo;</strong> olimpiadasida faol ishtirok etgani uchun oldi.
+            {% else %}
+                ushbu sertifikatni <strong>&laquo;{{ title }}&raquo;</strong> ni muvaffaqiyatli yakunlagani uchun oldi.
+            {% endif %}
+        </div>
+
+        {% if congratulation_text %}
+        <div class="congrats-text">"{{ congratulation_text }}"</div>
+        {% endif %}
+
+        {% if info_tags %}
+        <div class="info-tags">
+            {% for tag in info_tags %}
+            <span class="info-tag">{{ tag }}</span>
+            {% endfor %}
+        </div>
+        {% endif %}
+
+        {% if show_scores %}
+        <div class="score-block">
+            {% if percentage is not None %}
+            <div class="score-item">
+                <div class="score-value">{{ percentage }}%</div>
+                <div class="score-label">Natija</div>
+            </div>
+            {% endif %}
+            {% if correct_count is not None and total_questions %}
+            <div class="score-item">
+                <div class="score-value">{{ correct_count }}/{{ total_questions }}</div>
+                <div class="score-label">To'g'ri Javob</div>
+            </div>
+            {% endif %}
+            {% if contest_rank %}
+            <div class="score-item">
+                <div class="score-value">#{{ contest_rank }}</div>
+                <div class="score-label">O'rin</div>
+            </div>
+            {% endif %}
+            {% if total_xp_earned %}
+            <div class="score-item">
+                <div class="score-value">{{ total_xp_earned }}</div>
+                <div class="score-label">XP Ball</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        {% if contest_rank and contest_rank <= 3 %}
+        <div class="rank-badge">
+            {% if contest_rank == 1 %}🥇 Birinchi O'rin
+            {% elif contest_rank == 2 %}🥈 Ikkinchi O'rin
+            {% elif contest_rank == 3 %}🥉 Uchinchi O'rin
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- FOOTER -->
+        <div class="footer">
+
+            <!-- QR -->
+            <div class="footer-col">
+                <div class="qr-wrap">
+                    {% if qr_base64 %}
+                    <img class="qr-img" src="data:image/png;base64,{{ qr_base64 }}" alt="QR">
+                    {% else %}
+                    <div class="qr-img" style="display:flex;align-items:center;justify-content:center;background:#fff;">
+                        <span style="font-size:12px;color:#cbd5e1;">QR</span>
+                    </div>
+                    {% endif %}
+                    <div class="qr-label">Tekshirish</div>
+                    <div class="qr-url">{{ verify_url }}</div>
+                </div>
+            </div>
+
+            <!-- MUHR -->
+            <div class="footer-col">
+                <div class="seal-wrap">
+                    <div class="seal">
+                        <div class="seal-outer"></div>
+                        <div class="seal-text">
+                            <div class="seal-line1">CfM</div>
+                            <div class="seal-line2">Verified</div>
+                        </div>
+                    </div>
+                    <div class="seal-code">{{ code|slice:":12" }}</div>
+                </div>
+            </div>
+
+            <!-- IMZO -->
+            <div class="footer-col">
+                <div class="sig-wrap">
+                    {% if signature_base64 %}
+                    <img class="sig-img" src="data:image/png;base64,{{ signature_base64 }}" alt="imzo">
+                    {% else %}
+                    <div style="height:9mm;"></div>
+                    {% endif %}
+                    <div class="sig-line">
+                        <div class="sig-name">{{ mentor_name|default:"Platforma Mentori" }}</div>
+                        <div class="sig-role">{{ mentor_status|default:"Asadbek" }}</div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>

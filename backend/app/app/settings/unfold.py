@@ -7,6 +7,8 @@ from datetime import timedelta
 from django.utils import timezone
 
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+
 def get_last_7_days_link():
     date_str = (timezone.now() - timedelta(days=7)).strftime('%Y-%m-%d')
     return f"{reverse_lazy('admin:problems_problem_changelist')}?created_at__gte={date_str}"
@@ -16,6 +18,17 @@ def get_last_30_days_link():
     date_str = (timezone.now() - timedelta(days=30)).strftime('%Y-%m-%d')
     return f"{reverse_lazy('admin:problems_problem_changelist')}?created_at__gte={date_str}"
 
+
+def get_contest_ongoing_link():
+    return f"{reverse_lazy('admin:contests_contest_changelist')}?status__exact=ongoing"
+
+
+def get_contest_upcoming_link():
+    return f"{reverse_lazy('admin:contests_contest_changelist')}?status__exact=upcoming"
+
+
+def get_contest_ended_link():
+    return f"{reverse_lazy('admin:contests_contest_changelist')}?status__exact=ended"
 
 
 def environment_callback(request):
@@ -29,7 +42,7 @@ def unfold():
         "SITE_TITLE": "CfM Contest",
         "SITE_HEADER": "CfM Contest",
         "SITE_SUBHEADER": "Boshqaruv paneli",
-        "SITE_SYMBOL":  "trophy",
+        "SITE_SYMBOL": "trophy",
         "SITE_URL": "/",
         "SHOW_HISTORY": True,
         "SHOW_VIEW_ON_SITE": True,
@@ -48,17 +61,17 @@ def unfold():
         "DASHBOARD_CALLBACK": "app.dashboard.get_dashboard_context",
         "ENVIRONMENT": "app.unfold.environment_callback",
         "LOGIN": {
-                "image": lambda request: static("img/login-bg.jpg"),
-                "title": "Xush kelibsiz",
-                "description": "Hisobingizga kiring va bilimingizni sinab ko'ring",
-                "redirect_after": lambda request: reverse_lazy("admin:index"),
-            },
-            "STYLES": [
-                lambda request: static("css/output.css"),
-            ],
-            "COLORS": {
-            "base": {   # Neytral ranglar (kulrang)
-                "50":  "250 250 250",   # RGB formatda
+            "image": lambda request: static("img/login-bg.jpg"),
+            "title": "Xush kelibsiz",
+            "description": "Hisobingizga kiring va bilimingizni sinab ko'ring",
+            "redirect_after": lambda request: reverse_lazy("admin:index"),
+        },
+        "STYLES": [
+            lambda request: static("css/output.css"),
+        ],
+        "COLORS": {
+            "base": {
+                "50": "250 250 250",
                 "100": "244 244 245",
                 "200": "228 228 231",
                 "300": "212 212 216",
@@ -70,27 +83,26 @@ def unfold():
                 "900": "24 24 27",
                 "950": "9 9 11",
             },
-            "primary": {  # Asosiy rang (tugmalar, linklar, header)
-                "50":  "240 249 255",
+            "primary": {
+                "50": "240 249 255",
                 "100": "224 242 254",
                 "200": "186 230 253",
                 "300": "125 211 252",
                 "400": "56 189 248",
-                "500": "14 165 233",   # ← Asosiy rang
+                "500": "14 165 233",
                 "600": "2 132 199",
                 "700": "3 105 161",
                 "800": "7 89 133",
                 "900": "12 74 110",
                 "950": "8 47 73",
             },
-            # Matn ranglari
             "font": {
-                "subtle-light":    "var(--color-base-500)",
-                "subtle-dark":     "var(--color-base-400)",
-                "default-light":   "var(--color-base-600)",
-                "default-dark":    "var(--color-base-300)",
+                "subtle-light": "var(--color-base-500)",
+                "subtle-dark": "var(--color-base-400)",
+                "default-light": "var(--color-base-600)",
+                "default-dark": "var(--color-base-300)",
                 "important-light": "var(--color-base-900)",
-                "important-dark":  "var(--color-base-100)",
+                "important-dark": "var(--color-base-100)",
             },
         },
         "BUTTONS": {
@@ -102,11 +114,9 @@ def unfold():
         "FORMS": {
             "classes": {
                 "text_input": "border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500",
-                # Default sinflarga qo'shimcha Tailwind class qo'shish
             },
         },
 
-       
         "SITE_DROPDOWN": [
             {
                 "icon": "admin_panel_settings",
@@ -122,8 +132,12 @@ def unfold():
                 "link": reverse_lazy("admin:baseuser_baseuser_changelist"),
             },
         ],
-        
+
+        # ═══════════════════════════════════════════════════════
+        # TABS — Har bir ilova uchun tezkor filtrlar
+        # ═══════════════════════════════════════════════════════
         "TABS": [
+            # ---------- PROBLEMS ----------
             {
                 "models": [
                     "problems.problem",
@@ -241,21 +255,141 @@ def unfold():
                         "permission": lambda request: request.user.has_perm("problems.view_problem"),
                     },
                 ],
-            }
+            },
+
+            # ═══════════════════════════════════════════════════════
+            # CONTESTS — Musobaqalar tezkor filtrlari (YANGI)
+            # ═══════════════════════════════════════════════════════
+            {
+                "models": [
+                    "contests.contest",
+                    "contests.contestproblem",
+                    "contests.contestprize",
+                    "contests.contestregistration",
+                    "contests.contestanswer",
+                    "contests.cheatflag",
+                ],
+                "items": [
+                    {
+                        "title": _("🏆 Barcha musobaqalar"),
+                        "icon": "emoji_events",
+                        "link": lambda request: reverse_lazy("admin:contests_contest_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+
+                    {
+                        "title": _("▶️ Davom etayotgan"),
+                        "icon": "play_circle",
+                        "link": lambda request: get_contest_ongoing_link(),
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("⏳ Kutilayotgan"),
+                        "icon": "hourglass_top",
+                        "link": lambda request: get_contest_upcoming_link(),
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("✅ Yakunlangan"),
+                        "icon": "check_circle",
+                        "link": lambda request: get_contest_ended_link(),
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("🔓 Ochiq musobaqalar"),
+                        "icon": "lock_open",
+                        "link": lambda request: reverse_lazy("admin:contests_contest_changelist") + "?visibility__exact=public",
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("🔒 Yopiq musobaqalar"),
+                        "icon": "lock",
+                        "link": lambda request: reverse_lazy("admin:contests_contest_changelist") + "?visibility__exact=private",
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("💻 ICPC turi"),
+                        "icon": "code",
+                        "link": lambda request: reverse_lazy("admin:contests_contest_changelist") + "?contest_type__exact=icpc",
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("📈 Dinamik turi"),
+                        "icon": "trending_up",
+                        "link": lambda request: reverse_lazy("admin:contests_contest_changelist") + "?contest_type__exact=dynamic",
+                        "permission": lambda request: request.user.has_perm("contests.view_contest"),
+                    },
+                    {
+                        "title": _("👥 Ro'yxatdan o'tishlar"),
+                        "icon": "how_to_reg",
+                        "link": lambda request: reverse_lazy("admin:contests_contestregistration_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_contestregistration"),
+                    },
+                    {
+                        "title": _("✅ Yakunlangan ishtirokchilar"),
+                        "icon": "task_alt",
+                        "link": lambda request: reverse_lazy("admin:contests_contestregistration_changelist") + "?status__exact=completed",
+                        "permission": lambda request: request.user.has_perm("contests.view_contestregistration"),
+                    },
+                    {
+                        "title": _("⏳ Jarayondagilar"),
+                        "icon": "pending",
+                        "link": lambda request: reverse_lazy("admin:contests_contestregistration_changelist") + "?status__exact=in_progress",
+                        "permission": lambda request: request.user.has_perm("contests.view_contestregistration"),
+                    },
+                    {
+                        "title": _("🚫 Diskvalifikatsiya"),
+                        "icon": "block",
+                        "link": lambda request: reverse_lazy("admin:contests_contestregistration_changelist") + "?status__exact=disqualified",
+                        "permission": lambda request: request.user.has_perm("contests.view_contestregistration"),
+                    },
+                    {
+                        "title": _("🔗 Musobaqa bandlari"),
+                        "icon": "link",
+                        "link": lambda request: reverse_lazy("admin:contests_contestproblem_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_contestproblem"),
+                    },
+                    {
+                        "title": _("🎁 Mukofotlar"),
+                        "icon": "card_giftcard",
+                        "link": lambda request: reverse_lazy("admin:contests_contestprize_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_contestprize"),
+                    },
+                    {
+                        "title": _("📝 Quiz javoblari"),
+                        "icon": "fact_check",
+                        "link": lambda request: reverse_lazy("admin:contests_contestanswer_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_contestanswer"),
+                    },
+                    {
+                        "title": _("🚩 Shubhali harakatlar"),
+                        "icon": "report",
+                        "link": lambda request: reverse_lazy("admin:contests_cheatflag_changelist"),
+                        "permission": lambda request: request.user.has_perm("contests.view_cheatflag"),
+                    },
+                    {
+                        "title": _("⚠️ Ko'rib chiqilmagan"),
+                        "icon": "warning",
+                        "link": lambda request: reverse_lazy("admin:contests_cheatflag_changelist") + "?reviewed__exact=0",
+                        "permission": lambda request: request.user.has_perm("contests.view_cheatflag"),
+                    },
+                ],
+            },
         ],
 
+        # ═══════════════════════════════════════════════════════
+        # SIDEBAR — Navigatsiya menyusi
+        # ═══════════════════════════════════════════════════════
         "SIDEBAR": {
             "show_search": True,
             "show_all_applications": False,
             "navigation": [
 
-                # ══════════════════════════════════════
-                # 1. ASOSIY — Hamma ko'radi
-                # ══════════════════════════════════════
+                # 1. ASOSIY
                 {
                     "title": _("Asosiy"),
                     "separator": True,
-                    "collapsible": False,  # Yig'ib-yoyish
+                    "collapsible": False,
                     "items": [
                         {
                             "title": _("Dashboard"),
@@ -265,35 +399,30 @@ def unfold():
                     ],
                 },
 
-                # ══════════════════════════════════════
-                # 2. ADMIN BOSHQARUVI — Faqat Superuser
-                # ══════════════════════════════════════
+                # 2. ADMIN BOSHQARUVI
                 {
                     "title": _("Admin Boshqaruvi"),
                     "icon": "admin_panel_settings",
                     "collapsible": True,
-                    "separator": True,     # Chiziq
-
+                    "separator": True,
                     "permission": lambda request: request.user.is_superuser,
                     "items": [
                         {
                             "title": _("Adminlar (Staff)"),
                             "icon": "admin_panel_settings",
-                            "link": reverse_lazy("admin:auth_user_changelist"),  # ✅ Django User
+                            "link": reverse_lazy("admin:auth_user_changelist"),
                             "permission": lambda request: request.user.is_superuser,
                         },
                         {
                             "title": _("Guruhlar va Rollar"),
                             "icon": "groups",
-                            "link": reverse_lazy("admin:auth_group_changelist"),  # ✅ Django Group
+                            "link": reverse_lazy("admin:auth_group_changelist"),
                             "permission": lambda request: request.user.is_superuser,
                         },
                     ],
                 },
-                # ══════════════════════════════════════
+
                 # 3. FOYDALANUVCHILAR
-                # O'qituvchi, Moderator, Superuser
-                # ══════════════════════════════════════
                 {
                     "title": _("Foydalanuvchilar"),
                     "icon": "group",
@@ -318,13 +447,7 @@ def unfold():
                     ],
                 },
 
-                # ══════════════════════════════════════
                 # 4. TA'LIM
-                # O'qituvchi: to'liq
-                # Kontent Menejer: faqat ko'rish
-                # Moderator: faqat ko'rish
-                # ══════════════════════════════════════
-                
                 {
                     "title": _("Ta'lim"),
                     "icon": "school",
@@ -355,55 +478,88 @@ def unfold():
                             "link": reverse_lazy("admin:courses_lecture_changelist"),
                             "permission": lambda request: request.user.has_perm("courses.view_lecture"),
                         },
-        
                     ],
                 },
+
+                # 5. STATISTIKA
                 {
                     "title": _("Statistika & Hisobotlar"),
                     "icon": "analytics",
                     "collapsible": True,
-                    # BU YERDA: Superuser bo'lsa birdan o'tkazib yuborish
-                    "permission": lambda request: request.user.is_superuser or request.user.has_perm("courses.view_enrollment"),
+                    "permission": lambda request: (
+                        request.user.is_superuser
+                        or request.user.has_perm("courses.view_enrollment")
+                    ),
                     "items": [
                         {
                             "title": _("Kursga yozilishlar"),
                             "icon": "assignment_ind",
                             "link": reverse_lazy("admin:courses_enrollment_changelist"),
-                            # BU YERDA HAM:
-                            "permission": lambda request: request.user.is_superuser or request.user.has_perm("courses.view_enrollment"),
+                            "permission": lambda request: (
+                                request.user.is_superuser
+                                or request.user.has_perm("courses.view_enrollment")
+                            ),
                         },
                         {
-                            "title": _("User va Darsliklar statistikasi"),
-                            "icon": "finance_mode",
-                            "link": reverse_lazy("admin:status_lessonstatus_changelist"),
-                            "permission": lambda request: request.user.has_perm("status.view_lessonstatus"),
-                        },
-                        {
-                            "title": _("Ma'ruza progresslari"),
-                            "icon": "trending_up",
-                            "link": reverse_lazy("admin:status_lecturestatus_changelist"),
-                            "permission": lambda request: request.user.has_perm("status.view_lecturestatus"),
-                        },
-                        {
-                            "title": _("Statistika"),
+                            "title": _("Foydalanuvchi statistikasi"),
                             "icon": "analytics",
                             "link": reverse_lazy("admin:status_userstats_changelist"),
                             "permission": lambda request: request.user.has_perm("status.view_userstats"),
                         },
                         {
-                            "title": _("Kunlik faoliyat"),
+                            "title": _("Kunlik faollik"),
                             "icon": "calendar_today",
                             "link": reverse_lazy("admin:status_useractivitydaily_changelist"),
                             "permission": lambda request: request.user.has_perm("status.view_useractivitydaily"),
                         },
+                        {
+                            "title": _("Ma'ruza progresslari"),
+                            "icon": "play_circle",
+                            "link": reverse_lazy("admin:status_lecturestatus_changelist"),
+                            "permission": lambda request: request.user.has_perm("status.view_lecturestatus"),
+                        },
+                        {
+                            "title": _("Masala progresslari"),
+                            "icon": "code",
+                            "link": reverse_lazy("admin:status_problemstatus_changelist"),
+                            "permission": lambda request: request.user.has_perm("status.view_problemstatus"),
+                        },
+                        {
+                            "title": _("Dars progresslari"),
+                            "icon": "menu_book",
+                            "link": reverse_lazy("admin:status_lessonstatus_changelist"),
+                            "permission": lambda request: request.user.has_perm("status.view_lessonstatus"),
+                        },
+                        {
+                            "title": _("Modul progresslari"),
+                            "icon": "folder",
+                            "link": reverse_lazy("admin:status_modulestatus_changelist"),
+                            "permission": lambda request: request.user.has_perm("status.view_modulestatus"),
+                        },
+                        {
+                            "title": _("Kurs progresslari"),
+                            "icon": "school",
+                            "link": reverse_lazy("admin:status_coursestatus_changelist"),
+                            "permission": lambda request: request.user.has_perm("status.view_coursestatus"),
+                        },
                     ],
                 },
-
-                # ══════════════════════════════════════
-                # 5. MASALALAR
-                # Masala Muallifi: to'liq
-                # Moderator: faqat ko'rish
-                # ══════════════════════════════════════
+                # O'quv markazi. 
+                {
+                    "title": _("O'quv markazlari"),
+                    "icon": "school",
+                    "collapsible": True,
+                    "permission": lambda request: request.user.has_perm("centers.view_center"),
+                    "items": [
+                        {
+                            "title": _("Markazlar"),
+                            "icon": "apartment",
+                            "link": reverse_lazy("admin:centers_center_changelist"),
+                            "permission": lambda request: request.user.has_perm("centers.view_center"),
+                        },
+                    ],
+                },
+                # 6. MASALALAR
                 {
                     "title": _("Masalalar"),
                     "icon": "code",
@@ -473,11 +629,7 @@ def unfold():
                     ],
                 },
 
-                # ══════════════════════════════════════
-                # 6. TEST VA QUIZLAR
-                # Kontent Menejer: to'liq
-                # Moderator: faqat ko'rish
-                # ══════════════════════════════════════
+                # 7. TEST VA QUIZLAR
                 {
                     "title": _("Test va Quizlar"),
                     "icon": "quiz",
@@ -497,7 +649,7 @@ def unfold():
                             "permission": lambda request: request.user.has_perm("quizs.view_question"),
                         },
                         {
-                            "title": _("Varyatlarr"),
+                            "title": _("Varyantlar"),
                             "icon": "help",
                             "link": reverse_lazy("admin:quizs_choice_changelist"),
                             "permission": lambda request: request.user.has_perm("quizs.view_choice"),
@@ -514,16 +666,16 @@ def unfold():
                             "link": reverse_lazy("admin:quizs_testenrollment_changelist"),
                             "permission": lambda request: request.user.has_perm("quizs.view_testenrollment"),
                         },
-                        # UserResponseAdmin
                         {
-                            "title": _("Foydalanovchi javoblari"),
+                            "title": _("Foydalanuvchi javoblari"),
                             "icon": "groups_2",
                             "link": reverse_lazy("admin:quizs_userresponse_changelist"),
                             "permission": lambda request: request.user.has_perm("quizs.view_userresponse"),
                         },
                     ],
                 },
-                # 
+
+                # 8. SERTIFIKAT
                 {
                     "title": _("Sertifikat"),
                     "icon": "workspace_premium",
@@ -533,22 +685,21 @@ def unfold():
                         {
                             "title": _("Sertifikat Shablonlari"),
                             "icon": "auto_awesome_motion",
-                            "link": reverse_lazy("admin:certificate_certificatetemplate_changelist"), # 👈 q harfi olib tashlandi
+                            "link": reverse_lazy("admin:certificate_certificatetemplate_changelist"),
                             "permission": lambda request: request.user.has_perm("certificate.view_certificatetemplate"),
                         },
                         {
                             "title": _("Berilgan Sertifikatlar"),
                             "icon": "workspace_premium",
-                            "link": reverse_lazy("admin:certificate_certificate_changelist"), # 👈 q harfi olib tashlandi
+                            "link": reverse_lazy("admin:certificate_certificate_changelist"),
                             "permission": lambda request: request.user.has_perm("certificate.view_certificate"),
                         },
                     ]
                 },
 
-
-                # ══════════════════════════════════════
-                # 7. MUSOBAQALAR
-                # ══════════════════════════════════════
+                # ═══════════════════════════════════════════════════════
+                # 9. MUSOBAQALAR (YANGILANGAN — barcha modellar qo'shildi)
+                # ═══════════════════════════════════════════════════════
                 {
                     "title": _("Musobaqalar"),
                     "icon": "emoji_events",
@@ -562,18 +713,55 @@ def unfold():
                             "permission": lambda request: request.user.has_perm("contests.view_contest"),
                         },
                         {
+                            "title": _("Musobaqa bandlari"),
+                            "icon": "link",
+                            "link": reverse_lazy("admin:contests_contestproblem_changelist"),
+                            "permission": lambda request: request.user.has_perm("contests.view_contestproblem"),
+                        },
+                        {
+                            "title": _("🎁 Mukofotlar"),
+                            "icon": "card_giftcard",
+                            "link": reverse_lazy("admin:contests_contestprize_changelist"),
+                            "permission": lambda request: request.user.has_perm("contests.view_contestprize"),
+                        },
+                        {
                             "title": _("Musobaqa ro'yxatga olish"),
                             "icon": "how_to_reg",
                             "link": reverse_lazy("admin:contests_contestregistration_changelist"),
                             "permission": lambda request: request.user.has_perm("contests.view_contestregistration"),
                         },
+                        {
+                            "title": _("Quiz javoblari"),
+                            "icon": "fact_check",
+                            "link": reverse_lazy("admin:contests_contestanswer_changelist"),
+                            "permission": lambda request: request.user.has_perm("contests.view_contestanswer"),
+                        },
+                        {
+                            "title": _("Shubhali harakatlar"),
+                            "icon": "report",
+                            "link": reverse_lazy("admin:contests_cheatflag_changelist"),
+                            "permission": lambda request: request.user.has_perm("contests.view_cheatflag"),
+                        },
                     ],
                 },
 
-                # ══════════════════════════════════════
-                # 8. YECHIMLAR
-                # Moderator va Superuser ko'radi
-                # ══════════════════════════════════════
+                # 10. BILDIRISHNOMALAR
+                {
+                    "title": _("Bildirishnomalar"),
+                    "icon": "notifications",
+                    "collapsible": True,
+                    "permission": lambda request: request.user.has_perm("notifications.view_notification"),
+                    "items": [
+                        {
+                            "title": _("Bildirishnomalar"),
+                            "icon": "notifications_active",
+                            "link": reverse_lazy("admin:notifications_notification_changelist"),
+                            "permission": lambda request: request.user.has_perm("notifications.view_notification"),
+                        },
+                    ],
+                },
+
+                # 11. YECHIMLAR
                 {
                     "title": _("Yechimlar"),
                     "icon": "task",
@@ -589,11 +777,7 @@ def unfold():
                     ],
                 },
 
-                # ══════════════════════════════════════
-                # 9. VIDEO DARSLIKLAR
-                # O'qituvchi: to'liq
-                # Moderator: faqat ko'rish
-                # ══════════════════════════════════════
+                # 12. VIDEO DARSLIKLAR
                 {
                     "title": _("Video darsliklar"),
                     "icon": "video_library",
@@ -609,22 +793,13 @@ def unfold():
                     ],
                 },
 
-                # ══════════════════════════════════════
-                # 10. TO'LOVLAR
-                # Faqat Superuser ko'radi
-                # ══════════════════════════════════════
+                # 13. TO'LOVLAR
                 {
                     "title": _("To'lovlar"),
                     "icon": "payments",
                     "collapsible": True,
                     "permission": lambda request: request.user.has_perm("payment.view_order"),
                     "items": [
-                        {
-                            "title": _("Buyurtmalar"),
-                            "icon": "shopping_cart",
-                            "link": reverse_lazy("admin:payment_order_changelist"),
-                            "permission": lambda request: request.user.has_perm("payment.view_order"),
-                        },
                         {
                             "title": _("Hisob-fakturalar"),
                             "icon": "receipt",
@@ -634,8 +809,8 @@ def unfold():
                     ],
                 },
             ],
-
         },
+
         "FORMS": {
             "classes": {
                 "text_input": "border rounded px-3 py-2 custom-class",
@@ -646,5 +821,69 @@ def unfold():
                 "file": "custom-file-class",
             }
         },
-
+        "COMMAND": {
+            "search_models": True,
+            "search_callback": "search_callback",
+            "show_history": True,
+        },
     }
+
+
+from django.http import HttpRequest
+from unfold.dataclasses import SearchResult
+from django.urls import reverse
+
+
+def search_callback(request: HttpRequest, search_term: str) -> list[SearchResult]:
+    results = []
+
+    if not search_term:
+        return results
+
+    term = search_term.lower()
+
+    # 1. Tezkor navigatsiya
+    if "yangi masala" in term or "create problem" in term:
+        results.append(
+            SearchResult(
+                title="Yangi masala qo'shish",
+                description="Admin panelda yangi masala yaratish sahifasiga o'tish",
+                link=reverse("admin:problems_problem_add"),
+                icon="add_circle",
+            )
+        )
+
+    if "yangi musobaqa" in term or "create contest" in term:
+        results.append(
+            SearchResult(
+                title="Yangi musobaqa qo'shish",
+                description="Admin panelda yangi musobaqa yaratish",
+                link=reverse("admin:contests_contest_add"),
+                icon="add_circle",
+            )
+        )
+
+    # 2. Monitoring
+    if "monitoring" in term or "leaderboard" in term:
+        results.append(
+            SearchResult(
+                title="Jonli monitoring jadvali",
+                description="Musobaqa natijalarini jonli kuzatish",
+                link="/contest/live-leaderboard/",
+                icon="leaderboard",
+            )
+        )
+
+    # 3. Codeforces integratsiya
+    if "cf:" in term:
+        handle = search_term.replace("cf:", "").strip()
+        results.append(
+            SearchResult(
+                title=f"Codeforces profil: {handle}",
+                description=f"Ishtirokchining Codeforces statistikasi",
+                link=f"https://codeforces.com/profile/{handle}",
+                icon="open_in_new",
+            )
+        )
+
+    return results

@@ -9,11 +9,18 @@ XP BERISH QOIDASI (muhim!):
       2. quizs app: TestSession.calculate_mathematical_score() ichida (atomik)
       3. contests app: ContestRegistration signal (birinchi COMPLETED uchun)
   - add_xp() metodi faqat boshqa applardan chaqiriladi, hech qachon o'zi chaqirmaydi.
+
+PROGRESS YANGILASH QOIDASI:
+  - ProblemStatus, LessonStatus, LectureStatus, ModuleStatus, CourseStatus
+    hech qachon signal orqali emas, services/ qatlamidagi servislar orqali yangilanadi:
+        ProblemProgressService -> LessonProgressService
+            -> ModuleProgressService -> CourseProgressService -> EnrollmentService
 """
 from django.db import models, transaction
 from django.utils import timezone
-from baseuser.models import BaseUser
 from django.utils.translation import gettext_lazy as _
+from baseuser.models import BaseUser
+
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
@@ -23,90 +30,149 @@ class TimeStampedModel(models.Model):
         abstract = True
 
 
+# ======================================================================
+# XP / DARAJA / KUNLIK FAOLLIK
+# ======================================================================
+
 class UserStats(TimeStampedModel):
-    """Foydalanuvchining joriy XP va darajasi."""
+    """
+    Foydalanuvchining umumiy statistikasi.
+
+    XP faqat add_xp() orqali qo'shiladi.
+    Daraja (Level) XP asosida avtomatik yangilanadi.
+    """
 
     class Level(models.TextChoices):
-        BEGINNER = "beginner", "Yangi boshlovchi"
-        BRONZE = "bronze", "Bronza"
-        SILVER = "silver", "Kumush"
-        GOLD = "gold", "Oltin"
-        PRO = "pro", "Professional"
+        BEGINNER = "beginner", _("Yangi boshlovchi")
+        BRONZE = "bronze", _("Bronza")
+        SILVER = "silver", _("Kumush")
+        GOLD = "gold", _("Oltin")
+        PLATINUM = "platinum", _("Platina")
+        EMERALD = "emerald", _("Zumrad")
+        DIAMOND = "diamond", _("Olmos")
+        MASTER = "master", _("Master")
+        GRANDMASTER = "grandmaster", _("Grandmaster")
+        IMMORTAL = "immortal", _("Immortal")
 
+    # XP chegaralari (katta qiymatdan kichikka)
     LEVEL_THRESHOLDS = (
-        (15_000, Level.PRO),
-        (8_000, Level.GOLD),
+        (100_000, Level.IMMORTAL),
+        (75_000, Level.GRANDMASTER),
+        (55_000, Level.MASTER),
+        (40_000, Level.DIAMOND),
+        (28_000, Level.EMERALD),
+        (18_000, Level.PLATINUM),
+        (10_000, Level.GOLD),
         (5_000, Level.SILVER),
-        (2_000, Level.BRONZE),
+        (1_500, Level.BRONZE),
     )
 
     user = models.OneToOneField(
-        BaseUser, 
-        on_delete=models.CASCADE, 
+        BaseUser,
+        on_delete=models.CASCADE,
         related_name="stats",
-        verbose_name="Foydalanuvchi",
-        help_text="Ushbu statistika egasi bo'lgan foydalanuvchi."
+        verbose_name=_("Foydalanuvchi"),
     )
     xp = models.PositiveIntegerField(
-        "Jami to'plangan XP", 
-        default=0, 
+        default=0,
         db_index=True,
-        help_text="Foydalanuvchi tomonidan platformada to'plangan jami umumiy ball (XP)."
+        verbose_name=_("Jami XP"),
     )
     level = models.CharField(
-        "Joriy darajasi",
         max_length=20,
         choices=Level.choices,
         default=Level.BEGINNER,
         db_index=True,
-        help_text="Foydalanuvchining jami XP ballariga qarab avtomatik hisoblanadigan unvoni."
+        verbose_name=_("Daraja"),
     )
 
     class Meta:
-        verbose_name = "📊 Foydalanuvchi Statistikasi"
-        verbose_name_plural = "📊 Foydalanuvchilar Statistikasi"
         ordering = ["-xp"]
+        verbose_name = _("📊 Foydalanuvchi statistikasi")
+        verbose_name_plural = _("📊 Foydalanuvchilar statistikasi")
 
     def __str__(self):
-        return f"{self.user.username} — {self.xp} XP ({self.get_level_display()})"
+        return f"{self.user.username} • {self.xp} XP • {self.get_level_display()}"
 
-    def compute_level(self) -> str:
-        """XP asosida darajani hisoblaydi."""
+    # ---------------- LEVEL ----------------
+
+    def compute_level(self):
+        """XP bo'yicha levelni hisoblaydi."""
         for threshold, level in self.LEVEL_THRESHOLDS:
             if self.xp >= threshold:
                 return level
         return self.Level.BEGINNER
 
+    # ---------------- PROGRESS ----------------
+
+    @property
+    def current_level_min_xp(self):
+        """Joriy level boshlanadigan XP."""
+        reverse = list(reversed(self.LEVEL_THRESHOLDS))
+        for xp, level in reverse:
+            if level == self.level:
+                return xp
+        return 0
+
+    @property
+    def next_level_xp(self):
+        """Keyingi level uchun kerak bo'ladigan XP."""
+        reverse = [(0, self.Level.BEGINNER)] + list(reversed(self.LEVEL_THRESHOLDS))
+        for index, (_, level) in enumerate(reverse):
+            if level != self.level:
+                continue
+            if index == len(reverse) - 1:
+                return None
+            return reverse[index + 1][0]
+        return None
+
+    @property
+    def xp_to_next_level(self):
+        """Keyingi levelgacha qolgan XP."""
+        if self.next_level_xp is None:
+            return 0
+        return max(0, self.next_level_xp - self.xp)
+
+    @property
+    def progress_percent(self):
+        """Level ichidagi progress (%)."""
+        next_xp = self.next_level_xp
+        if next_xp is None:
+            return 100
+        current = self.current_level_min_xp
+        span = next_xp - current
+        if span <= 0:
+            return 100
+        progress = ((self.xp - current) / span) * 100
+        return max(0, min(100, round(progress)))
+
+    # ---------------- XP ----------------
+
     @classmethod
-    def add_xp(cls, user: BaseUser, xp_amount: int, duration_mins: int = 0) -> "UserStats":
-        """Foydalanuvchiga XP qo'shish — YAGONA umumiy metod (Barcha xavfsizlik choralari bilan)."""
+    def add_xp(cls, user, xp_amount: int, duration_mins: int = 0):
+        """Platformadagi YAGONA XP qo'shish metodi."""
         if xp_amount <= 0:
             stats, _ = cls.objects.get_or_create(user=user)
             return stats
 
         with transaction.atomic():
-            # 1. UserStats ni xavfsiz bloklab olamiz va yangilaymiz
             stats, _ = cls.objects.select_for_update().get_or_create(user=user)
+
             stats.xp += xp_amount
             stats.level = stats.compute_level()
             stats.save(update_fields=["xp", "level", "updated_at"])
 
-            # 2. Heatmap uchun kunlik faollikni xavfsiz yozish
             today = timezone.now().date()
-            
-            # select_for_update parallel ravishda bir vaqtda bir nechta dars/test tugatilganda
-            # kunlik statistikani to'g'ri navbat bilan hisoblashini ta'minlaydi
             activity, created = UserActivityDaily.objects.select_for_update().get_or_create(
-                user=user, 
+                user=user,
                 date=today,
                 defaults={
                     "xp_earned": xp_amount,
                     "tasks_count": 1,
-                    "total_duration": duration_mins
-                }
+                    "total_duration": duration_mins,
+                },
             )
-            
-            # 3. Agar kunlik faollik qatori bazada allaqachon mavjud bo'lgan bo'lsa, F() yordamida oshiramiz
+
             if not created:
                 activity.xp_earned = models.F("xp_earned") + xp_amount
                 activity.tasks_count = models.F("tasks_count") + 1
@@ -129,7 +195,7 @@ class UserActivityDaily(models.Model):
     )
     date = models.DateField(db_index=True, verbose_name="Sana", help_text="Tizimdagi faollik sodir bo'lgan kun.")
     xp_earned = models.PositiveIntegerField(
-        default=0, 
+        default=0,
         verbose_name="Kunlik XP",
         help_text="Aynan shu sana doirasida foydalanuvchi ishlagan jami ball."
     )
@@ -139,7 +205,7 @@ class UserActivityDaily(models.Model):
         help_text="Shu kunda to'g'ri yechilgan masalalar va test savollari soni."
     )
     total_duration = models.PositiveIntegerField(
-        default=0, 
+        default=0,
         verbose_name="Sarflangan umumiy vaqt (daqiqa)",
         help_text="Shu kuni dars va testlarda o'tkazilgan jami vaqt miqdori."
     )
@@ -156,52 +222,15 @@ class UserActivityDaily(models.Model):
         return f"{self.user} — {self.date} (+{self.xp_earned} XP)"
 
 
-class LessonStatus(models.Model):
-    """Talabaning muayyan darsni o'zlashtirish holati."""
-    
-    user = models.ForeignKey(
-        BaseUser, 
-        on_delete=models.CASCADE, 
-        related_name="lesson_statuses",
-        verbose_name="Foydalanuvchi"
-    )
-    lesson = models.ForeignKey(
-        "courses.Lesson", 
-        on_delete=models.CASCADE, 
-        related_name="statuses",
-        verbose_name="Darslik",
-        help_text="Holati kuzatilayotgan dars."
-    )
-    finished_tasks_count = models.PositiveSmallIntegerField(
-        default=0, 
-        verbose_name="Tugatilgan vazifalar soni",
-        help_text="Ushbu dars ichida muvaffaqiyatli yakunlangan amaliy masalalar soni."
-    )
-    is_completed = models.BooleanField(
-        default=False, 
-        db_index=True, 
-        verbose_name="Tugallangan",
-        help_text="Dars to'liq o'zlashtirildi deb hisoblanishi uchun belgi."
-    )
-    completed_at = models.DateTimeField(
-        null=True, 
-        blank=True, 
-        verbose_name="Tugatilgan vaqti",
-        help_text="Dars to'liq yakunlangan aniq sana va vaqt."
-    )
-
-    class Meta:
-        unique_together = ("user", "lesson")
-        verbose_name = "📗 Dars holati"
-        verbose_name_plural = "📗 Darslar holati"
-
-    def __str__(self):
-        return f"{self.user} — {self.lesson} ({'✅' if self.is_completed else '⏳'})"
-
+# ======================================================================
+# KONTENT PROGRESS ZANJIRI: Lecture -> Lesson -> Modul -> Course
+# ======================================================================
 
 class LectureStatus(models.Model):
+    """Foydalanuvchi - Ma'ruza/Video blok progress holati."""
+
     lecture = models.ForeignKey(
-        'courses.Lecture',  # Biz hozirgina yaratgan yangi ko'p ma'ruzali model
+        "courses.Lecture",
         on_delete=models.CASCADE,
         related_name="user_statuses",
         verbose_name=_("Ma'ruza / Video blok"),
@@ -214,15 +243,31 @@ class LectureStatus(models.Model):
         verbose_name=_("Foydalanuvchi"),
         help_text=_("Tizimda faol bo'lgan talaba.")
     )
-
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name=_("Boshlangan vaqti"),
+        help_text=_("Foydalanuvchi ma'ruzani birinchi marta ochgan vaqt.")
+    )
+    last_position = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Oxirgi video pozitsiyasi (soniya)"),
+        help_text=_("Video qayerda to'xtaganini eslab qolish uchun (resume uchun).")
+    )
+    watch_seconds = models.PositiveIntegerField(
+        default=0,
+        verbose_name=_("Ko'rilgan umumiy vaqt (soniya)"),
+        help_text=_("Analytics uchun: foydalanuvchi videoni jami necha soniya ko'rgan.")
+    )
     is_completed = models.BooleanField(
-        default=True,
-        db_index=True,  # API-da foizli progressni mikrosekundlarda hisoblash uchun
+        default=False,
+        db_index=True,
         verbose_name=_("Tugatilgan (✓)"),
         help_text=_("Agar talaba ma'ruzani o'qib bo'lib yoki videoni ko'rib 'Tugatdim' tugmasini bossa True bo'ladi.")
     )
     completed_at = models.DateTimeField(
-        auto_now_add=True,
+        null=True,
+        blank=True,
         db_index=True,
         verbose_name=_("Tugatilgan vaqti")
     )
@@ -230,16 +275,190 @@ class LectureStatus(models.Model):
     class Meta:
         verbose_name = _("📝 Ma'ruza progress holati")
         verbose_name_plural = _("📝 Ma'ruza progress holatlari")
-        
-        unique_together = ('user', 'lecture')
-        
-        # ⚡ HIGH-PERFORMANCE INDEKSLAR
+        unique_together = ("user", "lecture")
         indexes = [
-            models.Index(fields=['user', 'lecture', 'is_completed']),
-            models.Index(fields=['is_completed', '-completed_at']),
+            models.Index(fields=["user", "lecture", "is_completed"]),
+            models.Index(fields=["is_completed", "-completed_at"]),
         ]
 
     def __str__(self):
         username = self.user.username if self.user.username else f"User-{self.user.id}"
         status_text = "Tugatilgan ✓" if self.is_completed else "Tugatilmagan ✗"
         return f"{username} -> {self.lecture.title[:25]} ({status_text})"
+
+
+class ProblemStatus(models.Model):
+    """Foydalanuvchi - Masala progress holati (tezkor lookup uchun, Submission tarixidan mustaqil)."""
+
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="problem_statuses",
+        verbose_name="Foydalanuvchi"
+    )
+    problem = models.ForeignKey(
+        "problems.Problem",
+        on_delete=models.CASCADE,
+        related_name="statuses",
+        verbose_name="Masala"
+    )
+    solved = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="Yechilgan",
+        help_text="Ushbu masala kamida bir marta Accepted bo'lganmi?"
+    )
+    best_submission = models.ForeignKey(
+        "submissions.Submission",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="best_for_status",
+        verbose_name="Eng yaxshi yechim",
+        help_text="Eng tez/eng samarali Accepted submission."
+    )
+    attempts = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Urinishlar soni",
+        help_text="Ushbu masala uchun yuborilgan barcha submissionlar soni."
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Birinchi urinish vaqti"
+    )
+    solved_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Yechilgan vaqti"
+    )
+
+    class Meta:
+        unique_together = ("user", "problem")
+        verbose_name = "🧩 Masala holati"
+        verbose_name_plural = "🧩 Masalalar holati"
+        indexes = [
+            models.Index(fields=["user", "solved"]),
+            models.Index(fields=["problem", "solved"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} — {self.problem} ({'✅' if self.solved else '⏳'})"
+
+
+class LessonStatus(models.Model):
+    """Talabaning muayyan darsni o'zlashtirish holati."""
+
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="lesson_statuses",
+        verbose_name="Foydalanuvchi"
+    )
+    lesson = models.ForeignKey(
+        "courses.Lesson",
+        on_delete=models.CASCADE,
+        related_name="statuses",
+        verbose_name="Darslik",
+        help_text="Holati kuzatilayotgan dars."
+    )
+    started_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Boshlangan vaqti",
+        help_text="Foydalanuvchi darsni birinchi marta ochgan vaqt."
+    )
+    finished_tasks_count = models.PositiveSmallIntegerField(
+        default=0,
+        verbose_name="Tugatilgan vazifalar soni",
+        help_text="Ushbu dars ichida muvaffaqiyatli yakunlangan amaliy masalalar soni."
+    )
+    is_completed = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="Tugallangan",
+        help_text="Dars to'liq o'zlashtirildi deb hisoblanishi uchun belgi."
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Tugatilgan vaqti",
+        help_text="Dars to'liq yakunlangan aniq sana va vaqt."
+    )
+
+    class Meta:
+        unique_together = ("user", "lesson")
+        verbose_name = "📗 Dars holati"
+        verbose_name_plural = "📗 Darslar holati"
+        indexes = [
+            models.Index(fields=["user", "lesson", "is_completed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} — {self.lesson} ({'✅' if self.is_completed else '⏳'})"
+
+
+class ModuleStatus(models.Model):
+    """Foydalanuvchi - Modul progress holati (real-time COUNT() o'rniga)."""
+
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="module_statuses",
+        verbose_name="Foydalanuvchi"
+    )
+    modul = models.ForeignKey(
+        "courses.Modul",
+        on_delete=models.CASCADE,
+        related_name="statuses",
+        verbose_name="Modul"
+    )
+    completed_lessons = models.PositiveSmallIntegerField(default=0, verbose_name="Tugatilgan darslar soni")
+    completed_tests = models.PositiveSmallIntegerField(default=0, verbose_name="Tugatilgan testlar soni")
+    is_completed = models.BooleanField(default=False, db_index=True, verbose_name="Tugallangan")
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name="Boshlangan vaqti")
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Tugatilgan vaqti")
+
+    class Meta:
+        unique_together = ("user", "modul")
+        verbose_name = "📚 Modul holati"
+        verbose_name_plural = "📚 Modullar holati"
+        indexes = [
+            models.Index(fields=["user", "modul", "is_completed"]),
+        ]
+
+    def __str__(self):
+        status = "✅" if self.is_completed else "⏳"
+        return f"{self.user} — {self.modul} ({status})"
+
+class CourseStatus(models.Model):
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="course_statuses",
+        verbose_name="Foydalanuvchi"
+    )
+    course = models.ForeignKey(
+        "courses.Course",
+        on_delete=models.CASCADE,
+        related_name="statuses",
+        verbose_name="Kurs"
+    )
+    completed_modules = models.PositiveSmallIntegerField(default=0, verbose_name="Tugatilgan modullar soni")
+    completed_lessons = models.PositiveSmallIntegerField(default=0, verbose_name="Tugatilgan darslar soni")
+    completed_tests = models.PositiveSmallIntegerField(default=0, verbose_name="Tugatilgan testlar soni")
+    completed_problems = models.PositiveSmallIntegerField(default=0, verbose_name="Yechilgan masalalar soni")
+    is_completed = models.BooleanField(default=False, db_index=True, verbose_name="Tugallangan")
+    started_at = models.DateTimeField(null=True, blank=True, verbose_name="Boshlangan vaqti")
+    completed_at = models.DateTimeField(null=True, blank=True, verbose_name="Tugatilgan vaqti")
+
+    class Meta:
+        unique_together = ("user", "course")
+        verbose_name = "🏆 Kurs holati"
+        verbose_name_plural = "🏆 Kurslar holati"
+        indexes = [
+            models.Index(fields=["user", "course", "is_completed"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user} — {self.course}"

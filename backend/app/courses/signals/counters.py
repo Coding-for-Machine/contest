@@ -1,173 +1,204 @@
 import logging
-from django.core.cache import cache
-from django.db.models import F
+
 from django.db.models.signals import post_save, post_delete, pre_delete
 from django.dispatch import receiver
 
-from courses.models import Course, Lesson, Modul
+from courses.models import Course, Lesson, Modul, Lecture
 from contests.models import Contest
-
-
+from problems.models import Problem
+from quizs.models import Question, Test
+from courses.api.cache import delete_course_detail_static, delete_course_list_static
 logger = logging.getLogger(__name__)
 
 
-def _bump_lesson_tasks(lesson_id: int, delta: int) -> None:
-    if not lesson_id:
-        return
-    if delta > 0:
-        Lesson.objects.filter(id=lesson_id).update(total_tasks_count=F("total_tasks_count") + delta)
-    else:
-        Lesson.objects.filter(id=lesson_id, total_tasks_count__gt=0).update(
-            total_tasks_count=F("total_tasks_count") - abs(delta)
-        )
+def update_course_counts(course_id):
+    Course.objects.filter(id=course_id).update(
+        total_modules_count=Modul.objects.filter(course_id=course_id).count(),
+        total_lessons_count=Lesson.objects.filter(modul__course_id=course_id).count(),
+        total_test_count=Test.objects.filter(modul__course_id=course_id).count(),
+    )
 
 
-def _bump_contest_questions(contest_id: int, delta: int) -> None:
-    """Musobaqadagi savollar sonini (questions_count) xavfsiz yangilovchi funksiya"""
-    if not contest_id:
-        return
-    if delta > 0:
-        Contest.objects.filter(id=contest_id).update(questions_count=F("questions_count") + delta)
-    else:
-        Contest.objects.filter(id=contest_id, questions_count__gt=0).update(
-            questions_count=F("questions_count") - abs(delta)
-        )
+def update_lesson_tasks(lesson_id):
+    Lesson.objects.filter(id=lesson_id).update(
+        total_tasks_count=
+            Problem.objects.filter(lesson_id=lesson_id).count()
+            + Question.objects.filter(lesson_id=lesson_id).count()
+            + Lecture.objects.filter(lesson_id=lesson_id).count()
+    )
 
 
-def _course_id_and_slug_by_modul(modul_id: int):
-    return Course.objects.filter(modullar__id=modul_id).values("id", "slug").first()
+def update_contest_questions(contest_id):
+    Contest.objects.filter(id=contest_id).update(
+        questions_count=Problem.objects.filter(contest_id=contest_id).count()
+    )
 
+def update_test_question_count(test_id):
+    Test.objects.filter(id=test_id).update(
+        question_count=Question.objects.filter(test_id=test_id).count()
+    )
 
-# ── Problem ───────────────────────────────────────────────────────────────
-@receiver(post_save, sender="problems.Problem", dispatch_uid="counter_problem_save_v2")
-def on_problem_save(sender, instance, created, **kwargs):
-    if created:
+# ----------------------- Start Courses table ---------------------------
+# Kurs yaratilgan ishga tuchivchi logika
+@receiver(post_save, sender=Course)
+def problem_saved(sender, instance, **kwargs):
+    try:
+        delete_course_list_static()
+        if instance.slug:
+            delete_course_detail_static(instance.slug)
+    except Exception:
+        logger.exception("Courses Saved")
+
+# Kurs o'chirilganda ishga tuchivchi logika
+@receiver(post_delete, sender=Course)
+def problem_deleted(sender, instance, **kwargs):
+    try:
+        delete_course_list_static()
+        if instance.slug:
+                    delete_course_detail_static(instance.slug)
+    except Exception:
+        logger.exception("courses_deleted")
+
+# o‘chirilishidan oldin ishlaydi.
+@receiver(pre_delete, sender=Course)
+def course_deleted(sender, instance, **kwargs):
+    try:
+        delete_course_detail_static(instance.slug)
+    except Exception:
+        logger.exception("courses_deleted")
+# ----------------------- End Courses table ---------------------------
+
+# ----------------------- Start Problems table ---------------------------
+# Masala yaratilgan ishga tuchivchi logika
+@receiver(post_save, sender=Problem)
+def problem_saved(sender, instance, **kwargs):
+    try:
         if instance.lesson_id:
-            _bump_lesson_tasks(instance.lesson_id, +1)
+            update_lesson_tasks(instance.lesson_id)
+
         if instance.contest_id:
-            _bump_contest_questions(instance.contest_id, +1)
+            update_contest_questions(instance.contest_id)
+    except Exception:
+        logger.exception("problem_saved")
 
-
-@receiver(post_delete, sender="problems.Problem", dispatch_uid="counter_problem_delete_v2")
-def on_problem_delete(sender, instance, **kwargs):
-    if instance.lesson_id:
-        _bump_lesson_tasks(instance.lesson_id, -1)
-    if instance.contest_id:
-        _bump_contest_questions(instance.contest_id, -1)
-
-
-# ── Question ──────────────────────────────────────────────────────────────
-@receiver(post_save, sender="quizs.Question", dispatch_uid="counter_question_lesson_save_v2")
-def on_question_save_for_lesson(sender, instance, created, **kwargs):
-    if created and instance.lesson_id:
-        _bump_lesson_tasks(instance.lesson_id, +1)
-
-
-@receiver(post_delete, sender="quizs.Question", dispatch_uid="counter_question_lesson_delete_v2")
-def on_question_delete_for_lesson(sender, instance, **kwargs):
-    if instance.lesson_id:
-        _bump_lesson_tasks(instance.lesson_id, -1)
-
-
-# ── Lecture ───────────────────────────────────────────────────────────────
-@receiver(post_save, sender="courses.Lecture", dispatch_uid="counter_lecture_save_v2")
-def on_lecture_save(sender, instance, created, **kwargs):
-    if created and instance.lesson_id:
-        _bump_lesson_tasks(instance.lesson_id, +1)
-
-
-@receiver(post_delete, sender="courses.Lecture", dispatch_uid="counter_lecture_delete_v2")
-def on_lecture_delete(sender, instance, **kwargs):
-    if instance.lesson_id:
-        _bump_lesson_tasks(instance.lesson_id, -1)
-
-
-# ── Lesson ────────────────────────────────────────────────────────────────
-@receiver(post_save, sender=Lesson, dispatch_uid="counter_lesson_save_v1")
-def on_lesson_save(sender, instance, created, **kwargs):
-    if not (created and instance.modul_id):
-        return
+# Masala o'chirilganda ishga tuchivchi logika
+@receiver(post_delete, sender=Problem)
+def problem_deleted(sender, instance, **kwargs):
     try:
-        data = _course_id_and_slug_by_modul(instance.modul_id)
-        if not data:
-            return
-        Course.objects.filter(id=data["id"]).update(total_lessons_count=F("total_lessons_count") + 1)
-        if data["slug"]:
-            cache.delete(f"course_detail_{data['slug']}")
-    except Exception as e:
-        logger.error(f"on_lesson_save xato: {e}", exc_info=True)
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
 
+        if instance.contest_id:
+            update_contest_questions(instance.contest_id)
+    except Exception:
+        logger.exception("problem_deleted")
 
-@receiver(pre_delete, sender=Lesson, dispatch_uid="counter_lesson_delete_v1")
-def on_lesson_delete(sender, instance, **kwargs):
-    if not instance.modul_id:
-        return
+# ----------------------- End Problems table ---------------------------
+
+@receiver(post_save, sender=Question)
+def question_saved(sender, instance, **kwargs):
     try:
-        data = _course_id_and_slug_by_modul(instance.modul_id)
-        if not data:
-            return
-        Course.objects.filter(id=data["id"], total_lessons_count__gt=0).update(
-            total_lessons_count=F("total_lessons_count") - 1
-        )
-        if data["slug"]:
-            cache.delete(f"course_detail_{data['slug']}")
-    except Exception as e:
-        logger.error(f"on_lesson_delete xato: {e}", exc_info=True)
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+    except Exception:
+        logger.exception("question_saved")
 
 
-# ── Test ──────────────────────────────────────────────────────────────────
-@receiver(post_save, sender='quizs.Test', dispatch_uid="counter_test_save_v1")
-def on_test_save(sender, instance, created, **kwargs):
-    if not (created and instance.modul_id):
-        return
+@receiver(post_delete, sender=Question)
+def question_deleted(sender, instance, **kwargs):
     try:
-        data = _course_id_and_slug_by_modul(instance.modul_id)
-        if not data:
-            return
-        Course.objects.filter(id=data["id"]).update(total_test_count=F("total_test_count") + 1)
-        if data["slug"]:
-            cache.delete(f"course_detail_{data['slug']}")
-    except Exception as e:
-        logger.error(f"on_test_save xato: {e}", exc_info=True)
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+    except Exception:
+        logger.exception("question_deleted")
 
-
-@receiver(pre_delete, sender='quizs.Test', dispatch_uid="counter_test_delete_v1")
-def on_test_delete(sender, instance, **kwargs):
-    if not instance.modul_id:
-        return
+@receiver(post_save, sender=Lecture)
+def lecture_saved(sender, instance, **kwargs):
     try:
-        data = _course_id_and_slug_by_modul(instance.modul_id)
-        if not data:
-            return
-        Course.objects.filter(id=data["id"], total_test_count__gt=0).update(
-            total_test_count=F("total_test_count") - 1
-        )
-        if data["slug"]:
-            cache.delete(f"course_detail_{data['slug']}")
-    except Exception as e:
-        logger.warning(f"on_test_delete xato: {e}", exc_info=True)
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+    except Exception:
+        logger.exception("lecture_saved")
 
 
-# ── Modul ───────────────────────────────────────────────────────────────────
-@receiver(post_save, sender=Modul, dispatch_uid="counter_modul_save_v1")
-def on_modul_save(sender, instance, **kwargs):
-    if not instance.course_id:
-        return
+@receiver(post_delete, sender=Lecture)
+def lecture_deleted(sender, instance, **kwargs):
     try:
-        course = Course.objects.filter(id=instance.course_id).only("slug").first()
-        if course and course.slug:
-            cache.delete(f"course_detail_{course.slug}")
-    except Exception as e:
-        logger.error(f"on_modul_save xato: {e}", exc_info=True)
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+    except Exception:
+        logger.exception("lecture_deleted")
 
 
-@receiver(pre_delete, sender=Modul, dispatch_uid="counter_modul_delete_v1")
-def on_modul_delete(sender, instance, **kwargs):
-    if not instance.course_id:
-        return
+@receiver(post_save, sender=Lesson)
+def lesson_saved(sender, instance, **kwargs):
     try:
-        course = Course.objects.filter(id=instance.course_id).only("slug").first()
-        if course and course.slug:
-            cache.delete(f"course_detail_{course.slug}")
-    except Exception as e:
-        logger.error(f"on_modul_delete xato: {e}", exc_info=True)
+        update_course_counts(instance.modul.course_id)
+    except Exception:
+        logger.exception("lesson_saved")
+
+
+@receiver(post_delete, sender=Lesson)
+def lesson_deleted(sender, instance, **kwargs):
+    try:
+        update_course_counts(instance.modul.course_id)
+    except Exception:
+        logger.exception("lesson_deleted")
+
+
+@receiver(post_save, sender=Test)
+def test_saved(sender, instance, **kwargs):
+    try:
+        update_course_counts(instance.modul.course_id)
+    except Exception:
+        logger.exception("test_saved")
+
+
+@receiver(post_delete, sender=Test)
+def test_deleted(sender, instance, **kwargs):
+    try:
+        update_course_counts(instance.modul.course_id)
+    except Exception:
+        logger.exception("test_deleted")
+
+@receiver(post_save, sender=Modul)
+def modul_saved(sender, instance, **kwargs):
+    try:
+        update_course_counts(instance.course_id)
+    except Exception:
+        logger.exception("modul_saved")
+
+
+@receiver(post_delete, sender=Modul)
+def modul_deleted(sender, instance, **kwargs):
+    try:
+        update_course_counts(instance.course_id)
+    except Exception:
+        logger.exception("modul_deleted")
+
+
+
+@receiver(post_save, sender=Question, dispatch_uid="counter_question_test_save_v1")
+def on_question_test_save(sender, instance, **kwargs):
+    try:
+        if instance.test_id:
+            update_test_question_count(instance.test_id)
+
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+
+    except Exception:
+        logger.exception("on_question_test_save")
+
+
+@receiver(post_delete, sender=Question, dispatch_uid="counter_question_test_delete_v1")
+def on_question_test_delete(sender, instance, **kwargs):
+    try:
+        if instance.test_id:
+            update_test_question_count(instance.test_id)
+
+        if instance.lesson_id:
+            update_lesson_tasks(instance.lesson_id)
+
+    except Exception:
+        logger.exception("on_question_test_delete")

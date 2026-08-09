@@ -3,33 +3,30 @@ from typing import List, Optional, Annotated
 import msgspec
 from django_bolt import Router, Request, Depends
 from django_bolt.params import Query
-from asgiref.sync import sync_to_async
+from django_bolt.exceptions import NotFound  # ✅ Http404 o'rniga
 from django.core.cache import cache
 from django.db.models import Q
 from django.utils import timezone
-from django.http import Http404
 
 from baseuser.models import BaseUser
 from baseuser.authenticate import get_current_user_option
 from quizs.models import Test, TestSession, TestEnrollment
 from django_bolt.serializers import Serializer
 
-api = Router(tags=["Test API v3"])
+api = Router(tags=["Test API v1"])
 
 
 # =========================================================
 #                     SERIALIZERLAR
 # =========================================================
 class UserListStats(Serializer):
-    """Ro'yxat sahifasida foydalanuvchining ushbu testdagi qisqa statistikasi."""
-    att: int            # nechta urinish qilgan
-    status: str          # oxirgi seans holati
-    score: float          # eng yaxshi ball
-    xp: int             # jami yig'ilgan XP
+    att: int
+    status: str
+    score: float
+    xp: int
 
 
 class TestsListSerializer(Serializer):
-    """`GET /` — testlar ro'yxati uchun javob shakli."""
     id: int
     title: str
     slug: str
@@ -43,7 +40,6 @@ class TestsListSerializer(Serializer):
 
 
 class UserDetailStats(Serializer):
-    """Batafsil sahifada foydalanuvchi statistikasi."""
     count: int
     status: str
     score: float
@@ -51,15 +47,13 @@ class UserDetailStats(Serializer):
 
 
 class VideoSerializer(Serializer):
-    """Testning kirish/qoidalar videosi haqida ma'lumot."""
     id: str
     img: Optional[str] = None
-    len: Optional[str] = None  # duration CharField ekanligi uchun str
+    len: Optional[str] = None
     hls: Optional[str] = None
 
 
 class TestsDetailSerializer(Serializer):
-    """`GET /{slug}` — bitta test haqida to'liq ma'lumot."""
     id: int
     title: str
     slug: str
@@ -79,29 +73,21 @@ class TestsDetailSerializer(Serializer):
     price: Optional[float] = None
 
 
-class ModuleOptionSerializer(Serializer):
-    """Filtr uchun: yakuniy testi bor bo'lim (modul)."""
-    id: int
-    name: str
-
-
 # =========================================================
 #                  YORDAMCHI FUNKSIYALAR
 # =========================================================
 
 def _build_video_data(test: Test, is_paid: bool, is_purchased: bool) -> Optional[dict]:
-    """Test bilan bog'liq video ma'lumotini shakllantiradi (HLS faqat sotib olinganlarga ko'rinadi)."""
     if not test.intro_video:
         return None
 
     video_data = {
         "id": str(test.intro_video.id),
         "img": test.intro_video.thumbnail.url if test.intro_video.thumbnail else None,
-        "len": test.intro_video.duration,  # CharField -> string holatida
+        "len": test.intro_video.duration,
         "hls": None,
     }
 
-    # HLS faqat sotib olingan yoki bepul testlar uchun
     if not is_paid or is_purchased:
         video_data["hls"] = test.intro_video.hls_url
 
@@ -109,44 +95,32 @@ def _build_video_data(test: Test, is_paid: bool, is_purchased: bool) -> Optional
 
 
 def _compute_display_qty(test: Test) -> int:
-    """Foydalanuvchiga ko'rsatiladigan savollar sonini hisoblaydi (random yoki to'liq)."""
     is_rand = test.random_questions_count > 0 and test.question_count > test.random_questions_count
     return test.random_questions_count if is_rand else test.question_count
 
 
 # =========================================================
 #     0. FILTRLASH UCHUN YORDAMCHI RO'YXAT (GET /modules/)
-#        — problems ilovasidagi categories/tags ekvivalenti
 # =========================================================
 @api.get("/modules/")
 async def list_modules_with_tests(request: Request):
-    """
-    Yakuniy (bob/modul) testi mavjud bo'lgan modullar ro'yxati — frontendda
-    filtr sifatida ishlatish uchun. Natija qisqa muddat keshlanadi.
-
-    Eslatma: ``courses.Modul`` modelining aniq maydon nomi noma'lum bo'lgani
-    uchun ``str(modul)`` (ya'ni modelning ``__str__``i) nom sifatida
-    ishlatiladi. Agar Modul'da ``title``/``name`` maydoni bo'lsa va aynan
-    o'shani chiqarish kerak bo'lsa, ``str(m.modul)`` o'rniga ``m.modul.title``
-    (yoki mos maydon) ga almashtiring.
-    """
     cache_key = "tests_available_modules_v1"
     modules = await cache.aget(cache_key)
 
     if modules is None:
-        def _fetch():
-            seen = {}
-            qs = (
-                Test.objects.filter(modul__isnull=False, is_active=True)
-                .select_related("modul")
-                .only("modul_id", "modul")
-            )
-            for t in qs:
-                if t.modul_id not in seen:
-                    seen[t.modul_id] = str(t.modul)
-            return [{"id": mid, "name": name} for mid, name in seen.items()]
-
-        modules = await sync_to_async(_fetch, thread_sensitive=True)()
+        modules = []
+        seen = {}
+        qs = (
+            Test.objects.filter(modul__isnull=False, is_active=True)
+            .select_related("modul")
+            .only("modul_id", "modul")
+        )
+        # ✅ async for + sync_to_async kerak emas
+        async for t in qs:
+            if t.modul_id not in seen:
+                seen[t.modul_id] = str(t.modul)
+        
+        modules = [{"id": mid, "name": name} for mid, name in seen.items()]
         await cache.aset(cache_key, modules, timeout=300)
 
     return modules
@@ -159,8 +133,8 @@ class FilterParams(msgspec.Struct):
     limit: int = 10
     offset: int = 0
     search: str | None = None
-    is_free: bool | None = None       # True = faqat bepul, False = faqat pullik
-    only_available: bool | None = None  # True = hozir ochiq (vaqt oynasi ichida) testlar
+    is_free: bool | None = None
+    only_available: bool | None = None
 
 
 class PaginatedResponse(msgspec.Struct):
@@ -168,13 +142,9 @@ class PaginatedResponse(msgspec.Struct):
     limit: int
     offset: int
     items: List[TestsListSerializer]
-    # Eslatma: keyingi offset yoki "oxirimi" degan maydonlar ATAYLAB yo'q —
-    # frontend buni o'zi hisoblaydi: keyingi so'rov uchun offset + limit,
-    # "boshqa sahifa yo'q" belgisi esa len(items) < limit.
 
 
 def _apply_common_filters(queryset, params: "FilterParams"):
-    """Ro'yxat va sanoq (count) so'rovlarida bir xil filtrlar qo'llanishi uchun umumiy funksiya."""
     if params.search:
         queryset = queryset.filter(
             Q(title__icontains=params.search) | Q(slug__icontains=params.search)
@@ -195,9 +165,6 @@ async def get_test_list_api(
     params: Annotated[FilterParams, Query()],
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-    # 1. OPTIMAL KESH: har qanday filtr (search, is_free, only_available) bo'lsa
-    #    kesh butunlay aylanib o'tiladi — filtrlangan natija boshqa foydalanuvchiga
-    #    yoki boshqa so'rovga noto'g'ri qaytmasligi uchun.
     use_cache = (
         params.search is None
         and params.is_free is None
@@ -239,7 +206,6 @@ async def get_test_list_api(
         if use_cache:
             await cache.aset(cache_key, tests_list, timeout=300)
 
-    # 2. FOYDALANUVCHI STATUSI (Dinamik qism — hech qachon keshlanmaydi)
     results = []
 
     if request_user and tests_list:
@@ -285,7 +251,6 @@ async def get_test_list_api(
                 start=t["start"], end=t["end"], img=t["img"], user=None, buy=buy_status,
             ))
 
-    # 3. UMUMIY SANOQ
     if use_cache:
         total_count = await cache.aget("tests_total_count")
         if total_count is None:
@@ -313,46 +278,37 @@ async def get_test_detail_api(
     slug: str,
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-    def fetch_test_detail():
-        try:
-            return (
-                Test.objects.select_related("intro_video")
-                .only(
-                    "id", "title", "description", "slug", "duration_minutes", "question_count",
-                    "random_questions_count", "min_pass_percentage", "max_attempts",
-                    "penalty_coefficient", "max_lifelines", "start_time", "end_time",
-                    "price", "is_active",
-                    "intro_video__id", "intro_video__thumbnail",
-                    "intro_video__hls_url", "intro_video__duration",
-                )
-                .get(slug=slug, modul__isnull=True, is_active=True)
+    try:
+        test = await (
+            Test.objects
+            .select_related("intro_video")
+            .only(
+                "id", "title", "description", "slug", "duration_minutes", "question_count",
+                "random_questions_count", "min_pass_percentage", "max_attempts",
+                "penalty_coefficient", "max_lifelines", "start_time", "end_time",
+                "price", "is_active",
+                "intro_video__id", "intro_video__thumbnail",
+                "intro_video__hls_url", "intro_video__duration",
             )
-        except Test.DoesNotExist:
-            return None
-
-    test = await sync_to_async(fetch_test_detail, thread_sensitive=True)()
-    if not test:
-        raise Http404()
+            .aget(slug=slug, modul__isnull=True, is_active=True)
+        )
+    except Test.DoesNotExist:
+        raise NotFound(detail="Test topilmadi")
 
     is_paid = float(test.price) > 0
     is_purchased = False
     user_stats = None
 
     if request_user:
-        def fetch_user_detail_data():
-            sessions = list(
-                TestSession.objects.filter(user=request_user, test=test).values(
-                    "status", "score", "total_xp_earned"
-                )
-            )
-            purchased = TestEnrollment.objects.filter(
-                user=request_user, test=test
-            ).exists()
-            return sessions, purchased
+        sessions = []
+        async for sess in TestSession.objects.filter(
+            user=request_user, test=test
+        ).values("status", "score", "total_xp_earned"):
+            sessions.append(sess)
 
-        sessions, is_purchased = await sync_to_async(
-            fetch_user_detail_data, thread_sensitive=True
-        )()
+        is_purchased = await TestEnrollment.objects.filter(
+            user=request_user, test=test
+        ).aexists()
 
         if sessions:
             user_stats = {
@@ -389,3 +345,75 @@ async def get_test_detail_api(
             res["price"] = float(test.price)
 
     return res
+
+
+# =========================================================
+#                3. HERO API
+# =========================================================
+KEY = "hero:test"
+TTL = 3600
+
+@api.get("/hero/")
+async def hero():
+    cache.delete("hero:test")
+    cached = await cache.aget(KEY)
+    if cached is not None:
+        return cached
+    
+    now = timezone.now()
+    test = await (
+        Test.objects
+        .filter(is_active=True)
+        .filter(
+            Q(start_time__lte=now, end_time__gte=now) |
+            Q(start_time__gt=now)
+        )
+        .select_related("intro_video")
+        .order_by("start_time", "id")
+        .afirst()
+    )
+
+    if not test:
+        data = None
+    else:
+        video = test.intro_video
+
+        data = {
+            "id": str(test.id),
+            "title": test.title,
+            "slug": test.slug,
+            "desc": test.description,
+            "duration": test.duration_minutes,
+            "questions": test.question_count,
+            "random": test.random_questions_count,
+            "pass": test.min_pass_percentage,
+            "attempts": test.max_attempts,
+            "code": bool(test.access_code),
+            "start": test.start_time.isoformat(),
+            "end": test.end_time.isoformat(),
+            "price": str(test.price),
+            "sale": (
+                str(test.discount_price)
+                if test.discount_price is not None
+                else None
+            ),
+            "lifelines": test.max_lifelines,
+            "video": (
+                {
+                    "url": (
+                        video.hls_url
+                        or (video.video.url if video.video else None)
+                    ),
+                    "thumb": (
+                        video.thumbnail.url
+                        if video.thumbnail
+                        else None
+                    ),
+                    "duration": video.duration,
+                }
+                if video
+                else None
+            ),
+        }
+    await cache.aset(KEY, data, TTL)
+    return data

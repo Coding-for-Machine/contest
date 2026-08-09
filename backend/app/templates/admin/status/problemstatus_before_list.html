@@ -1,0 +1,65 @@
+{% load i18n unfold %}
+
+{% component "unfold/components/flex.html" with class="gap-4 mb-6 flex-col lg:flex-row" %}
+
+    {% component "unfold/components/card.html" with class="lg:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-primary-600 text-base align-middle mr-1">
+                analytics
+            </span>
+            {% trans "Jami holatlar" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ ps_total|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="lg:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-green-600 text-base align-middle mr-1">
+                check_circle
+            </span>
+            {% trans "Yechilgan" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ ps_solved|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="lg:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-amber-600 text-base align-middle mr-1">
+                pending
+            </span>
+            {% trans "Jarayonda" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ ps_unsolved|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="lg:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-sky-600 text-base align-middle mr-1">
+                pie_chart
+            </span>
+            {% trans "Yechilish foizi" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ ps_percent|default:0 }}%
+        {% endcomponent %}
+    {% endcomponent %}
+
+    {% component "unfold/components/card.html" with class="lg:w-1/5" %}
+        {% component "unfold/components/text.html" %}
+            <span class="material-symbols-outlined text-red-500 text-base align-middle mr-1">
+                local_fire_department
+            </span>
+            {% trans "Bugun yechildi" %}
+        {% endcomponent %}
+        {% component "unfold/components/title.html" %}
+            {{ ps_today|default:0 }}
+        {% endcomponent %}
+    {% endcomponent %}
+
+{% endcomponent %}

@@ -1,115 +1,93 @@
-# sse.py
-"""
-Global SSE (Server-Sent Events) endpoint.
+import asyncio
+import contextlib
+import logging
+from collections.abc import AsyncIterable
 
-Bu endpoint HAR BIR FOYDALANUVCHI uchun BITTA doimiy ochiq HTTP ulanish
-bo'lib xizmat qiladi. U hech narsa "hisoblamaydi" — shunchaki Redisning
-`sse:user:{user_id}` kanalini tinglab turadi va u yerga PUBLISH qilingan
-har qanday xabarni, o'zgarishsiz, SSE formatida ("data: <xabar>\n\n")
-brauzerga uzatib beradi.
+import msgspec
+from django_bolt import Router, Depends, Request
+from django_bolt.responses import ServerSentEvent, EventSourceResponse
 
-Nega EventSource (brauzer tomoni) GET so'rov ishlatadi, POST emas?
-Chunki `EventSource` — brauzerning ICHKI (native) API'si, u faqat GET
-so'rovlarni qo'llab-quvvatlaydi va custom header (masalan Authorization)
-yubora olmaydi. Shu sababli autentifikatsiya uchun token QUERY PARAM
-orqali beriladi (`?token=...`) — main.js'dagi `RCEvents.connect()`
-buni avtomatik qo'shadi.
-
-Nega bitta kanal (sse:user:{id}) barcha voqealar uchun ishlatiladi
-(alohida "run" kanali, alohida "submit" kanali emas)?
-Chunki foydalanuvchi bitta paytda bir nechta narsa qilishi mumkin (bir
-nechta tab, run va submit ketma-ket) — hammasini BITTA ulanish orqali
-olib kelib, ichidagi "task_id" maydoni bo'yicha frontendda ажратиш ancha
-sodda va samarali, ko'p ulanish ochishdan ko'ra.
-"""
-
-import redis.asyncio as aioredis
-from django_bolt import Router, Request, Depends
-from django_bolt.responses import StreamingResponse
 from baseuser.authenticate import get_current_user_from_url
 from baseuser.models import BaseUser
+from contests.models import ContestRegistration
+from .events import Channel
+from .redis_client import get_async_redis
 
-sse_router = Router(tags=["sse"])
+logger = logging.getLogger(__name__)
+sse_api = Router(tags=["SSE"])
 
-REDIS_URL = "redis://localhost:6379/0"
+MAX_STREAM_SECONDS = 60 * 20
 
 
-@sse_router.get("/events/stream/")
-async def event_stream(request: Request, request_user: BaseUser = Depends(get_current_user_from_url)):
-    """
-    Global SSE oqimi.
+async def _active_contest_channels(user_id: int) -> list[str]:
+    """User hozir qatnashayotgan (tugamagan) contestlar ro'yxati."""
+    contest_ids = [
+        cid async for cid in ContestRegistration.objects.filter(
+            user_id=user_id,
+            status=ContestRegistration.Status.IN_PROGRESS,
+            contest__status="ongoing",
+        ).values_list("contest_id", flat=True)
+    ]
+    return [Channel.CONTEST_LEADERBOARD.format(contest_id=cid) for cid in contest_ids]
 
-    `get_current_user` dependency — bu yerda ODATDAGI Authorization
-    header'dan EMAS, balki `?token=...` query parametridan token o'qiy
-    olishi kerak (chunki EventSource header yubora olmaydi). Agar sizning
-    `get_current_user`ingiz faqat header'dan o'qisa, shu funksiya uchun
-    maxsus variant yozib, uni shu yerda ishlating:
 
-        async def get_current_user_from_query(request: Request) -> BaseUser:
-            token = request.query_params.get("token")
-            ...  # tokenni tekshirib, foydalanuvchini qaytaring
-    """
-    channel = f"sse:user:{request_user.id}"
+class EventPublisher:
+    def __init__(self, user_id: int):
+        self.user_id = user_id
+        self._redis = get_async_redis()
+        self._pubsub = self._redis.pubsub()
 
-    async def event_generator():
-        """
-        Redis pub/sub'ni tinglovchi asinxron generator.
+    async def stream(self) -> AsyncIterable[ServerSentEvent]:
+        # Kanallarni aniq string ko'rinishida yig'amiz
+        channels = [Channel.USER.format(user_id=self.user_id), str(Channel.LEADERBOARD.value)]
+        channels += await _active_contest_channels(self.user_id)
 
-        `yield` qilingan har bir string — SSE formatidagi BITTA xabar.
-        SSE spetsifikatsiyasiga ko'ra har bir xabar albatta ikkita
-        "\n" bilan tugashi kerak (`\n\n`) — bu brauzerga "xabar shu yerda
-        tugadi" degan signal beradi (main.js'dagi buferni shu belgi
-        bo'yicha bo'lib olamiz).
-        """
-        redis = aioredis.from_url(REDIS_URL)
-        pubsub = redis.pubsub()
-        await pubsub.subscribe(channel)
-
+        # Redis kanallariga obuna bo'lish
+        await self._pubsub.subscribe(*channels)
+        
         try:
-            # Ulanish ochilishi bilanoq — frontendga "men tayyorman" signali.
-            # Bu shart emas, lekin frontendda "ulanish muvaffaqiyatli ochildi"
-            # holatini ko'rsatish uchun qulay.
-            yield "event: connected\ndata: {}\n\n"
+            yield ServerSentEvent(comment="connected")
 
-            # `pubsub.listen()` — cheksiz asinxron sikl, Redis kanalga
-            # PUBLISH bo'lgan HAR BIR xabarni shu yerda ushlab oladi.
-            # Ulanish yopilmaguncha (brauzer tab yopilguncha yoki xato
-            # chiqquncha) bu funksiya HECH QACHON o'z-o'zidan tugamaydi.
-            async for message in pubsub.listen():
-                if message["type"] != "message":
-                    # pubsub.listen() dastlab "subscribe" turidagi xizmat
-                    # xabarini ham yuboradi — bularni o'tkazib yuboramiz.
+            loop = asyncio.get_event_loop()
+            deadline = loop.time() + MAX_STREAM_SECONDS
+
+            while True:
+                remaining = deadline - loop.time()
+                if remaining <= 0:
+                    yield ServerSentEvent(event="timeout", data={"reason": "stream_timeout"})
+                    return
+
+                # Xabarni olish (Non-blocking asinxron kutish)
+                message = await self._pubsub.get_message(
+                    ignore_subscribe_messages=True, timeout=min(remaining, 5.0)
+                )
+                if message is None:
+                    await asyncio.sleep(0.1)  # CPU yuklamasini kamaytirish uchun kichik pauza
                     continue
 
-                data = message["data"]
-                if isinstance(data, bytes):
-                    data = data.decode()
-
-                # Redisdan kelgan xom JSON-string — o'zgarishsiz uzatiladi.
-                # (Bu string ichida "task_id", "type", "result" kabi
-                # maydonlar bor — frontend RCEvents shu maydonlar bo'yicha
-                # to'g'ri joyga yo'naltiradi.)
-                yield f"data: {data}\n\n"
+                try:
+                    payload = msgspec.json.decode(message["data"])
+                    yield ServerSentEvent(
+                        event=str(payload["event"]),
+                        id=str(payload["id"]),
+                        data=payload["data"],
+                    )
+                except Exception as parse_err:
+                    logger.error(f"SSE JSON parse xatosi: {parse_err}")
+                    continue
 
         finally:
-            # Brauzer ulanishni yopganda (tab yopilsa, sahifadan chiqilsa)
-            # bu "finally" blok ishga tushadi — Redis obunasini va
-            # ulanishni tozalab, resurs oqib ketishining (leak) oldini oladi.
-            await pubsub.unsubscribe(channel)
-            await redis.close()
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            # Ba'zi proksi/serverlar (masalan nginx) javobni "buferlab"
-            # keyin yuborishga harakat qiladi — bu esa SSE'ning "jonli"
-            # bo'lish ma'nosini yo'qqa chiqaradi. Shu header shuni oldini
-            # olishga yordam beradi (nginx X-Accel-Buffering: no).
-            "X-Accel-Buffering": "no",
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-        },
-    )
+            with contextlib.suppress(Exception):
+                await self._pubsub.unsubscribe(*channels)
+                await self._pubsub.aclose()
 
 
+@sse_api.get("/stream")
+async def global_stream(request: Request, request_user: BaseUser = Depends(get_current_user_from_url)):
+    """
+    Parametrsiz yagona SSE oqimi.
+    `EventSourceResponse` ga generator funksiyaning o'zi (yoki obyekti) uzatiladi.
+    """
+    publisher = EventPublisher(user_id=request_user.id)
+    
+    return EventSourceResponse(publisher.stream())
