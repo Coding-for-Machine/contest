@@ -194,13 +194,13 @@ from courses.api.course import api as course_api
 from problems.api.problem import api as problem_api
 from app.sse.api import sse_api
 from submissions.api import api as submit_api
-from quizs.api.tests import api as tests_api
+# from quizs.api.tests import api as tests_api
 from quizs.api.session import session_api
 from baseuser.api import api as user_api
 from status.api import api_status
 from notifications.api import api_notification
 from payment.api import api as payment_api
-from contests.api.contests import api as contest_api
+# from contests.api.contests import api as contest_api
 
 api.include_router(sse_api, prefix="/api/v1/sse")
 api.include_router(course_api, prefix="/api/v1/courses")
@@ -208,8 +208,8 @@ api.include_router(course_api, prefix="/api/v1/courses")
 api.include_router(problem_api, prefix="/api/v1/problems")
 api.include_router(submit_api, prefix="/api/v1/code")
 # test
-api.include_router(tests_api, prefix="/api/v1/tests")
-api.include_router(session_api, prefix="/api/v1/test-session")
+# api.include_router(tests_api, prefix="/api/v1/tests")
+# api.include_router(session_api, prefix="/api/v1/test-session")
 # user
 api.include_router(user_api, prefix="/api/v1/user")
 # status
@@ -219,4 +219,4 @@ api.include_router(api_notification, prefix="/api/v1/notifications")
 # payment
 api.include_router(payment_api, prefix="/api/v1/payment")
 # contests
-api.include_router(contest_api, prefix="/api/v1/contests")
+# api.include_router(contest_api, prefix="/api/v1/contests")

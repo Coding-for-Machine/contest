@@ -1,6 +1,9 @@
+import os
 import base64
 import httpx
 from decouple import config
+
+
 class PistonClient:
     """Piston API v2 bilan asinxron va sinxron ishlovchi professional klient."""
 
@@ -12,9 +15,29 @@ class PistonClient:
         if api_key:
             self.headers["Authorization"] = f"Bearer {api_key}"
 
-        timeout = httpx.Timeout(connect=15.0, read=30.0, write=30.0, pool=15.0)
-        self.async_client = httpx.AsyncClient(timeout=timeout, headers=self.headers)
-        self.sync_client = httpx.Client(timeout=timeout, headers=self.headers)
+        self._timeout = httpx.Timeout(connect=15.0, read=30.0, write=30.0, pool=15.0)
+
+        # ASYNC client — faqat Django async view (bitta event loop, bitta process)
+        # ichida ishlatiladi, shuning uchun bu yerda darhol yaratish xavfsiz.
+        self.async_client = httpx.AsyncClient(timeout=self._timeout, headers=self.headers)
+
+        # SYNC client — Celery prefork worker fork qilingandan KEYIN yaratilishi
+        # SHART, aks holda connection pool worker processlar orasida buziladi
+        # va tasodifiy ConnectionResetError/RemoteProtocolError beradi (RE sifatida
+        # ko'rinadi). Shuning uchun bu yerda darhol yaratmaymiz — lazy qilib,
+        # PID o'zgarganda qayta yaratamiz (fork-safe).
+        self._sync_client: httpx.Client | None = None
+        self._sync_client_pid: int | None = None
+
+    @property
+    def sync_client(self) -> httpx.Client:
+        current_pid = os.getpid()
+        if self._sync_client is None or self._sync_client_pid != current_pid:
+            # Eski client boshqa (parent) processga tegishli bo'lsa, uni yopishga
+            # urinmaymiz — u process uchun kerak bo'lishi mumkin va yopish xavfli.
+            self._sync_client = httpx.Client(timeout=self._timeout, headers=self.headers)
+            self._sync_client_pid = current_pid
+        return self._sync_client
 
     def _build_payload(
         self, language: str, version: str, code: str, stdin: str,
@@ -65,13 +88,15 @@ class PistonClient:
         payload = self._build_payload(
             language, version, code, stdin, run_timeout, run_memory_limit, encoding=encoding
         )
+        # self.sync_client — property, PID o'zgargan bo'lsa avtomatik qayta yaratadi
         response = self.sync_client.post(self.url, json=payload)
         if response.is_error:
             self._handle_error(response)
         return response.json()
 
     def close(self):
-        self.sync_client.close()
+        if self._sync_client is not None:
+            self._sync_client.close()
 
 
-piston = PistonClient(base_url=config("PISTON_URL", default="https://pnqdbzm7-2000.jpe1.devtunnels.ms/api/v2"))
+piston = PistonClient(base_url=config("PISTON_URL", default="http://localhost:2000/api/v2"))

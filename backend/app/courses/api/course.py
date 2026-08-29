@@ -1,8 +1,7 @@
 # courses/api.py
 import copy
 import logging
-from datetime import date
-from typing import Annotated
+from datetime import timedelta
 
 from django.db.models.functions import Cast
 import msgspec
@@ -12,26 +11,27 @@ from django.db import transaction
 from django.db.models import Q, Case, Count, ExpressionWrapper, FloatField, Prefetch, Value, When
 from django.utils import timezone
 
-from django_bolt import Router, Depends, Request
+from django_bolt import Router, Depends, Request, JSON
 from django_bolt.exceptions import HTTPException
 from django_bolt.middleware import rate_limit
-from django_bolt.params import Query
 
 from courses.access import ensure_course_access
 from problems.models import Challenge, Function, Hint, Language, Problem, Tags, TestCase
-from quizs.models import Choice, Question, UserResponse
 from submissions.models import Submission
 from baseuser.models import BaseUser
 from baseuser.authenticate import get_current_user_option, get_current_user
 
-from courses.models import Course, Lecture, Modul, Lesson, Enrollment
+from courses.models import (
+    Course, Lecture, Modul, Lesson, Enrollment,
+    CourseTest, CourseQuestion, CourseChoice,
+    CourseTestSession, CourseUserResponse,
+)
+
 from .cache import (
     get_course_list_static,
     set_course_list_static,
     get_course_detail_static,
     set_course_detail_static,
-    get_course_user_cache,
-    set_course_user_cache,
 )
 from status.models import (
     CourseStatus,
@@ -41,10 +41,56 @@ from status.models import (
     ProblemStatus,
     UserStats,
 )
-from status.services import award_xp
+from status.services import award_xp, mark_lesson_task_completed, recalculate_module_status
 
 logger = logging.getLogger(__name__)
 api = Router(tags=["Courses"])
+
+# ==========================================================
+# JSON KALIT QISQARTMALARI (trafikni tejash uchun)
+# ==========================================================
+# Ro'yxat qaytaruvchi endpointlarda (courses, modules, lessons,
+# lectures, questions...) bir xil kalitlar minglab marta
+# takrorlanadi, shuning uchun ular qisqartirilgan holda yuboriladi.
+#
+#   id     -> id (o'zgarishsiz)
+#   t      -> title
+#   s      -> slug
+#   desc   -> description
+#   p      -> price
+#   dp     -> discount_price
+#   img    -> thumbnail url
+#   vid    -> video obyekti {hls, img, dur}
+#   hls    -> hls_url
+#   dur    -> duration (video uchun soniya, test uchun daqiqa — kontekstga qarab)
+#   o      -> order
+#   tl     -> total_lessons
+#   tt     -> total_tests (modul darajasida: 0 yoki 1, chunki test OneToOne)
+#   test   -> modul ichidagi test obyekti {id, t, s, dur, min_pct}
+#             (CourseTest -> Modul OneToOne, shuning uchun modul boshiga
+#             bittadan ortiq test bo'lishi mumkin emas). To'liq test
+#             ma'lumoti (video, best_result, active_session) alohida
+#             "/modul/{modul_id}/test/" endpoint orqali olinadi, chunki
+#             u foydalanuvchiga bog'liq va statik keshga tushmaydi.
+#   min_pct -> min_pass_percentage
+#   ls     -> lessons (ro'yxat)
+#   mods   -> modules (ro'yxat)
+#   lecs   -> lectures (ro'yxat)
+#   probs  -> problems (ro'yxat)
+#   qs     -> questions (ro'yxat)
+#   txt    -> savol matni
+#   dif    -> difficulty
+#   rt     -> reading_time
+#   hv     -> has_video
+#   paid   -> is_paid
+#   done   -> is_completed
+#   cl     -> completed_lessons
+#   ct     -> completed_tests
+#   ft     -> finished_tasks
+#   ea     -> enrolled_at
+#   us     -> user_status
+#   ms     -> module_status
+# ==========================================================
 
 
 # ==========================================================
@@ -88,7 +134,9 @@ def _course_list_qs():
     )
 
 
+
 def _course_detail_qs(slug: str):
+    """O'ZGARDI: .only() ro'yxatiga 'level' va 'total_modules_count' qo'shildi."""
     lesson_qs = (
         Lesson.objects.filter(is_active=True)
         .only("id", "title", "slug", "order", "total_tasks_count", "modul_id")
@@ -106,10 +154,25 @@ def _course_detail_qs(slug: str):
         .prefetch_related(Prefetch("modullar", queryset=module_qs))
         .only(
             "id", "title", "slug", "description", "price", "discount_price",
-            "total_lessons_count", "total_test_count",
+            "level", "total_lessons_count", "total_test_count", "total_modules_count",
             "intro_video__hls_url", "intro_video__thumbnail", "intro_video__duration",
         )
     )
+
+
+def _students_count_cache_key(course_id: int) -> str:
+    return f"course_students_count:{course_id}"
+
+
+async def _get_students_count(course_id: int) -> int:
+    """Kursga yozilganlar soni — 5 daqiqa keshlanadi (og'ir COUNT() emas)."""
+    key = _students_count_cache_key(course_id)
+    count = cache.get(key)
+    if count is None:
+        count = await Enrollment.objects.filter(course_id=course_id).acount()
+        cache.set(key, count, timeout=300)
+    return count
+
 
 
 # ==========================================================
@@ -131,16 +194,16 @@ async def course_list(
         async for c in qs:
             courses.append({
                 "id": c.id,
-                "title": c.title,
-                "slug": c.slug,
-                "price": float(c.price),
-                "discount_price": float(c.discount_price) if c.discount_price else None,
-                "thumbnail": (
+                "t": c.title,
+                "s": c.slug,
+                "p": float(c.price),
+                "dp": float(c.discount_price) if c.discount_price else None,
+                "img": (
                     c.intro_video.thumbnail.url
                     if c.intro_video and c.intro_video.thumbnail else None
                 ),
-                "total_lessons": c.total_lessons_count,
-                "total_tests": c.total_test_count,
+                "tl": c.total_lessons_count,
+                "tt": c.total_test_count,
             })
         set_course_list_static(courses)
 
@@ -163,19 +226,91 @@ async def course_list(
 
     for c in result:
         cid = c["id"]
-        c["is_paid"] = enrollments.get(cid, False)
+        c["paid"] = enrollments.get(cid, False)
         st = statuses.get(cid)
-        c["completed_lessons"] = st.completed_lessons if st else 0
-        c["completed_tests"] = st.completed_tests if st else 0
-        c["is_completed"] = st.is_completed if st else False
+        c["cl"] = st.completed_lessons if st else 0
+        c["ct"] = st.completed_tests if st else 0
+        c["done"] = st.is_completed if st else False
 
     return result
+
+# courses/api.py
+
+from .cache import get_hero_course_cache, set_hero_course_cache
+
+
+# ==========================================================
+# 0. BOSH SAHIFA HERO — ENG KO'P FOYDALANUVCHI YOZILGAN KURS
+# ==========================================================
+
+@api.get("/hero/")
+@rate_limit(rps=10, burst=20)
+async def get_hero_course(request: Request):
+    """
+    Bosh sahifadagi hero banner: Enrollment soni bo'yicha eng
+    ko'p foydalanuvchiga ega faol kurs. Model'da alohida flag
+    yo'q — har doim haqiqiy statistikadan hisoblanadi.
+
+    5 daqiqa keshlanadi (login holatidan qat'i nazar bir xil
+    natija, shu sababli foydalanuvchiga bog'liq emas).
+    """
+    data = get_hero_course_cache()
+    if data is not None:
+        return data
+
+    top = await (
+        Enrollment.objects
+        .filter(course__is_active=True)
+        .values("course_id")
+        .annotate(cnt=Count("id"))
+        .order_by("-cnt")
+        .afirst()
+    )
+
+    if not top:
+        return JSON(None, status_code=204)
+
+    course = await (
+        Course.objects.filter(id=top["course_id"])
+        .select_related("intro_video")
+        .only(
+            "id", "title", "slug", "description", "price", "discount_price",
+            "total_lessons_count", "total_test_count",
+            "intro_video__hls_url", "intro_video__thumbnail", "intro_video__duration",
+        )
+        .afirst()
+    )
+
+    if not course:
+        return JSON(None, status_code=204)
+
+    data = {
+        "id": course.id,
+        "t": course.title,
+        "s": course.slug,
+        "desc": course.description,
+        "p": float(course.price),
+        "dp": float(course.discount_price) if course.discount_price else None,
+        "vid": {
+            "hls": course.intro_video.hls_url if course.intro_video else None,
+            "img": (
+                course.intro_video.thumbnail.url
+                if course.intro_video and course.intro_video.thumbnail else None
+            ),
+            "dur": course.intro_video.duration if course.intro_video else None,
+        },
+        "tl": course.total_lessons_count,
+        "tt": course.total_test_count,
+        "students": top["cnt"],
+    }
+    set_hero_course_cache(data)
+    return data
+
 
 
 # ==========================================================
 # 2. KURS DETALI
 # ==========================================================
-
 @api.get("/{slug}")
 @rate_limit(rps=10, burst=20)
 async def course_detail(
@@ -183,7 +318,20 @@ async def course_detail(
     slug: str,
     user: BaseUser | None = Depends(get_current_user_option),
 ):
-    """Kurs detali: modullar, darslar, video, user status."""
+    """
+    Kurs detali: modullar, darslar, video, user status.
+
+    MUHIM: Statik kurs strukturasi (modullar/darslar nomi, tartibi va h.k.)
+    keshlanadi (STATIC_TTL, kamdan-kam o'zgaradi). Lekin user progress
+    (lesson/module/test statuslari) HECH QACHON keshlanmaydi — bu doimo
+    o'zgarib turadigan ma'lumot va eskirgan holat ko'rsatish (masalan
+    tugatilgan darsni "tugallanmagan" deb ko'rsatish) mantiqan noto'g'ri.
+    Shuning uchun user progress har safar to'g'ridan-to'g'ri bazadan
+    hisoblanadi.
+    """
+    # -----------------------------------------------------------------
+    # 1) STATIK MA'LUMOTLAR — barcha userlar uchun bir xil, keshlanadi
+    # -----------------------------------------------------------------
     data = get_course_detail_static(slug)
 
     if data is None:
@@ -192,158 +340,202 @@ async def course_detail(
             raise HTTPException(404, "Kurs topilmadi")
 
         modules = []
-        for module in course.modullar.all():
+        async for module in course.modullar.all():
             lessons = []
-            for lesson in module.lessons.all():
+            async for lesson in module.lessons.all():
                 lessons.append({
                     "id": lesson.id,
-                    "title": lesson.title,
-                    "slug": lesson.slug,
-                    "order": lesson.order,
-                    "total_tasks": lesson.total_tasks_count,
+                    "t": lesson.title,
+                    "s": lesson.slug,
+                    "o": lesson.order,
+                    "tk": lesson.total_tasks_count,
                 })
+
+            test_obj = await (
+                CourseTest.objects
+                .filter(modul_id=module.id, is_active=True)
+                .only("id", "title", "slug", "duration", "min_pass_percentage")
+                .afirst()
+            )
+
+            test_data = None
+            if test_obj:
+                test_data = {
+                    "id": test_obj.id,
+                    "t": test_obj.title,
+                    "s": test_obj.slug,
+                    "dur": test_obj.duration,
+                    "min_pct": test_obj.min_pass_percentage,
+                }
+
             modules.append({
                 "id": module.id,
-                "title": module.title,
-                "slug": module.slug,
-                "order": module.order,
-                "lessons": lessons,
+                "t": module.title,
+                "s": module.slug,
+                "o": module.order,
+                "tl": len(lessons),
+                "tt": 1 if test_data else 0,
+                "test": test_data,
+                "ls": lessons,
             })
 
         data = {
             "id": course.id,
-            "title": course.title,
-            "slug": course.slug,
-            "description": course.description,
-            "price": float(course.price),
-            "discount_price": float(course.discount_price) if course.discount_price else None,
-            "video": {
-                "hls_url": course.intro_video.hls_url if course.intro_video else None,
-                "thumbnail": (
+            "t": course.title,
+            "s": course.slug,
+            "desc": course.description,
+            "level": course.level,
+            "p": float(course.price),
+            "dp": float(course.discount_price) if course.discount_price else None,
+            "vid": {
+                "hls": course.intro_video.hls_url if course.intro_video else None,
+                "img": (
                     course.intro_video.thumbnail.url
                     if course.intro_video and course.intro_video.thumbnail else None
                 ),
-                "duration": course.intro_video.duration if course.intro_video else None,
+                "dur": course.intro_video.duration if course.intro_video else None,
             },
-            "total_lessons": course.total_lessons_count,
-            "total_tests": course.total_test_count,
-            "modules": modules,
+            "tl": course.total_lessons_count,
+            "tt": course.total_test_count,
+            "tm": course.total_modules_count,
+            "mods": modules,
         }
         set_course_detail_static(slug, data)
 
+    # Statik nusxani olish (user/dinamik ma'lumotlar qo'shilishidan oldin)
     result = copy.deepcopy(data)
 
+    # O'quvchilar soni — statik keshdan mustaqil, o'zining 5 daqiqalik keshi bilan
+    result["students"] = await _get_students_count(result["id"])
+
+    # -----------------------------------------------------------------
+    # 2) ANONIM USER — locking va test statusisiz, faqat asosiy ma'lumot
+    # -----------------------------------------------------------------
     if not user:
+        first_lesson = True
+        for i, m in enumerate(result["mods"]):
+            m["locked"] = i > 0
+            for l in m["ls"]:
+                l["locked"] = not first_lesson
+                first_lesson = False
         return result
 
+    # -----------------------------------------------------------------
+    # 3) LOGIN QILGAN USER — progress + enrollment + test natijalari
+    #    HAR SAFAR BAZADAN, KESHSIZ.
+    # -----------------------------------------------------------------
     course_id = result["id"]
-    user_data = get_course_user_cache(slug, user.id)
 
-    if user_data is None:
-        lesson_ids = [l["id"] for m in result["modules"] for l in m["lessons"]]
+    lesson_ids = [l["id"] for m in result["mods"] for l in m["ls"]]
+    module_ids = [m["id"] for m in result["mods"]]
+    test_ids = [m["test"]["id"] for m in result["mods"] if m["test"]]
 
-        lesson_statuses = {}
-        async for ls in LessonStatus.objects.filter(user=user, lesson_id__in=lesson_ids).only(
-            "lesson_id", "is_completed", "finished_tasks_count"
+    # --- LessonStatus ---
+    lesson_statuses = {}
+    async for ls in LessonStatus.objects.filter(
+        user=user, lesson_id__in=lesson_ids
+    ).only("lesson_id", "is_completed", "finished_tasks_count"):
+        lesson_statuses[ls.lesson_id] = {
+            "done": ls.is_completed,
+            "ft": ls.finished_tasks_count,
+        }
+
+    # --- ModuleStatus ---
+    module_statuses = {}
+    async for ms in ModuleStatus.objects.filter(
+        user=user, modul_id__in=module_ids
+    ).only("modul_id", "is_completed", "completed_lessons", "completed_tests"):
+        module_statuses[ms.modul_id] = {
+            "done": ms.is_completed,
+            "cl": ms.completed_lessons,
+            "ct": ms.completed_tests,
+        }
+
+    # --- Modul testlari bo'yicha ENG YAXSHI natija (bitta so'rov, N+1 yo'q) ---
+    test_results = {}
+    attempted_ids = set()
+    if test_ids:
+        async for s in (
+            CourseTestSession.objects
+            .filter(user=user, test_id__in=test_ids, completed_at__isnull=False)
+            .order_by("test_id", "-total_xp_earned")
+            .only("test_id", "correct_count", "wrong_count", "unanswered_count")
         ):
-            lesson_statuses[ls.lesson_id] = {
-                "is_completed": ls.is_completed,
-                "finished_tasks": ls.finished_tasks_count,
+            if s.test_id in test_results:
+                continue
+            total = s.correct_count + s.wrong_count + s.unanswered_count
+            score_pct = round((s.correct_count / total) * 100) if total else 0
+            test_results[s.test_id] = {"score_pct": score_pct}
+
+        # Foydalanuvchi umuman uringanmi (yakunlanmagan bo'lsa ham) — "attempted"
+        async for tid in (
+            CourseTestSession.objects
+            .filter(user=user, test_id__in=test_ids)
+            .values_list("test_id", flat=True).distinct()
+        ):
+            attempted_ids.add(tid)
+
+    # --- CourseStatus ---
+    status = await CourseStatus.objects.filter(
+        user=user, course_id=course_id
+    ).only(
+        "completed_lessons", "completed_tests", "is_completed", "started_at"
+    ).afirst()
+
+    # --- Enrollment ---
+    enrollment = await Enrollment.objects.filter(
+        user=user, course_id=course_id
+    ).only("is_paid", "created_at").afirst()
+
+    # -----------------------------------------------------------------
+    # 4) STATUSLARNI + LOCKING'NI RESPONSE'GA QO'SHISH
+    # -----------------------------------------------------------------
+    prev_module_done = True   # 1-modul hech qachon qulflanmaydi
+    prev_lesson_done = True   # Kursning birinchi lesson'i doim ochiq
+
+    for m in result["mods"]:
+        ms = module_statuses.get(m["id"], {"done": False, "cl": 0, "ct": 0})
+        m["ms"] = ms
+        m["locked"] = not prev_module_done
+        prev_module_done = ms["done"]
+
+        for l in m["ls"]:
+            st = lesson_statuses.get(l["id"])
+            l["us"] = st if st else {"done": False, "ft": 0}
+            l["locked"] = not prev_lesson_done
+            prev_lesson_done = st["done"] if st else False
+
+        if m["test"]:
+            tid = m["test"]["id"]
+            best = test_results.get(tid)
+            m["test"]["result"] = {
+                "attempted": tid in attempted_ids,
+                "score_pct": best["score_pct"] if best else None,
+                "passed": (best["score_pct"] >= m["test"]["min_pct"]) if best else None,
             }
 
-        status = await CourseStatus.objects.filter(user=user, course_id=course_id).afirst()
-
-        user_data = {
-            "lesson_statuses": lesson_statuses,
-            "completed_lessons": status.completed_lessons if status else 0,
-            "completed_tests": status.completed_tests if status else 0,
-            "is_completed": status.is_completed if status else False,
-        }
-        set_course_user_cache(slug, user.id, user_data)
-
-    for m in result["modules"]:
-        for l in m["lessons"]:
-            st = user_data["lesson_statuses"].get(l["id"])
-            l["user_status"] = st if st else {"is_completed": False, "finished_tasks": 0}
-
-    result["user_progress"] = {
-        "is_paid": await Enrollment.objects.filter(
-            user=user, course_id=course_id, is_paid=True
-        ).aexists(),
-        "completed_lessons": user_data["completed_lessons"],
-        "completed_tests": user_data["completed_tests"],
-        "is_completed": user_data["is_completed"],
+    result["progress"] = {
+        "paid": enrollment.is_paid if enrollment else False,
+        "started_at": status.started_at.isoformat() if status and status.started_at else None,
+        "cl": status.completed_lessons if status else 0,
+        "ct": status.completed_tests if status else 0,
+        "done": status.is_completed if status else False,
     }
 
     return result
 
-
 # ==========================================================
-# 3. KURSGA YOZILISH (BEPUL)
-# ==========================================================
-from django_bolt import JSON
-
-@api.post("/{slug}/enroll")
-@rate_limit(rps=5, burst=10)
-async def enroll_course(
-    request: Request,
-    slug: str,
-    request_user: BaseUser = Depends(get_current_user),
-):
-    """
-    Bepul kurs uchun — to'g'ridan-to'g'ri kursga yozadi.
-    Pullik kurs uchun — Enrollment yaratmaydi, to'lovga yo'naltirish uchun ma'lumot qaytaradi.
-    Haqiqiy pullik yozilish faqat payment webhook orqali (mark_transaction_paid) amalga oshadi.
-    """
-    course = await Course.objects.filter(
-        slug=slug, is_active=True
-    ).only("id", "price", "discount_price").afirst()
-
-    if not course:
-        raise HTTPException(404, "Kurs topilmadi")
-
-    enrollment = await Enrollment.objects.filter(
-        user_id=request_user.id, course_id=course.id
-    ).afirst()
-
-    if enrollment:
-        return {
-            "enrolled": True,
-            "is_paid": enrollment.is_paid,
-        }
-
-    if course.current_price > 0:
-        return JSON(
-            {
-                "payment_req": True,
-                "amount": str(course.current_price),
-            },
-            status_code=402,
-        )
-
-    enrollment = await Enrollment.objects.acreate(
-        user_id=request_user.id,
-        course_id=course.id,
-        is_paid=True,
-    )
-
-    return {
-        "enrolled": True,
-        "is_paid": enrollment.is_paid,
-    }
-
-# ==========================================================
-# 4. DARS DETALI
+# 4. DARS DETALI (access lock bilan)
 # ==========================================================
 
 @api.get("/lesson/{slug}/")
-@rate_limit(rps=10, burst=20)
+@rate_limit(rps=50, burst=20)
 async def get_lesson(
     request: Request,
     slug: str,
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-    """Dars detali: lectures, problems, quizzes + user status."""
+    """Dars detali: lectures, problems, quizzes + user status + access lock."""
     if not request_user:
         raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
@@ -355,7 +547,8 @@ async def get_lesson(
             Prefetch(
                 "lectures",
                 queryset=Lecture.objects.only(
-                    "id", "lesson_id", "title", "slug", "order"
+                    "id", "lesson_id", "title", "slug", "order",
+                    "xp", "reading_time", "video_id",
                 ).order_by("order"),
             ),
             Prefetch(
@@ -365,10 +558,10 @@ async def get_lesson(
                 ).order_by("id"),
             ),
             Prefetch(
-                "quiz_questions",
-                queryset=Question.objects.only(
-                    "id", "lesson_id", "order", "difficulty", "xp"
-                ).order_by("order"),
+                "questions",
+                queryset=CourseQuestion.objects.filter(test__isnull=True).only(
+                    "id", "lesson_id", "difficulty", "xp", "text"
+                ).order_by("id"),
             ),
         )
         .afirst()
@@ -377,8 +570,10 @@ async def get_lesson(
     if not lesson:
         raise HTTPException(404, "Dars topilmadi")
     await ensure_course_access(request_user.id, lesson.modul.course)
-    
-    # OLDINGI DARS TEKSHIRUVI
+
+    # -----------------------------------------------------------------
+    # OLDINGI DARS + ACCESS TEKSHIRUVI
+    # -----------------------------------------------------------------
     prev_lesson = await (
         Lesson.objects
         .filter(modul__course=lesson.modul.course, is_active=True)
@@ -391,14 +586,35 @@ async def get_lesson(
         .afirst()
     )
 
+    access = {
+        "locked": False,
+        "previous_lesson_id": None,
+        "previous_lesson_completed": True,
+    }
+
     if prev_lesson:
         prev_done = await LessonStatus.objects.filter(
             user=request_user, lesson=prev_lesson, is_completed=True
         ).aexists()
-        if not prev_done:
-            raise HTTPException(403, "Avval oldingi darsni to'liq tugating")
+        access["previous_lesson_id"] = prev_lesson.id
+        access["previous_lesson_completed"] = prev_done
+        access["locked"] = not prev_done
 
-    # STATUS
+    # Agar dars qulflangan bo'lsa — 403 qaytarib, sababini ko'rsatamiz
+    if access["locked"]:
+        return JSON(
+            {
+                "id": lesson.id,
+                "t": lesson.title,
+                "s": lesson.slug,
+                "access": access,
+            },
+            status_code=403,
+        )
+
+    # -----------------------------------------------------------------
+    # STATUS (faqat ochiq lesson uchun)
+    # -----------------------------------------------------------------
     lesson_status = await LessonStatus.objects.filter(
         user=request_user, lesson=lesson
     ).only("finished_tasks_count", "is_completed").afirst()
@@ -410,8 +626,11 @@ async def get_lesson(
     }
 
     completed_questions = {
-        pk async for pk in UserResponse.objects.filter(
-            user=request_user, question__lesson=lesson, session__isnull=True
+        pk async for pk in CourseUserResponse.objects.filter(
+            user=request_user,
+            question__lesson=lesson,
+            session__isnull=True,
+            choice__is_correct=True,
         ).values_list("question_id", flat=True).distinct()
     }
 
@@ -423,45 +642,162 @@ async def get_lesson(
 
     return {
         "id": lesson.id,
-        "title": lesson.title,
-        "slug": lesson.slug,
-        "course_id": lesson.modul.course_id,
-        "modul_id": lesson.modul_id,
-        "total_tasks": lesson.total_tasks_count,
-        "user_status": {
-            "finished_tasks": lesson_status.finished_tasks_count if lesson_status else 0,
-            "is_completed": lesson_status.is_completed if lesson_status else False,
+        "t": lesson.title,
+        "s": lesson.slug,
+        "tk": lesson.total_tasks_count,
+        "us": {
+            "ft": lesson_status.finished_tasks_count if lesson_status else 0,
+            "done": lesson_status.is_completed if lesson_status else False,
         },
-        "lectures": [
+        "access": access,
+        "lecs": [
             {
                 "id": lec.id,
-                "title": lec.title,
-                "slug": lec.slug,
-                "order": lec.order,
-                "is_completed": lec.id in completed_lectures,
+                "t": lec.title,
+                "s": lec.slug,
+                "o": lec.order,
+                "xp": lec.xp,
+                "rt": lec.reading_time,
+                "hv": lec.video_id is not None,
+                "done": lec.id in completed_lectures,
             }
             for lec in lesson.lectures.all()
         ],
-        "problems": [
+        "probs": [
             {
                 "id": p.id,
-                "title": p.title,
-                "slug": p.slug,
+                "t": p.title,
+                "s": p.slug,
                 "xp": p.xp,
-                "is_completed": p.id in completed_problems,
+                "done": p.id in completed_problems,
             }
             for p in lesson.problems.all() if p.is_active
         ],
-        "questions": [
+        "qs": [
             {
                 "id": q.id,
-                "order": q.order,
-                "difficulty": q.difficulty,
+                "txt": q.text,
+                "dif": q.difficulty,
                 "xp": q.xp,
-                "is_completed": q.id in completed_questions,
+                "done": q.id in completed_questions,
             }
-            for q in lesson.quiz_questions.all()
+            for q in lesson.questions.all()
         ],
+    }
+
+# ==========================================================
+# 3. KURSGA YOZILISH (TO'LIQ YAXSHILANGAN)
+# ==========================================================
+
+@api.post("/{slug}/enroll")
+@rate_limit(rps=5, burst=10)
+async def enroll_course(
+    request: Request,
+    slug: str,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    """
+    Bepul kurs — to'g'ridan-to'g'ri yozadi + CourseStatus yaratadi.
+    Pullik kurs — to'lov ma'lumotini qaytaradi (402).
+    """
+    # -----------------------------------------------------------------
+    # 1) KURSNI OLIB TEKSHIRISH
+    # -----------------------------------------------------------------
+    course = await Course.objects.filter(
+        slug=slug, is_active=True
+    ).only("id", "price", "discount_price", "title").afirst()
+
+    if not course:
+        raise HTTPException(404, "Kurs topilmadi")
+
+    # -----------------------------------------------------------------
+    # 2) ALLAQACHON YOZILGANMI?
+    # -----------------------------------------------------------------
+    enrollment = await Enrollment.objects.filter(
+        user_id=request_user.id, course_id=course.id
+    ).afirst()
+
+    if enrollment:
+        # Agar allaqachon yozilgan bo'lsa, hozirgi holatini qaytaramiz
+        status = await CourseStatus.objects.filter(
+            user_id=request_user.id, course_id=course.id
+        ).only("is_completed", "started_at", "completed_lessons", "completed_tests").afirst()
+
+        return {
+            "enrolled": True,
+            "is_paid": enrollment.is_paid,
+            "started_at": status.started_at.isoformat() if status and status.started_at else None,
+            "course_id": course.id,
+        }
+
+    # -----------------------------------------------------------------
+    # 3) PULLIK KURS — TO'LOV TALAB QILINADI
+    # -----------------------------------------------------------------
+    if course.current_price > 0:
+        return JSON(
+            {
+                "payment_req": True,
+                "amount": str(course.current_price),
+                "course_id": course.id,
+                "course_title": course.title,
+            },
+            status_code=402,
+        )
+
+    # -----------------------------------------------------------------
+    # 4) BEPUL KURS — YOZISH + COURSESTATUS YARATISH
+    # -----------------------------------------------------------------
+    try:
+        enrollment = await Enrollment.objects.acreate(
+            user_id=request_user.id,
+            course_id=course.id,
+            is_paid=True,
+        )
+    except Exception as exc:
+        logger.exception("Enrollment yaratishda xatolik: user=%s course=%s", request_user.id, course.id)
+        raise HTTPException(500, "Kursga yozilishda xatolik yuz berdi")
+
+    # CourseStatus yaratish (yoki olish agar mavjud bo'lsa)
+    status = None
+    try:
+        status, created = await CourseStatus.objects.aget_or_create(
+            user_id=request_user.id,
+            course_id=course.id,
+            defaults={
+                "started_at": timezone.now(),
+                "is_completed": False,
+                "completed_modules": 0,
+                "completed_lessons": 0,
+                "completed_tests": 0,
+                "completed_problems": 0,
+            },
+        )
+        if not created and status.started_at is None:
+            status.started_at = timezone.now()
+            await status.asave(update_fields=["started_at"])
+    except Exception as exc:
+        logger.exception("CourseStatus yaratishda xatolik: user=%s course=%s", request_user.id, course.id)
+        # CourseStatus xatoligi enrollment'ni bekor qilmaydi, faqat log qilinadi
+
+    # -----------------------------------------------------------------
+    # 5) KESHLARNI TOZALASH (muhim!)
+    # -----------------------------------------------------------------
+    # Kurs ro'yxati keshi (my_courses va course_list uchun)
+    cache.delete("course_list_static")
+    # User-specific kurs detali keshi
+    cache.delete(f"course_user:{slug}:{request_user.id}")
+    # Hero keshi ham eskirgan bo'lishi mumkin
+    cache.delete("hero_course")
+
+    # -----------------------------------------------------------------
+    # 6) JAVOB
+    # -----------------------------------------------------------------
+    return {
+        "enrolled": True,
+        "is_paid": enrollment.is_paid,
+        "course_id": course.id,
+        "course_title": course.title,
+        "started_at": status.started_at.isoformat() if status and status.started_at else None,
     }
 
 
@@ -482,48 +818,31 @@ async def get_lecture(
         raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
     lecture = await (
-    Lecture.objects
-    .filter(
-        lesson__slug=slug,
-        slug=lecture_slug
+        Lecture.objects
+        .filter(lesson__slug=slug, slug=lecture_slug)
+        .select_related("video", "lesson__modul__course")
+        .only(
+            "id", "title", "body", "xp", "reading_time",
+            "lesson__id", "lesson__modul__id", "lesson__modul__course__id",
+            "video__hls_url", "video__video", "video__thumbnail", "video__duration",
+        )
+        .afirst()
     )
-    .select_related(
-        "video",
-        "lesson__modul__course",
-    )
-    .only(
-        "id",
-        "title",
-        "body",
-        "xp",
-        "reading_time",
-
-        "lesson__id",
-        "lesson__modul__id",
-        "lesson__modul__course__id",
-
-        "video__hls_url",
-        "video__video",
-        "video__thumbnail",
-        "video__duration",
-    )
-    .afirst()
-)
     if not lecture:
         raise HTTPException(404, "Ma'ruza topilmadi")
-    
+
     await ensure_course_access(request_user.id, lecture.lesson.modul.course)
 
     lecture_status = await LectureStatus.objects.filter(
         user=request_user,
-        lecture=lecture
+        lecture=lecture,
     ).afirst()
 
     if not lecture_status:
         lecture_status = await LectureStatus.objects.acreate(
             user=request_user,
             lecture=lecture,
-            started_at=timezone.now()
+            started_at=timezone.now(),
         )
 
     is_completed = lecture_status.is_completed
@@ -547,13 +866,6 @@ async def get_lecture(
 # ==========================================================
 # 6. MA'RUZANI TUGATISH
 # ==========================================================
-from datetime import timedelta
-
-from status.services import (
-    mark_lesson_task_completed,
-    award_xp,
-)
-
 
 @api.post("/lesson/{slug}/lectures/{lecture_slug}/complete/")
 @rate_limit(rps=5, burst=10)
@@ -567,33 +879,20 @@ async def complete_lecture(
         raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
     lecture = await (
-    Lecture.objects
-    .filter(
-        lesson__slug=slug,
-        slug=lecture_slug
+        Lecture.objects
+        .filter(lesson__slug=slug, slug=lecture_slug)
+        .select_related("lesson__modul__course")
+        .only(
+            "id", "xp", "reading_time",
+            "lesson__id", "lesson__modul__id", "lesson__modul__course__id",
+        )
+        .afirst()
     )
-    .select_related(
-        "lesson__modul__course"
-    )
-    .only(
-        "id",
-        "xp",
-        "reading_time",
-        "lesson__id",
-        "lesson__modul__id",
-        "lesson__modul__course__id",
-    )
-    .afirst()
-)
 
     if not lecture:
         raise HTTPException(404, "Ma'ruza topilmadi")
 
-
-    await ensure_course_access(
-    request_user.id,
-    lecture.lesson.modul.course
-)
+    await ensure_course_access(request_user.id, lecture.lesson.modul.course)
 
     status = await LectureStatus.objects.filter(
         user=request_user,
@@ -613,17 +912,12 @@ async def complete_lecture(
 
     if lecture.reading_time and status.started_at:
         if now - status.started_at < timedelta(minutes=lecture.reading_time):
-            raise HTTPException(
-                403,
-                "Ma'ruzani tugatish uchun vaqt yetarli emas"
-            )
+            raise HTTPException(403, "Ma'ruzani tugatish uchun vaqt yetarli emas")
 
     status.is_completed = True
     status.completed_at = now
 
-    await status.asave(
-        update_fields=["is_completed", "completed_at"]
-    )
+    await status.asave(update_fields=["is_completed", "completed_at"])
 
     await sync_to_async(mark_lesson_task_completed, thread_sensitive=True)(
         user_id=request_user.id,
@@ -644,10 +938,7 @@ async def complete_lecture(
 
 
 # ==========================================================
-# 7. QUIZ SAVOL
-# ==========================================================
-# ==========================================================
-# 7. QUIZ SAVOL
+# 7. DARSDAGI (LESSON) YAKKA QUIZ SAVOLI
 # ==========================================================
 
 @api.get("/lesson/{slug}/quizzes/{question_id}/")
@@ -658,39 +949,18 @@ async def get_quiz(
     question_id: int,
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-
     if not request_user:
-        raise HTTPException(
-            401,
-            "Tizimga kirish talab qilinadi"
-        )
-
+        raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
     question = await (
-        Question.objects
-        .filter(
-            id=question_id,
-            lesson__slug=slug,
-        )
-        .select_related(
-            "lesson__modul__course",
-        )
+        CourseQuestion.objects
+        .filter(id=question_id, lesson__slug=slug)
+        .select_related("lesson__modul__course")
         .prefetch_related(
-            Prefetch(
-                "choices",
-                queryset=Choice.objects.only(
-                    "id",
-                    "text",
-                )
-            )
+            Prefetch("choices", queryset=CourseChoice.objects.only("id", "question_id", "text"))
         )
         .only(
-            "id",
-            "text",
-            "difficulty",
-            "xp",
-
-            # Course relation uchun kerak
+            "id", "text", "difficulty", "xp",
             "lesson__modul__course__id",
             "lesson__modul__course__price",
             "lesson__modul__course__discount_price",
@@ -698,23 +968,13 @@ async def get_quiz(
         .afirst()
     )
 
-
     if not question:
-        raise HTTPException(
-            404,
-            "Savol topilmadi"
-        )
+        raise HTTPException(404, "Savol topilmadi")
 
-
-    # Kurs access tekshiruvi
-    await ensure_course_access(
-        request_user.id,
-        question.lesson.modul.course,
-    )
-
+    await ensure_course_access(request_user.id, question.lesson.modul.course)
 
     done = await (
-        UserResponse.objects
+        CourseUserResponse.objects
         .filter(
             user=request_user,
             question_id=question.id,
@@ -724,39 +984,25 @@ async def get_quiz(
         .aexists()
     )
 
-
-    choices = (
-        question
-        ._prefetched_objects_cache
-        .get("choices", [])
-    )
-
-
     return {
         "id": question.id,
         "text": question.text,
-        "dif": question.difficulty,
+        "difficulty": question.difficulty,
         "xp": question.xp,
         "done": done,
-
         "choices": [
-            {
-                "id": choice.id,
-                "text": choice.text,
-            }
-            for choice in choices
+            {"id": choice.id, "text": choice.text}
+            for choice in question.choices.all()
         ],
     }
 
 
-
 # ==========================================================
-# 8. QUIZ JAVOB
+# 8. DARSDAGI QUIZGA JAVOB BERISH
 # ==========================================================
 
 class AnswerIn(msgspec.Struct):
     choice_id: int
-
 
 
 @api.post("/lesson/{slug}/quizzes/{question_id}/complete/")
@@ -768,35 +1014,18 @@ async def complete_quiz(
     payload: AnswerIn,
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-
     if not request_user:
-        raise HTTPException(
-            401,
-            "Tizimga kirish talab qilinadi"
-        )
-
+        raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
     question = await (
-        Question.objects
-        .filter(
-            id=question_id,
-            lesson__slug=slug,
-        )
-        .select_related(
-            "lesson__modul__course",
-            "explanation_video",
-        )
+        CourseQuestion.objects
+        .filter(id=question_id, lesson__slug=slug)
+        .select_related("lesson__modul__course", "explanation_video")
         .only(
-            "id",
-            "lesson_id",
-            "xp",
-
-            # Course access uchun
+            "id", "lesson_id", "xp", "explanation",
             "lesson__modul__course__id",
             "lesson__modul__course__price",
             "lesson__modul__course__discount_price",
-
-            # Video
             "explanation_video__hls_url",
             "explanation_video__thumbnail",
             "explanation_video__duration",
@@ -804,44 +1033,23 @@ async def complete_quiz(
         .afirst()
     )
 
-
     if not question:
-        raise HTTPException(
-            404,
-            "Savol topilmadi"
-        )
+        raise HTTPException(404, "Savol topilmadi")
 
-
-    await ensure_course_access(
-        request_user.id,
-        question.lesson.modul.course,
-    )
-
+    await ensure_course_access(request_user.id, question.lesson.modul.course)
 
     choice = await (
-        Choice.objects
-        .filter(
-            id=payload.choice_id,
-            question_id=question.id,
-        )
-        .only(
-            "id",
-            "is_correct",
-            "explanation",
-        )
+        CourseChoice.objects
+        .filter(id=payload.choice_id, question_id=question.id)
+        .only("id", "is_correct")
         .afirst()
     )
 
-
     if not choice:
-        raise HTTPException(
-            400,
-            "Variant topilmadi"
-        )
-
+        raise HTTPException(400, "Variant topilmadi")
 
     old = await (
-        UserResponse.objects
+        CourseUserResponse.objects
         .filter(
             user=request_user,
             question_id=question.id,
@@ -851,86 +1059,471 @@ async def complete_quiz(
         .aexists()
     )
 
-
     xp = 0
 
-
     if not old:
-
-        await UserResponse.objects.acreate(
+        await CourseUserResponse.objects.acreate(
             user=request_user,
             question=question,
             choice=choice,
         )
 
-
         if choice.is_correct:
-
             xp = question.xp
-
             try:
-
-                await sync_to_async(
-                    mark_lesson_task_completed,
-                    thread_sensitive=True,
-                )(
+                await sync_to_async(mark_lesson_task_completed, thread_sensitive=True)(
                     user_id=request_user.id,
                     lesson_id=question.lesson_id,
                 )
-
-
-                await sync_to_async(
-                    award_xp,
-                    thread_sensitive=True,
-                )(
+                await sync_to_async(award_xp, thread_sensitive=True)(
                     user=request_user,
                     xp_amount=xp,
                     source="quiz",
                 )
-
-
             except Exception:
-
-                logger.exception(
-                    "quiz reward error"
-                )
-
+                logger.exception("quiz reward error")
 
     video = None
-
-
     if question.explanation_video:
-
         video = {
             "url": question.explanation_video.hls_url,
-
             "img": (
                 question.explanation_video.thumbnail.url
-                if question.explanation_video.thumbnail
-                else None
+                if question.explanation_video.thumbnail else None
             ),
-
             "time": question.explanation_video.duration,
         }
-
 
     return {
         "ans": {
             "id": choice.id,
             "correct": choice.is_correct,
         },
-
         "xp": xp,
-
-        "exp": choice.explanation,
-
+        "exp": question.explanation,
         "video": video,
     }
 
-    
+
 # ==========================================================
-# 9. MENING KURSLARIM
+# 9. MODUL TESTI HAQIDA MA'LUMOT (TO'LIQ — video, best_result,
+#    active_session bilan). Bu endpoint course_detail'dagi
+#    engil "test": {id,t,s,dur,min_pct} obyektini to'ldiradi —
+#    foydalanuvchi test sahifasini ochganda shu yerdan to'liq
+#    ma'lumot olinadi.
 # ==========================================================
+
+@api.get("/modul/{modul_id}/test/")
+@rate_limit(rps=10, burst=20)
+async def get_test_info(
+    request: Request,
+    modul_id: int,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    test = await (
+        CourseTest.objects
+        .filter(modul_id=modul_id, is_active=True)
+        .select_related("modul__course", "intro_video")
+        .only(
+            "id", "title", "slug", "description", "duration",
+            "min_pass_percentage", "max_lifelines",
+            "modul_id", "modul__course_id",
+            "intro_video__hls_url", "intro_video__thumbnail",
+        )
+        .afirst()
+    )
+    if not test:
+        raise HTTPException(404, "Test topilmadi")
+
+    await ensure_course_access(request_user.id, test.modul.course)
+
+    question_count = await test.questions.acount()
+
+    best_session = await (
+        CourseTestSession.objects
+        .filter(user=request_user, test=test, completed_at__isnull=False)
+        .order_by("-total_xp_earned")
+        .only("id", "correct_count", "wrong_count", "unanswered_count", "total_xp_earned", "completed_at")
+        .afirst()
+    )
+
+    active_session = await (
+        CourseTestSession.objects
+        .filter(user=request_user, test=test, completed_at__isnull=True)
+        .order_by("-started_at")
+        .only("id", "started_at")
+        .afirst()
+    )
+
+    return {
+        "id": test.id,
+        "title": test.title,
+        "slug": test.slug,
+        "description": test.description,
+        "duration_minutes": test.duration,
+        "min_pass_percentage": test.min_pass_percentage,
+        "max_lifelines": test.max_lifelines,
+        "question_count": question_count,
+        "video": {
+            "hls_url": test.intro_video.hls_url if test.intro_video else None,
+            "thumbnail": (
+                test.intro_video.thumbnail.url
+                if test.intro_video and test.intro_video.thumbnail else None
+            ),
+        },
+        "best_result": {
+            "correct": best_session.correct_count,
+            "wrong": best_session.wrong_count,
+            "unanswered": best_session.unanswered_count,
+            "xp": best_session.total_xp_earned,
+            "completed_at": best_session.completed_at.isoformat(),
+        } if best_session else None,
+        "active_session_id": str(active_session.id) if active_session else None,
+    }
+
+
+# ==========================================================
+# 10. TEST SEANSINI BOSHLASH
+# ==========================================================
+
+@api.post("/modul/{modul_id}/test/start/")
+@rate_limit(rps=5, burst=10)
+async def start_test_session(
+    request: Request,
+    modul_id: int,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    test = await (
+        CourseTest.objects
+        .filter(modul_id=modul_id, is_active=True)
+        .select_related("modul__course")
+        .only("id", "duration", "modul_id", "modul__course_id")
+        .afirst()
+    )
+    if not test:
+        raise HTTPException(404, "Test topilmadi")
+
+    await ensure_course_access(request_user.id, test.modul.course)
+
+    # Davom etayotgan (yakunlanmagan) seans bo'lsa — o'shani qaytaramiz,
+    # aks holda yangisini yaratamiz.
+    session = await (
+        CourseTestSession.objects
+        .filter(user=request_user, test=test, completed_at__isnull=True)
+        .order_by("-started_at")
+        .afirst()
+    )
+    if not session:
+        session = await CourseTestSession.objects.acreate(
+            user=request_user,
+            test=test,
+        )
+
+    questions = []
+    async for q in (
+        CourseQuestion.objects
+        .filter(test=test)
+        .prefetch_related(
+            Prefetch("choices", queryset=CourseChoice.objects.only("id", "question_id", "text"))
+        )
+        .only("id", "test_id", "difficulty", "xp", "text")
+        .order_by("id")
+    ):
+        questions.append({
+            "id": q.id,
+            "text": q.text,
+            "difficulty": q.difficulty,
+            "xp": q.xp,
+            "choices": [{"id": c.id, "text": c.text} for c in q.choices.all()],
+        })
+
+    return {
+        "session_id": str(session.id),
+        "started_at": session.started_at.isoformat(),
+        "duration_minutes": test.duration,
+        "questions": questions,
+    }
+
+
+# ==========================================================
+# 11. TEST SEANSIDA SAVOLGA JAVOB BERISH
+# ==========================================================
+
+class TestAnswerIn(msgspec.Struct):
+    question_id: int
+    choice_id: int | None = None  # None => javobsiz qoldirish
+
+
+@api.post("/test-session/{session_id}/answer/")
+@rate_limit(rps=10, burst=20)
+async def answer_test_question(
+    request: Request,
+    session_id: str,
+    payload: TestAnswerIn,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    session = await (
+        CourseTestSession.objects
+        .filter(id=session_id, user=request_user)
+        .only("id", "test_id", "completed_at")
+        .afirst()
+    )
+    if not session:
+        raise HTTPException(404, "Seans topilmadi")
+    if session.completed_at is not None:
+        raise HTTPException(400, "Bu seans allaqachon yakunlangan")
+
+    question = await CourseQuestion.objects.filter(
+        id=payload.question_id, test_id=session.test_id
+    ).only("id").afirst()
+    if not question:
+        raise HTTPException(404, "Savol ushbu testga tegishli emas")
+
+    choice = None
+    if payload.choice_id is not None:
+        choice = await CourseChoice.objects.filter(
+            id=payload.choice_id, question_id=question.id
+        ).only("id").afirst()
+        if not choice:
+            raise HTTPException(400, "Variant topilmadi")
+
+    await CourseUserResponse.objects.aupdate_or_create(
+        session=session, question=question,
+        defaults={"user": request_user, "choice": choice},
+    )
+
+    return {
+        "saved": True,
+        "question_id": question.id,
+        "choice_id": choice.id if choice else None,
+    }
+
+
+# ==========================================================
+# 12. TEST SEANSINI YAKUNLASH VA NATIJANI HISOBLASH
+# ==========================================================
+
+@api.post("/test-session/{session_id}/finish/")
+@rate_limit(rps=5, burst=10)
+async def finish_test_session(
+    request: Request,
+    session_id: str,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    """
+    Testni yakunlaydi.
+
+    Muhim:
+    - calculate_mathematical_score() natijani hisoblaydi
+    - calculate_mathematical_score() completed_at ni o'zi yozadi
+    - testdan o'tish foizini hisoblaymiz
+    - FAQAT o'tgan bo'lsa ModuleStatus/CourseStatus yangilanadi
+    """
+
+    # ------------------------------------------------------
+    # 1. SESSION
+    # ------------------------------------------------------
+    session = await (
+        CourseTestSession.objects
+        .filter(
+            id=session_id,
+            user=request_user,
+        )
+        .select_related("test__modul")
+        .afirst()
+    )
+
+    if not session:
+        raise HTTPException(
+            status_code=404,
+            detail="Seans topilmadi",
+        )
+
+    # ------------------------------------------------------
+    # 2. TEST ALLAQACHON YAKUNLANGAN BO'LSA
+    # ------------------------------------------------------
+    if session.completed_at is not None:
+
+        question_count = await CourseQuestion.objects.filter(
+            test_id=session.test_id
+        ).acount()
+
+        pass_percentage = (
+            (session.correct_count / question_count) * 100
+            if question_count > 0
+            else 0
+        )
+
+        passed = pass_percentage >= session.test.min_pass_percentage
+
+        # Agar oldin tugagan test o'tgan bo'lsa,
+        # statusni qayta sync qilish xavfsiz.
+        if passed:
+            await sync_to_async(
+                recalculate_module_status,
+                thread_sensitive=True,
+            )(
+                user_id=request_user.id,
+                modul_id=session.test.modul_id,
+            )
+
+        return {
+            "correct": session.correct_count,
+            "wrong": session.wrong_count,
+            "unanswered": session.unanswered_count,
+            "xp": session.total_xp_earned,
+
+            "question_count": question_count,
+            "percentage": round(pass_percentage, 2),
+            "min_pass_percentage": session.test.min_pass_percentage,
+
+            "passed": passed,
+            "completed": True,
+            "already_completed": True,
+
+            "completed_at": session.completed_at.isoformat(),
+        }
+
+    # ------------------------------------------------------
+    # 3. MATEMATIK NATIJANI HISOBLASH
+    #
+    # Bu metodning o'zi:
+    # - correct_count
+    # - wrong_count
+    # - unanswered_count
+    # - total_xp_earned
+    # - completed_at
+    #
+    # ni yozadi.
+    # ------------------------------------------------------
+    await sync_to_async(
+        session.calculate_mathematical_score,
+        thread_sensitive=True,
+    )()
+
+    await session.arefresh_from_db()
+
+    # ------------------------------------------------------
+    # 4. TESTDAGI SAVOLLAR SONI
+    # ------------------------------------------------------
+    question_count = await CourseQuestion.objects.filter(
+        test_id=session.test_id
+    ).acount()
+
+    # ------------------------------------------------------
+    # 5. FOIZNI HISOBLASH
+    #
+    # Masalan:
+    # 20 ta savol
+    # 15 ta to'g'ri
+    #
+    # 15 / 20 * 100 = 75%
+    # ------------------------------------------------------
+    pass_percentage = (
+        (session.correct_count / question_count) * 100
+        if question_count > 0
+        else 0
+    )
+
+    pass_percentage = round(pass_percentage, 2)
+
+    # ------------------------------------------------------
+    # 6. O'TDI / O'TMADI
+    # ------------------------------------------------------
+    min_pass_percentage = session.test.min_pass_percentage
+
+    passed = pass_percentage >= min_pass_percentage
+
+    # ------------------------------------------------------
+    # 7. FAQAT O'TGAN BO'LSA STATUSNI YANGILAYMIZ
+    # ------------------------------------------------------
+    if passed:
+        await sync_to_async(
+            recalculate_module_status,
+            thread_sensitive=True,
+        )(
+            user_id=request_user.id,
+            modul_id=session.test.modul_id,
+        )
+
+    # ------------------------------------------------------
+    # 8. RESPONSE
+    # ------------------------------------------------------
+    return {
+        "correct": session.correct_count,
+        "wrong": session.wrong_count,
+        "unanswered": session.unanswered_count,
+        "xp": session.total_xp_earned,
+
+        "question_count": question_count,
+        "percentage": pass_percentage,
+        "min_pass_percentage": min_pass_percentage,
+
+        "passed": passed,
+        "completed": True,
+        "already_completed": False,
+
+        "completed_at": (
+            session.completed_at.isoformat()
+            if session.completed_at
+            else None
+        ),
+    }
+# ==========================================================
+# 13. TEST SEANSI NATIJASI (batafsil)
+# ==========================================================
+
+@api.get("/test-session/{session_id}/result/")
+@rate_limit(rps=10, burst=20)
+async def get_test_session_result(
+    request: Request,
+    session_id: str,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    session = await (
+        CourseTestSession.objects
+        .filter(id=session_id, user=request_user)
+        .select_related("test")
+        .afirst()
+    )
+    if not session:
+        raise HTTPException(404, "Seans topilmadi")
+
+    responses = []
+    async for r in (
+        CourseUserResponse.objects
+        .filter(session=session)
+        .select_related("question", "choice")
+        .only(
+            "id", "question_id", "question__text", "question__xp",
+            "choice_id", "choice__text", "choice__is_correct",
+        )
+    ):
+        responses.append({
+            "question_id": r.question_id,
+            "question_text": r.question.text,
+            "choice_id": r.choice_id,
+            "choice_text": r.choice.text if r.choice else None,
+            "is_correct": r.choice.is_correct if r.choice else False,
+        })
+
+    return {
+        "session_id": str(session.id),
+        "test_title": session.test.title,
+        "is_completed": session.completed_at is not None,
+        "correct": session.correct_count,
+        "wrong": session.wrong_count,
+        "unanswered": session.unanswered_count,
+        "xp": session.total_xp_earned,
+        "min_pass_percentage": session.test.min_pass_percentage,
+        "responses": responses,
+    }
+
+
+# ==========================================================
+# 14. MENING KURSLARIM
+# ==========================================================
+
 @api.get("/users/me/courses/")
 @rate_limit(rps=10, burst=20)
 async def my_courses(
@@ -952,23 +1545,27 @@ async def my_courses(
 
         result.append({
             "id": e.course.id,
-            "title": e.course.title,
-            "slug": e.course.slug,
-            "thumbnail": (
+            "t": e.course.title,
+            "s": e.course.slug,
+            "img": (
                 e.course.intro_video.thumbnail.url
                 if e.course.intro_video and e.course.intro_video.thumbnail else None
             ),
-            "is_paid": e.is_paid,
-            "enrolled_at": e.created_at.isoformat() if e.created_at else None,
-            "completed_lessons": status.completed_lessons if status else 0,
-            "completed_tests": status.completed_tests if status else 0,
-            "is_completed": status.is_completed if status else False,
-            "total_lessons": e.course.total_lessons_count,
-            "total_tests": e.course.total_test_count,
+            "paid": e.is_paid,
+            "ea": e.created_at.isoformat() if e.created_at else None,
+            "cl": status.completed_lessons if status else 0,
+            "ct": status.completed_tests if status else 0,
+            "done": status.is_completed if status else False,
+            "tl": e.course.total_lessons_count,
+            "tt": e.course.total_test_count,
         })
 
     return result
 
+
+# ==========================================================
+# 15. MASALA (PROBLEM) DETALI
+# ==========================================================
 
 @api.get("/lesson/{lesson_slug}/problem/{slug}/")
 @rate_limit(rps=10, burst=20)
@@ -985,7 +1582,6 @@ async def get_problem(
     base_data = cache.get(static_cache_key)
 
     if not base_data:
-        # Faqat shu lessonga bog'langan, aktiv masala olinadi
         problem = await (
             Problem.objects
             .filter(slug=slug, lesson__slug=lesson_slug, is_active=True)
@@ -1041,14 +1637,13 @@ async def get_problem(
                 for fn in problem.functions.all()
             },
 
-            # Kirish huquqini tekshirish uchun kerakli minimal ma'lumot
             "lesson_id": problem.lesson_id,
             "course_id": problem.lesson.modul.course_id,
         }
         cache.set(static_cache_key, base_data, timeout=600)
 
     # =================================================================
-    # 2. KIRISH HUQUQI — masala lessonga bog'langani uchun har doim tekshiriladi
+    # 2. KIRISH HUQUQI
     # =================================================================
     if not request_user:
         raise HTTPException(401, "Tizimga kirish talab qilinadi")

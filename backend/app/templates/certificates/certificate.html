@@ -23,8 +23,8 @@ html, body {
 
 body {
     font-family: 'Helvetica Neue', 'Segoe UI', Arial, sans-serif;
-    color: #1e293b;
-    background: #faf8f3;
+    color: #1b2333;
+    background: #f7f4ec;
     position: relative;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -37,79 +37,47 @@ body {
     position: relative;
     width: 297mm;
     height: 210mm;
-    background: #faf8f3;
+    background:
+        radial-gradient(circle at 50% 0%, rgba(184,149,78,0.06), transparent 55%),
+        linear-gradient(180deg, #fbf9f3 0%, #f6f2e7 100%);
     overflow: hidden;
 }
 
 /* ============================================
-   GUILLOCHE FON NAQSHI (Security pattern)
+   GUILLOCHE FON NAQSHI
    ============================================ */
 .bg-pattern {
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
     background:
         repeating-linear-gradient(
-            0deg,
+            135deg,
             transparent,
-            transparent 2mm,
-            rgba(184, 149, 78, 0.03) 2mm,
-            rgba(184, 149, 78, 0.03) 2.1mm
-        ),
-        repeating-linear-gradient(
-            90deg,
-            transparent,
-            transparent 2mm,
-            rgba(184, 149, 78, 0.03) 2mm,
-            rgba(184, 149, 78, 0.03) 2.1mm
+            transparent 3.4mm,
+            rgba(184, 149, 78, 0.028) 3.4mm,
+            rgba(184, 149, 78, 0.028) 3.5mm
         ),
         repeating-linear-gradient(
             45deg,
             transparent,
-            transparent 3mm,
-            rgba(30, 41, 59, 0.012) 3mm,
-            rgba(30, 41, 59, 0.012) 3.15mm
-        ),
-        repeating-linear-gradient(
-            -45deg,
-            transparent,
-            transparent 3mm,
-            rgba(30, 41, 59, 0.012) 3mm,
-            rgba(30, 41, 59, 0.012) 3.15mm
+            transparent 3.4mm,
+            rgba(27, 35, 51, 0.016) 3.4mm,
+            rgba(27, 35, 51, 0.016) 3.5mm
         );
     z-index: 0;
 }
 
-/* ============================================
-   KATTA WATERMARK (CfM Contest)
-   ============================================ */
 .watermark-bg {
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-family: Georgia, 'Times New Roman', serif;
-    font-size: 72pt;
-    font-weight: 900;
-    color: #000;
-    opacity: 0.022;
-    letter-spacing: 12px;
-    text-transform: uppercase;
-    white-space: nowrap;
-    z-index: 0;
-    pointer-events: none;
-}
-
-.watermark-bg-2 {
-    position: absolute;
-    top: 35%;
-    left: 50%;
-    transform: translate(-50%, -50%) rotate(-30deg);
-    font-family: Georgia, serif;
-    font-size: 72pt;
-    font-weight: 900;
-    color: #000;
-    opacity: 0.015;
-    letter-spacing: 12px;
+    transform: translate(-50%, -50%) rotate(-28deg);
+    font-family: 'Playfair Display', Georgia, 'Times New Roman', serif;
+    font-size: 60pt;
+    font-weight: 800;
+    color: #1b2333;
+    opacity: 0.02;
+    letter-spacing: 14px;
     text-transform: uppercase;
     white-space: nowrap;
     z-index: 0;
@@ -117,91 +85,81 @@ body {
 }
 
 /* ============================================
-   TASHQI RAMKA (Zarhal border)
+   TASHQI RAMKALAR
    ============================================ */
 .frame-outer {
     position: absolute;
-    top: 6mm; left: 6mm; right: 6mm; bottom: 6mm;
-    border: 1.8pt solid #b8954e;
+    top: 7mm; left: 7mm; right: 7mm; bottom: 7mm;
+    border: 2pt solid #a9834a;
     z-index: 1;
 }
 
-.frame-mid {
+.frame-outer::before {
+    content: "";
     position: absolute;
-    top: 8mm; left: 8mm; right: 8mm; bottom: 8mm;
-    border: 0.9pt solid #b8954e;
-    opacity: 0.6;
-    z-index: 1;
+    top: -2.6mm; left: -2.6mm; right: -2.6mm; bottom: -2.6mm;
+    border: 0.5pt solid #cbb37c;
+    opacity: 0.55;
 }
 
 .frame-inner {
     position: absolute;
-    top: 10.5mm; left: 10.5mm; right: 10.5mm; bottom: 10.5mm;
-    border: 0.35pt solid #b8954e;
-    opacity: 0.35;
+    top: 9.6mm; left: 9.6mm; right: 9.6mm; bottom: 9.6mm;
+    border: 0.5pt solid #a9834a;
+    opacity: 0.45;
     z-index: 1;
 }
 
+/* corner accents on the inner frame */
+.frame-corner {
+    position: absolute;
+    width: 9mm;
+    height: 9mm;
+    z-index: 1;
+    border: 1.4pt solid #a9834a;
+}
+.fc-tl { top: 9.6mm; left: 9.6mm; border-right: none; border-bottom: none; }
+.fc-tr { top: 9.6mm; right: 9.6mm; border-left: none; border-bottom: none; }
+.fc-bl { bottom: 9.6mm; left: 9.6mm; border-right: none; border-top: none; }
+.fc-br { bottom: 9.6mm; right: 9.6mm; border-left: none; border-top: none; }
+
 /* ============================================
-   BURCHAK NAQSHLARI (Intricate flourishes)
+   BURCHAK NAQSHLARI — soddalashtirilgan, nafis
    ============================================ */
 .corner-ornament {
     position: absolute;
-    width: 42mm;
-    height: 42mm;
+    width: 30mm;
+    height: 30mm;
     z-index: 2;
     pointer-events: none;
+    opacity: 0.9;
 }
-.corner-tl { top: 2mm; left: 2mm; }
-.corner-tr { top: 2mm; right: 2mm; transform: scaleX(-1); }
-.corner-bl { bottom: 2mm; left: 2mm; transform: scaleY(-1); }
-.corner-br { bottom: 2mm; right: 2mm; transform: scale(-1, -1); }
+.corner-tl { top: 8mm; left: 8mm; }
+.corner-tr { top: 8mm; right: 8mm; transform: scaleX(-1); }
+.corner-bl { bottom: 8mm; left: 8mm; transform: scaleY(-1); }
+.corner-br { bottom: 8mm; right: 8mm; transform: scale(-1, -1); }
 
 /* ============================================
-   YON TOMON NAQSHLARI (Side filigree)
-   ============================================ */
-.side-ornament {
-    position: absolute;
-    width: 8mm;
-    height: 70mm;
-    z-index: 1;
-    pointer-events: none;
-    opacity: 0.25;
-}
-.side-left {
-    left: 12mm;
-    top: 50%;
-    transform: translateY(-50%);
-}
-.side-right {
-    right: 12mm;
-    top: 50%;
-    transform: translateY(-50%) scaleX(-1);
-}
-
-/* ============================================
-   YUQORI/PASTKI MARKAZIY NAQSH
+   YUQORI / PASTKI MARKAZIY NAQSH
    ============================================ */
 .top-center-ornament {
     position: absolute;
-    top: 5mm;
+    top: 6mm;
     left: 50%;
     transform: translateX(-50%);
     z-index: 2;
-    width: 50mm;
-    height: 12mm;
-    opacity: 0.7;
+    width: 46mm;
+    height: 8mm;
 }
 
 .bottom-center-ornament {
     position: absolute;
-    bottom: 5mm;
+    bottom: 6mm;
     left: 50%;
     transform: translateX(-50%) rotate(180deg);
     z-index: 2;
-    width: 50mm;
-    height: 12mm;
-    opacity: 0.7;
+    width: 46mm;
+    height: 8mm;
 }
 
 /* ============================================
@@ -209,11 +167,13 @@ body {
    ============================================ */
 .content {
     position: absolute;
-    top: 20mm;
-    left: 28mm;
-    right: 28mm;
-    bottom: 18mm;
+    top: 17mm;
+    left: 30mm;
+    right: 30mm;
+    bottom: 15mm;
     z-index: 3;
+    display: flex;
+    flex-direction: column;
 }
 
 /* ============================================
@@ -221,8 +181,8 @@ body {
    ============================================ */
 .header {
     position: relative;
-    height: 16mm;
-    margin-bottom: 3mm;
+    height: 14mm;
+    margin-bottom: 2mm;
 }
 
 .brand {
@@ -235,10 +195,10 @@ body {
 .brand-mark {
     display: table-cell;
     vertical-align: middle;
-    width: 12mm;
-    height: 12mm;
+    width: 11mm;
+    height: 11mm;
     border-radius: 50%;
-    border: 1.2pt solid #b8954e;
+    border: 1pt solid #a9834a;
     overflow: hidden;
     text-align: center;
     background: #fff;
@@ -251,11 +211,12 @@ body {
 }
 
 .brand-mark .fallback {
-    font-size: 9pt;
+    font-size: 8.5pt;
     font-weight: 800;
-    color: #1e293b;
-    line-height: 11mm;
+    color: #1b2333;
+    line-height: 10.6mm;
     display: block;
+    font-family: Georgia, serif;
 }
 
 .brand-text {
@@ -265,19 +226,20 @@ body {
 }
 
 .brand-name {
-    font-size: 11pt;
+    font-size: 10.5pt;
     font-weight: 800;
-    color: #1e293b;
-    letter-spacing: 1px;
+    color: #1b2333;
+    letter-spacing: 1.2px;
     text-transform: uppercase;
 }
 
 .brand-sub {
-    font-size: 6.5pt;
-    color: #8b7355;
-    letter-spacing: 2px;
+    font-size: 6.2pt;
+    color: #9a7f57;
+    letter-spacing: 2.2px;
     text-transform: uppercase;
-    margin-top: 0.6mm;
+    margin-top: 0.7mm;
+    font-weight: 600;
 }
 
 .id-box {
@@ -288,9 +250,9 @@ body {
 }
 
 .id-label {
-    font-size: 6pt;
-    color: #8b7355;
-    letter-spacing: 1.5px;
+    font-size: 5.8pt;
+    color: #9a7f57;
+    letter-spacing: 1.6px;
     text-transform: uppercase;
     font-weight: 700;
 }
@@ -298,16 +260,16 @@ body {
 .id-value {
     font-size: 8pt;
     font-weight: 700;
-    color: #1e293b;
+    color: #1b2333;
     font-family: 'Courier New', monospace;
-    margin-top: 0.5mm;
+    margin-top: 0.6mm;
     letter-spacing: 0.5px;
 }
 
 .id-date {
-    font-size: 7pt;
-    color: #64748b;
-    margin-top: 0.8mm;
+    font-size: 6.8pt;
+    color: #6b7280;
+    margin-top: 0.9mm;
 }
 
 /* ============================================
@@ -315,41 +277,40 @@ body {
    ============================================ */
 .title-block {
     text-align: center;
-    margin-bottom: 4mm;
-    position: relative;
+    margin-bottom: 3mm;
 }
 
 .cert-badge {
     display: inline-block;
-    font-size: 6.5pt;
+    font-size: 6.2pt;
     font-weight: 700;
     letter-spacing: 3px;
     text-transform: uppercase;
-    color: #8b7355;
-    border: 0.6pt solid #d4c4a8;
+    color: #8b6f47;
+    border: 0.6pt solid #d8c49b;
     border-radius: 5mm;
     padding: 1.2mm 7mm;
-    background: rgba(184, 149, 78, 0.06);
-    margin-bottom: 2.5mm;
+    background: rgba(184, 149, 78, 0.07);
+    margin-bottom: 2.6mm;
 }
 
 .cert-title {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 32pt;
+    font-size: 30pt;
     font-weight: bold;
-    color: #1e293b;
-    letter-spacing: 10px;
+    color: #17203a;
+    letter-spacing: 9px;
     text-transform: uppercase;
     line-height: 1.1;
-    margin: 2mm 0;
+    margin: 1.5mm 0;
 }
 
 .cert-subtitle {
-    font-size: 8pt;
-    color: #8b7355;
-    letter-spacing: 3.5px;
+    font-size: 7.6pt;
+    color: #8b6f47;
+    letter-spacing: 3.2px;
     text-transform: uppercase;
-    font-weight: 500;
+    font-weight: 600;
 }
 
 /* ============================================
@@ -357,8 +318,8 @@ body {
    ============================================ */
 .divider {
     display: table;
-    margin: 3mm auto;
-    width: 60mm;
+    margin: 2.6mm auto;
+    width: 55mm;
 }
 
 .divider-line {
@@ -366,16 +327,16 @@ body {
     vertical-align: middle;
     width: 50%;
     height: 0.6pt;
-    background: linear-gradient(to right, transparent, #b8954e, transparent);
+    background: linear-gradient(to right, transparent, #a9834a, transparent);
 }
 
 .divider-icon {
     display: table-cell;
     vertical-align: middle;
-    width: 8mm;
+    width: 7mm;
     text-align: center;
-    font-size: 11pt;
-    color: #b8954e;
+    font-size: 9pt;
+    color: #a9834a;
 }
 
 /* ============================================
@@ -383,30 +344,30 @@ body {
    ============================================ */
 .recipient-block {
     text-align: center;
-    margin-bottom: 4mm;
+    margin-bottom: 3.6mm;
 }
 
 .presented-label {
-    font-size: 8pt;
-    color: #8b7355;
-    letter-spacing: 2.5px;
+    font-size: 7.6pt;
+    color: #8b6f47;
+    letter-spacing: 2.4px;
     text-transform: uppercase;
-    margin-bottom: 2mm;
+    margin-bottom: 2.2mm;
     font-weight: 600;
 }
 
 .recipient-name {
     font-family: Georgia, 'Times New Roman', serif;
-    font-size: 22pt;
+    font-size: 21pt;
     font-weight: bold;
-    color: #1e293b;
+    color: #17203a;
     font-style: italic;
-    padding-bottom: 2mm;
-    border-bottom: 0.8pt solid #b8954e;
+    padding-bottom: 1.8mm;
+    border-bottom: 0.8pt solid #a9834a;
     display: inline-block;
     min-width: 95mm;
     max-width: 220mm;
-    letter-spacing: 0.5px;
+    letter-spacing: 0.4px;
 }
 
 /* ============================================
@@ -414,29 +375,29 @@ body {
    ============================================ */
 .desc-block {
     text-align: center;
-    max-width: 210mm;
-    margin: 0 auto 3.5mm;
-    font-size: 9.5pt;
+    max-width: 205mm;
+    margin: 0 auto 3mm;
+    font-size: 9.2pt;
     line-height: 1.6;
-    color: #475569;
+    color: #46506b;
 }
 
 .desc-block strong {
-    color: #1e293b;
-    font-weight: 600;
+    color: #17203a;
+    font-weight: 700;
 }
 
 .congrats-text {
     text-align: center;
     font-style: italic;
-    color: #8b7355;
-    font-size: 10pt;
+    color: #8b6f47;
+    font-size: 9.6pt;
     font-family: Georgia, serif;
-    margin-bottom: 3mm;
-    max-width: 200mm;
+    margin-bottom: 2.8mm;
+    max-width: 195mm;
     margin-left: auto;
     margin-right: auto;
-    line-height: 1.4;
+    line-height: 1.45;
 }
 
 /* ============================================
@@ -444,19 +405,19 @@ body {
    ============================================ */
 .info-tags {
     text-align: center;
-    margin-bottom: 3mm;
+    margin-bottom: 2.8mm;
 }
 
 .info-tag {
     display: inline-block;
-    font-size: 7.5pt;
+    font-size: 7.2pt;
     color: #5a4a3a;
-    border: 0.5pt solid #e2d5c0;
+    border: 0.5pt solid #e5d7ba;
     border-radius: 2.5mm;
     padding: 1mm 4mm;
-    margin: 0 1mm;
-    background: rgba(184, 149, 78, 0.05);
-    font-weight: 500;
+    margin: 0 1mm 1mm;
+    background: rgba(184, 149, 78, 0.06);
+    font-weight: 600;
 }
 
 /* ============================================
@@ -464,50 +425,71 @@ body {
    ============================================ */
 .score-block {
     display: table;
-    margin: 0 auto 3mm;
+    margin: 0 auto 2.6mm;
     border-collapse: separate;
-    border-spacing: 5mm 0;
+    border-spacing: 4.5mm 0;
 }
 
 .score-item {
     display: table-cell;
     text-align: center;
-    padding: 2.5mm 6mm;
-    border: 0.6pt solid #e2d5c0;
-    border-radius: 2mm;
-    background: linear-gradient(to bottom, rgba(184,149,78,0.05), rgba(184,149,78,0.01));
-    min-width: 30mm;
+    padding: 2.4mm 6mm;
+    border: 0.6pt solid #e5d7ba;
+    border-radius: 1.6mm;
+    background: linear-gradient(to bottom, rgba(184,149,78,0.07), rgba(184,149,78,0.015));
+    min-width: 28mm;
 }
 
 .score-value {
-    font-size: 14pt;
+    font-size: 13.5pt;
     font-weight: bold;
-    color: #1e293b;
+    color: #17203a;
     font-family: Georgia, serif;
 }
 
 .score-label {
-    font-size: 6pt;
-    color: #8b7355;
-    letter-spacing: 1.2px;
+    font-size: 5.8pt;
+    color: #8b6f47;
+    letter-spacing: 1.3px;
     text-transform: uppercase;
     margin-top: 0.8mm;
     font-weight: 700;
+}
+
+.rank-badge {
+    text-align: center;
+    margin-bottom: 2mm;
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: #a9834a;
+    letter-spacing: 1px;
+}
+
+/* spacer pushes footer to the bottom regardless of content length,
+   and centers the mid-page ornament inside any leftover space */
+.spacer {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 6mm;
+}
+
+.mid-ornament {
+    opacity: 0.85;
 }
 
 /* ============================================
    FOOTER
    ============================================ */
 .footer {
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 24mm;
+    position: relative;
     display: table;
     width: 100%;
     table-layout: fixed;
     z-index: 3;
+    border-top: 0.5pt solid rgba(169,131,74,0.35);
+    padding-top: 4mm;
 }
 
 .footer-col {
@@ -522,9 +504,9 @@ body {
 }
 
 .qr-img {
-    width: 16mm;
-    height: 16mm;
-    border: 0.6pt solid #d0c8b8;
+    width: 15mm;
+    height: 15mm;
+    border: 0.6pt solid #d8cdb4;
     padding: 1mm;
     background: #fff;
     display: block;
@@ -532,86 +514,75 @@ body {
 }
 
 .qr-label {
-    font-size: 6pt;
-    color: #8b7355;
-    letter-spacing: 1.5px;
+    font-size: 5.8pt;
+    color: #8b6f47;
+    letter-spacing: 1.6px;
     text-transform: uppercase;
-    margin-top: 1.5mm;
+    margin-top: 1.6mm;
     font-weight: 700;
 }
 
 .qr-url {
-    font-size: 5.5pt;
-    color: #94a3b8;
+    font-size: 5.3pt;
+    color: #9aa3b5;
     margin-top: 0.6mm;
-    max-width: 48mm;
+    max-width: 46mm;
     margin-left: auto;
     margin-right: auto;
     word-break: break-all;
-    line-height: 1.3;
+    line-height: 1.35;
 }
 
-/* MUHR (Gold Seal with starburst) */
+/* MUHR */
 .seal-wrap {
-    position: relative;
-    height: 100%;
+    text-align: center;
 }
 
 .seal {
     width: 20mm;
     height: 20mm;
-    margin: 0 auto 1mm;
+    margin: 0 auto 1.2mm;
     position: relative;
-    display: table;
 }
 
-.seal-outer {
+.seal-svg {
     position: absolute;
-    top: 0; left: 0; right: 0; bottom: 0;
-    border: 1.5pt solid #b8954e;
-    border-radius: 50%;
-    background: radial-gradient(circle at 35% 35%, #fdfbf5, #f0e6cc 55%, #e6d5b0);
-}
-
-.seal-outer::before {
-    content: "";
-    position: absolute;
-    top: 1.5mm; left: 1.5mm; right: 1.5mm; bottom: 1.5mm;
-    border: 0.5pt dashed #b8954e;
-    border-radius: 50%;
-    opacity: 0.7;
+    top: 0; left: 0;
+    width: 100%;
+    height: 100%;
 }
 
 .seal-text {
-    display: table-cell;
-    vertical-align: middle;
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
     text-align: center;
-    line-height: 1.2;
-    position: relative;
-    z-index: 1;
+    line-height: 1.25;
+    width: 100%;
 }
 
 .seal-line1 {
     font-size: 5pt;
     font-weight: 800;
-    color: #1e293b;
-    letter-spacing: 0.5px;
+    color: #17203a;
+    letter-spacing: 0.6px;
     text-transform: uppercase;
+    font-family: Georgia, serif;
 }
 
 .seal-line2 {
-    font-size: 4pt;
-    color: #8b7355;
+    font-size: 3.8pt;
+    color: #8b6f47;
     text-transform: uppercase;
-    letter-spacing: 0.5px;
-    margin-top: 0.4mm;
+    letter-spacing: 0.6px;
+    margin-top: 0.5mm;
 }
 
 .seal-code {
-    font-size: 5.5pt;
+    font-size: 5.3pt;
     font-weight: bold;
-    color: #1e293b;
-    margin-top: 1mm;
+    color: #17203a;
+    margin-top: 1.1mm;
     font-family: 'Courier New', monospace;
     letter-spacing: 0.3px;
 }
@@ -622,46 +593,35 @@ body {
 }
 
 .sig-img {
-    height: 9mm;
-    max-width: 45mm;
+    height: 8.5mm;
+    max-width: 44mm;
     object-fit: contain;
-    margin: 0 auto 1.2mm;
+    margin: 0 auto 1.4mm;
     display: block;
-    filter: grayscale(100%) contrast(1.1);
 }
 
 .sig-line {
-    border-top: 0.8pt solid #1e293b;
-    padding-top: 1.5mm;
+    border-top: 0.8pt solid #17203a;
+    padding-top: 1.6mm;
     margin: 0 10mm;
 }
 
 .sig-name {
     font-size: 8pt;
     font-weight: 700;
-    color: #1e293b;
+    color: #17203a;
     letter-spacing: 0.3px;
 }
 
 .sig-role {
-    font-size: 6.5pt;
-    color: #8b7355;
+    font-size: 6.4pt;
+    color: #8b6f47;
     letter-spacing: 0.5px;
-    margin-top: 0.4mm;
-}
-
-.rank-badge {
-    text-align: center;
-    margin-bottom: 2.5mm;
-    font-size: 10pt;
-    font-weight: 700;
-    color: #b8954e;
-    letter-spacing: 1px;
+    margin-top: 0.5mm;
 }
 
 @media print {
-    body { background: #faf8f3 !important; }
-    .certificate { box-shadow: none !important; }
+    body { background: #f7f4ec !important; }
 }
 
 </style>
@@ -673,138 +633,86 @@ body {
     <!-- Fon naqshlari -->
     <div class="bg-pattern"></div>
     <div class="watermark-bg">CfM Contest</div>
-    <div class="watermark-bg-2" style="top:65%;">CfM Contest</div>
 
     <!-- Ramkalar -->
     <div class="frame-outer"></div>
-    <div class="frame-mid"></div>
     <div class="frame-inner"></div>
+    <div class="frame-corner fc-tl"></div>
+    <div class="frame-corner fc-tr"></div>
+    <div class="frame-corner fc-bl"></div>
+    <div class="frame-corner fc-br"></div>
 
-    <!-- ========== BURCHAK NAQSHLARI (Intricate) ========== -->
+    <!-- ========== BURCHAK NAQSHLARI (nafis, soddalashtirilgan) ========== -->
     <div class="corner-ornament corner-tl">
-        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-            <!-- Asosiy burchak -->
-            <path d="M0,0 L40,0 Q35,5 30,10 Q25,15 20,25 Q15,35 10,45 Q5,55 0,70 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
-            <!-- Ichki naqsh -->
-            <path d="M5,5 L30,5 Q26,10 22,16 Q18,22 14,30 Q10,38 5,50 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
-            <!-- Spiral naqsh -->
-            <path d="M0,20 Q15,15 20,0" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
-            <path d="M0,35 Q25,25 35,0" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <!-- Nuqtalar -->
-            <circle cx="8" cy="8" r="2" fill="#b8954e" opacity="0.4"/>
-            <circle cx="18" cy="4" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <circle cx="4" cy="18" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <!-- Gullar -->
-            <path d="M12,12 Q16,8 20,12 Q16,16 12,12" fill="#b8954e" opacity="0.25"/>
-            <path d="M25,25 Q30,20 35,25 Q30,30 25,25" fill="#b8954e" opacity="0.2"/>
-            <!-- Zigzag -->
-            <polyline points="0,50 5,45 10,50 15,45 20,50 25,45 30,50 35,45 40,50" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
-            <polyline points="50,0 45,5 50,10 45,15 50,20 45,25 50,30 45,35 50,40" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        <svg width="30mm" height="30mm" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4,40 Q4,4 40,4" fill="none" stroke="#a9834a" stroke-width="1.1"/>
+            <path d="M4,26 Q4,18 12,18" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <path d="M26,4 Q18,4 18,12" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <circle cx="4" cy="4" r="2.4" fill="#a9834a" opacity="0.75"/>
+            <path d="M15,15 Q22,12 25,20 Q18,22 15,15" fill="#a9834a" opacity="0.28"/>
+            <circle cx="40" cy="4" r="1.4" fill="#a9834a" opacity="0.4"/>
+            <circle cx="4" cy="40" r="1.4" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
     <div class="corner-ornament corner-tr">
-        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-            <path d="M160,0 L120,0 Q125,5 130,10 Q135,15 140,25 Q145,35 150,45 Q155,55 160,70 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
-            <path d="M155,5 L130,5 Q134,10 138,16 Q142,22 146,30 Q150,38 155,50 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
-            <path d="M160,20 Q145,15 140,0" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
-            <path d="M160,35 Q135,25 125,0" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="152" cy="8" r="2" fill="#b8954e" opacity="0.4"/>
-            <circle cx="142" cy="4" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <circle cx="156" cy="18" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <path d="M148,12 Q144,8 140,12 Q144,16 148,12" fill="#b8954e" opacity="0.25"/>
-            <path d="M135,25 Q130,20 125,25 Q130,30 135,25" fill="#b8954e" opacity="0.2"/>
-            <polyline points="160,50 155,45 150,50 145,45 140,50 135,45 130,50 125,45 120,50" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
-            <polyline points="110,0 115,5 110,10 115,15 110,20 115,25 110,30 115,35 110,40" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        <svg width="30mm" height="30mm" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4,40 Q4,4 40,4" fill="none" stroke="#a9834a" stroke-width="1.1"/>
+            <path d="M4,26 Q4,18 12,18" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <path d="M26,4 Q18,4 18,12" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <circle cx="4" cy="4" r="2.4" fill="#a9834a" opacity="0.75"/>
+            <path d="M15,15 Q22,12 25,20 Q18,22 15,15" fill="#a9834a" opacity="0.28"/>
+            <circle cx="40" cy="4" r="1.4" fill="#a9834a" opacity="0.4"/>
+            <circle cx="4" cy="40" r="1.4" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
     <div class="corner-ornament corner-bl">
-        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-            <path d="M0,160 L40,160 Q35,155 30,150 Q25,145 20,135 Q15,125 10,115 Q5,105 0,90 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
-            <path d="M5,155 L30,155 Q26,150 22,144 Q18,138 14,130 Q10,122 5,110 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
-            <path d="M0,140 Q15,145 20,160" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
-            <path d="M0,125 Q25,135 35,160" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="8" cy="152" r="2" fill="#b8954e" opacity="0.4"/>
-            <circle cx="18" cy="156" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <circle cx="4" cy="142" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <path d="M12,148 Q16,152 20,148 Q16,144 12,148" fill="#b8954e" opacity="0.25"/>
-            <path d="M25,135 Q30,140 35,135 Q30,130 25,135" fill="#b8954e" opacity="0.2"/>
-            <polyline points="0,110 5,115 10,110 15,115 20,110 25,115 30,110 35,115 40,110" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
-            <polyline points="50,160 45,155 50,150 45,145 50,140 45,135 50,130 45,125 50,120" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
+        <svg width="30mm" height="30mm" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4,40 Q4,4 40,4" fill="none" stroke="#a9834a" stroke-width="1.1"/>
+            <path d="M4,26 Q4,18 12,18" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <path d="M26,4 Q18,4 18,12" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <circle cx="4" cy="4" r="2.4" fill="#a9834a" opacity="0.75"/>
+            <path d="M15,15 Q22,12 25,20 Q18,22 15,15" fill="#a9834a" opacity="0.28"/>
+            <circle cx="40" cy="4" r="1.4" fill="#a9834a" opacity="0.4"/>
+            <circle cx="4" cy="40" r="1.4" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
     <div class="corner-ornament corner-br">
-        <svg width="42mm" height="42mm" viewBox="0 0 160 160" xmlns="http://www.w3.org/2000/svg">
-            <path d="M160,160 L120,160 Q125,155 130,150 Q135,145 140,135 Q145,125 150,115 Q155,105 160,90 Z" fill="rgba(184,149,78,0.08)" stroke="#b8954e" stroke-width="1.2"/>
-            <path d="M155,155 L130,155 Q134,150 138,144 Q142,138 146,130 Q150,122 155,110 Z" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.7"/>
-            <path d="M160,140 Q145,145 140,160" fill="none" stroke="#b8954e" stroke-width="0.8" opacity="0.6"/>
-            <path d="M160,125 Q135,135 125,160" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="152" cy="152" r="2" fill="#b8954e" opacity="0.4"/>
-            <circle cx="142" cy="156" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <circle cx="156" cy="142" r="1.5" fill="#b8954e" opacity="0.3"/>
-            <path d="M148,148 Q144,152 140,148 Q144,144 148,148" fill="#b8954e" opacity="0.25"/>
-            <path d="M135,135 Q130,140 125,135 Q130,130 135,135" fill="#b8954e" opacity="0.2"/>
-            <polyline points="160,110 155,115 150,110 145,115 140,110 135,115 130,110 125,115 120,110" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
-            <polyline points="110,160 115,155 110,150 115,145 110,140 115,135 110,130 115,125 110,120" fill="none" stroke="#b8954e" stroke-width="0.5" opacity="0.4"/>
-        </svg>
-    </div>
-
-    <!-- ========== YON TOMON NAQSHLARI ========== -->
-    <div class="side-ornament side-left">
-        <svg width="8mm" height="70mm" viewBox="0 0 30 260" xmlns="http://www.w3.org/2000/svg">
-            <line x1="15" y1="0" x2="15" y2="260" stroke="#b8954e" stroke-width="0.8" opacity="0.4"/>
-            <line x1="8" y1="20" x2="8" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
-            <line x1="22" y1="20" x2="22" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
-            <circle cx="15" cy="30" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="15" cy="130" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="15" cy="230" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <path d="M10,50 Q15,45 20,50 Q15,55 10,50" fill="#b8954e" opacity="0.2"/>
-            <path d="M10,150 Q15,145 20,150 Q15,155 10,150" fill="#b8954e" opacity="0.2"/>
-            <path d="M10,210 Q15,205 20,210 Q15,215 10,210" fill="#b8954e" opacity="0.2"/>
-        </svg>
-    </div>
-    <div class="side-ornament side-right">
-        <svg width="8mm" height="70mm" viewBox="0 0 30 260" xmlns="http://www.w3.org/2000/svg">
-            <line x1="15" y1="0" x2="15" y2="260" stroke="#b8954e" stroke-width="0.8" opacity="0.4"/>
-            <line x1="8" y1="20" x2="8" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
-            <line x1="22" y1="20" x2="22" y2="240" stroke="#b8954e" stroke-width="0.5" opacity="0.3" stroke-dasharray="4 4"/>
-            <circle cx="15" cy="30" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="15" cy="130" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <circle cx="15" cy="230" r="3" fill="none" stroke="#b8954e" stroke-width="0.6" opacity="0.5"/>
-            <path d="M10,50 Q15,45 20,50 Q15,55 10,50" fill="#b8954e" opacity="0.2"/>
-            <path d="M10,150 Q15,145 20,150 Q15,155 10,150" fill="#b8954e" opacity="0.2"/>
-            <path d="M10,210 Q15,205 20,210 Q15,215 10,210" fill="#b8954e" opacity="0.2"/>
+        <svg width="30mm" height="30mm" viewBox="0 0 120 120" xmlns="http://www.w3.org/2000/svg">
+            <path d="M4,40 Q4,4 40,4" fill="none" stroke="#a9834a" stroke-width="1.1"/>
+            <path d="M4,26 Q4,18 12,18" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <path d="M26,4 Q18,4 18,12" fill="none" stroke="#a9834a" stroke-width="0.7" opacity="0.7"/>
+            <circle cx="4" cy="4" r="2.4" fill="#a9834a" opacity="0.75"/>
+            <path d="M15,15 Q22,12 25,20 Q18,22 15,15" fill="#a9834a" opacity="0.28"/>
+            <circle cx="40" cy="4" r="1.4" fill="#a9834a" opacity="0.4"/>
+            <circle cx="4" cy="40" r="1.4" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
 
     <!-- ========== YUQORI MARKAZIY NAQSH ========== -->
     <div class="top-center-ornament">
-        <svg width="50mm" height="12mm" viewBox="0 0 180 40" xmlns="http://www.w3.org/2000/svg">
-            <line x1="0" y1="20" x2="70" y2="20" stroke="#b8954e" stroke-width="1"/>
-            <line x1="110" y1="20" x2="180" y2="20" stroke="#b8954e" stroke-width="1"/>
-            <circle cx="90" cy="20" r="5" fill="none" stroke="#b8954e" stroke-width="1"/>
-            <circle cx="90" cy="20" r="2" fill="#b8954e" opacity="0.8"/>
-            <path d="M90,5 L93,12 L90,19 L87,12 Z" fill="#b8954e" opacity="0.6"/>
-            <path d="M90,35 L93,28 L90,21 L87,28 Z" fill="#b8954e" opacity="0.6"/>
-            <path d="M75,20 L82,17 L82,23 Z" fill="#b8954e" opacity="0.5"/>
-            <path d="M105,20 L98,17 L98,23 Z" fill="#b8954e" opacity="0.5"/>
-            <circle cx="60" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
-            <circle cx="120" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+        <svg width="46mm" height="8mm" viewBox="0 0 180 30" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="15" x2="72" y2="15" stroke="#a9834a" stroke-width="0.9"/>
+            <line x1="108" y1="15" x2="180" y2="15" stroke="#a9834a" stroke-width="0.9"/>
+            <circle cx="90" cy="15" r="4.5" fill="none" stroke="#a9834a" stroke-width="0.9"/>
+            <circle cx="90" cy="15" r="1.6" fill="#a9834a" opacity="0.85"/>
+            <path d="M78,15 L85,12.5 L85,17.5 Z" fill="#a9834a" opacity="0.55"/>
+            <path d="M102,15 L95,12.5 L95,17.5 Z" fill="#a9834a" opacity="0.55"/>
+            <circle cx="63" cy="15" r="1.2" fill="#a9834a" opacity="0.4"/>
+            <circle cx="117" cy="15" r="1.2" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
 
     <!-- ========== PASTKI MARKAZIY NAQSH ========== -->
     <div class="bottom-center-ornament">
-        <svg width="50mm" height="12mm" viewBox="0 0 180 40" xmlns="http://www.w3.org/2000/svg">
-            <line x1="0" y1="20" x2="70" y2="20" stroke="#b8954e" stroke-width="1"/>
-            <line x1="110" y1="20" x2="180" y2="20" stroke="#b8954e" stroke-width="1"/>
-            <circle cx="90" cy="20" r="5" fill="none" stroke="#b8954e" stroke-width="1"/>
-            <circle cx="90" cy="20" r="2" fill="#b8954e" opacity="0.8"/>
-            <path d="M90,5 L93,12 L90,19 L87,12 Z" fill="#b8954e" opacity="0.6"/>
-            <path d="M90,35 L93,28 L90,21 L87,28 Z" fill="#b8954e" opacity="0.6"/>
-            <path d="M75,20 L82,17 L82,23 Z" fill="#b8954e" opacity="0.5"/>
-            <path d="M105,20 L98,17 L98,23 Z" fill="#b8954e" opacity="0.5"/>
-            <circle cx="60" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
-            <circle cx="120" cy="20" r="1.5" fill="#b8954e" opacity="0.4"/>
+        <svg width="46mm" height="8mm" viewBox="0 0 180 30" xmlns="http://www.w3.org/2000/svg">
+            <line x1="0" y1="15" x2="72" y2="15" stroke="#a9834a" stroke-width="0.9"/>
+            <line x1="108" y1="15" x2="180" y2="15" stroke="#a9834a" stroke-width="0.9"/>
+            <circle cx="90" cy="15" r="4.5" fill="none" stroke="#a9834a" stroke-width="0.9"/>
+            <circle cx="90" cy="15" r="1.6" fill="#a9834a" opacity="0.85"/>
+            <path d="M78,15 L85,12.5 L85,17.5 Z" fill="#a9834a" opacity="0.55"/>
+            <path d="M102,15 L95,12.5 L95,17.5 Z" fill="#a9834a" opacity="0.55"/>
+            <circle cx="63" cy="15" r="1.2" fill="#a9834a" opacity="0.4"/>
+            <circle cx="117" cy="15" r="1.2" fill="#a9834a" opacity="0.4"/>
         </svg>
     </div>
 
@@ -933,6 +841,19 @@ body {
         </div>
         {% endif %}
 
+        <div class="spacer">
+            <svg class="mid-ornament" width="90mm" height="6mm" viewBox="0 0 340 24" xmlns="http://www.w3.org/2000/svg">
+                <line x1="0" y1="12" x2="140" y2="12" stroke="#a9834a" stroke-width="0.7" opacity="0.55"/>
+                <line x1="200" y1="12" x2="340" y2="12" stroke="#a9834a" stroke-width="0.7" opacity="0.55"/>
+                <circle cx="170" cy="12" r="3.5" fill="none" stroke="#a9834a" stroke-width="0.8" opacity="0.7"/>
+                <circle cx="170" cy="12" r="1.2" fill="#a9834a" opacity="0.7"/>
+                <path d="M158,12 L165,9.5 L165,14.5 Z" fill="#a9834a" opacity="0.45"/>
+                <path d="M182,12 L175,9.5 L175,14.5 Z" fill="#a9834a" opacity="0.45"/>
+                <circle cx="150" cy="12" r="1" fill="#a9834a" opacity="0.35"/>
+                <circle cx="190" cy="12" r="1" fill="#a9834a" opacity="0.35"/>
+            </svg>
+        </div>
+
         <!-- FOOTER -->
         <div class="footer">
 
@@ -955,13 +876,34 @@ body {
             <div class="footer-col">
                 <div class="seal-wrap">
                     <div class="seal">
-                        <div class="seal-outer"></div>
+                        <svg class="seal-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                            <!-- starburst rays -->
+                            <g stroke="#a9834a" stroke-width="1.6" opacity="0.55">
+                                <line x1="50" y1="2" x2="50" y2="10"/>
+                                <line x1="50" y1="90" x2="50" y2="98"/>
+                                <line x1="2" y1="50" x2="10" y2="50"/>
+                                <line x1="90" y1="50" x2="98" y2="50"/>
+                                <line x1="15.9" y1="15.9" x2="21.7" y2="21.7"/>
+                                <line x1="78.3" y1="78.3" x2="84.1" y2="84.1"/>
+                                <line x1="15.9" y1="84.1" x2="21.7" y2="78.3"/>
+                                <line x1="78.3" y1="21.7" x2="84.1" y2="15.9"/>
+                            </g>
+                            <!-- outer ring -->
+                            <circle cx="50" cy="50" r="42" fill="#fdfbf5" stroke="#a9834a" stroke-width="2.2"/>
+                            <!-- dashed inner ring -->
+                            <circle cx="50" cy="50" r="35" fill="none" stroke="#a9834a" stroke-width="1" stroke-dasharray="3 2.4" opacity="0.8"/>
+                            <!-- small corner accents -->
+                            <circle cx="50" cy="12" r="1.6" fill="#a9834a" opacity="0.7"/>
+                            <circle cx="50" cy="88" r="1.6" fill="#a9834a" opacity="0.7"/>
+                            <circle cx="12" cy="50" r="1.6" fill="#a9834a" opacity="0.7"/>
+                            <circle cx="88" cy="50" r="1.6" fill="#a9834a" opacity="0.7"/>
+                        </svg>
                         <div class="seal-text">
                             <div class="seal-line1">CfM</div>
                             <div class="seal-line2">Verified</div>
                         </div>
                     </div>
-                    <div class="seal-code">{{ code|slice:":12" }}</div>
+                    <div class="seal-code">{{ code|slice:"-8:" }}</div>
                 </div>
             </div>
 
@@ -971,7 +913,7 @@ body {
                     {% if signature_base64 %}
                     <img class="sig-img" src="data:image/png;base64,{{ signature_base64 }}" alt="imzo">
                     {% else %}
-                    <div style="height:9mm;"></div>
+                    <div style="height:8.5mm;"></div>
                     {% endif %}
                     <div class="sig-line">
                         <div class="sig-name">{{ mentor_name|default:"Platforma Mentori" }}</div>

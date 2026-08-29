@@ -735,7 +735,7 @@ class ModuleStatusAdmin(ModelAdmin):
     @admin.display(description="Progress")
     def progress_display(self, obj):
         total_lessons = obj.modul.lessons.count()
-        total_tests = obj.modul.tests.count()
+        total_tests = 1 if hasattr(obj.modul, "test") else 0
 
         total = total_lessons + total_tests
         finished = obj.completed_lessons + obj.completed_tests

@@ -691,3 +691,71 @@ async def get_submission_detail(
         "test_results": submission.test_results or [],
         "submitted_at": submission.submitted_at.strftime("%Y-%m-%d %H:%M") if submission.submitted_at else None,
     }
+
+
+@api.get("/{slug}/hls/video/")
+async def get_solution_video(
+    request: Request,
+    slug: str,
+    request_user: BaseUser | None = Depends(get_current_user_option),
+):
+    if not request_user:
+        raise HTTPException(
+            status_code=401,
+            detail="Tizimga kiring"
+        )
+
+    problem = await (
+        Problem.objects
+        .select_related("solution_video")
+        .filter(
+            slug=slug,
+            is_active=True,
+        )
+        .only(
+            "id",
+            "solution_video_id",
+            "solution_video__id",
+            "solution_video__hls_url",
+            "solution_video__thumbnail",
+            "solution_video__duration",
+        )
+        .afirst()
+    )
+
+    if not problem:
+        raise HTTPException(
+            status_code=404,
+            detail="Masala topilmadi"
+        )
+
+    solved = await Submission.objects.filter(
+        user_id=request_user.id,
+        problem_id=problem.id,
+        status=True,
+    ).aexists()
+
+    if not solved:
+        raise HTTPException(
+            status_code=403,
+            detail="Videoni ko'rish uchun avval masalani yeching"
+        )
+
+    if not problem.solution_video:
+        raise HTTPException(
+            status_code=404,
+            detail="Ushbu masala uchun yechim videosi mavjud emas"
+        )
+
+    video = problem.solution_video
+
+    return {
+        "id": str(video.id),
+        "hls_url": video.hls_url,
+        "thumbnail": (
+            video.thumbnail.url
+            if video.thumbnail
+            else None
+        ),
+        "duration": video.duration,
+    }

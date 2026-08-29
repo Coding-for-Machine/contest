@@ -1,122 +1,326 @@
+"""
+Milliy attestatsiya tizimi — YAKUNIY model qatlami (v3).
+
+ARXITEKTURA: "thin models, fat services"
+
+Ushbu versiyada oldingi review'larda topilgan barcha nomuvofiqliklar tuzatildi:
+  - TestSessionQuestion.order maydoni qaytarildi (scoring.py shu bilan mos)
+  - Subject.theta_low/theta_high (ishlatilmagan, o'lik) olib tashlandi —
+    ScoringPolicy yagona haqiqat manbai (single source of truth)
+  - RaschCalibration statuslari izchil: PENDING -> RUNNING -> COMPLETED ->
+    (QUALITY CHECK) -> ACTIVE / REJECTED, eskisi -> RETIRED
+"""
+
 import uuid
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
-from django.core.validators import MaxValueValidator, MinValueValidator
-from django.db import models, transaction
+from django.db import models
 from django.utils import timezone
-from video.models import Video
-from baseuser.models import BaseUser
-from mdeditor.fields import MDTextField
-from centers.models import CenterScopedMixin
+
+
+# ============================================================
+# SUBJECT
+# ============================================================
+
+class Subject(models.Model):
+    """Har bir fan — mustaqil Rasch o'lchov shkalasiga ega."""
+
+    name = models.CharField("Fan nomi", max_length=100)
+    slug = models.SlugField("Slug", unique=True)
+    is_active = models.BooleanField("Faol", default=True)
+
+    rasch_min_persons = models.PositiveIntegerField(
+        "Kalibratsiya uchun minimal ishtirokchilar", default=100,
+        help_text="Kalibratsiya statistik jihatdan barqaror bo'lishi uchun kamida shuncha ishtirokchi kerak.",
+    )
+    rasch_recalibration_response_threshold = models.PositiveIntegerField(
+        "Qayta kalibratsiya chegarasi (yangi javoblar)", default=500,
+    )
+    rasch_prior_variance = models.FloatField(
+        "MAP prior variance", default=1.0,
+        help_text="N(0, sigma²) prior. Standart = 1.0.",
+    )
+    rasch_theta_min = models.FloatField("θ minimum", default=-6.0)
+    rasch_theta_max = models.FloatField("θ maximum", default=6.0)
+
+    class Meta:
+        verbose_name = "Fan"
+        verbose_name_plural = "Fanlar"
+
+    def __str__(self):
+        return self.name
+
+    def get_active_calibration(self):
+        return (
+            self.rasch_calibrations
+            .filter(status=RaschCalibration.Status.ACTIVE, is_active=True)
+            .order_by("-version")
+            .first()
+        )
+
+
+# ============================================================
+# SCORING POLICY
+# ============================================================
+
+class ScoringPolicy(models.Model):
+    """
+    Fanning baholash siyosati — versiyalangan. Bu yagona joy, qayerda
+    theta -> ball -> daraja aylantirish qoidalari saqlanadi.
+    """
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="scoring_policies")
+    version = models.PositiveIntegerField(default=1)
+    name = models.CharField("Siyosat nomi", max_length=100)
+    is_active = models.BooleanField("Faol", default=False)
+
+    theta_low = models.FloatField("θ → 0 ball", default=-4.0)
+    theta_high = models.FloatField("θ → 100 ball", default=4.0)
+
+    grade_a_plus_min = models.FloatField("A+ minimum", default=70.0)
+    grade_a_min = models.FloatField("A minimum", default=65.0)
+    grade_b_plus_min = models.FloatField("B+ minimum", default=60.0)
+    grade_b_min = models.FloatField("B minimum", default=55.0)
+    grade_c_plus_min = models.FloatField("C+ minimum", default=50.0)
+    grade_c_min = models.FloatField("C minimum", default=46.0)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True,
+    )
+
+    class Meta:
+        verbose_name = "Baholash siyosati"
+        verbose_name_plural = "Baholash siyosatlari"
+        constraints = [
+            models.UniqueConstraint(fields=["subject", "version"], name="unique_policy_version_per_subject"),
+            models.UniqueConstraint(
+                fields=["subject"], condition=models.Q(is_active=True),
+                name="unique_active_policy_per_subject",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.subject.name} — {self.name} v{self.version}"
+
+    def get_grade(self, scaled_score: float) -> tuple[str, str]:
+        if scaled_score >= self.grade_a_plus_min:
+            return "A+", "A'lo"
+        if scaled_score >= self.grade_a_min:
+            return "A", "A'lo"
+        if scaled_score >= self.grade_b_plus_min:
+            return "B+", "Yaxshi"
+        if scaled_score >= self.grade_b_min:
+            return "B", "Yaxshi"
+        if scaled_score >= self.grade_c_plus_min:
+            return "C+", "Qoniqarli"
+        if scaled_score >= self.grade_c_min:
+            return "C", "Qoniqarli"
+        return "NC", "Qoniqarsiz"
+
+    def theta_to_scaled(self, theta: float) -> float:
+        pct = (theta - self.theta_low) / (self.theta_high - self.theta_low) * 100.0
+        return round(max(0.0, min(100.0, pct)), 2)
+
+
+# ============================================================
+# TEST / QUESTION / CHOICE
+# ============================================================
 
 class TestEnrollment(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
-    user = models.ForeignKey(BaseUser, on_delete=models.CASCADE, related_name="test_enrollments")
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="test_enrollments")
     test = models.ForeignKey('Test', on_delete=models.CASCADE, related_name="enrollments")
-    
-    # To'lov ma'lumotlari bitta jadval ichida
-    amount = models.DecimalField(max_digits=10, decimal_places=2)
+    amount = models.DecimalField("To'lov summasi", max_digits=10, decimal_places=2)
     transaction_id = models.CharField(max_length=255, unique=True, blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "🛒 Sotib olingan test"
         verbose_name_plural = "🛒 Sotib olingan testlar"
-        unique_together = ('user', 'test') 
-        indexes = [
-            models.Index(fields=["user", "test"]), # Ruxsatni ultra-tezkor tekshirish uchun kompozit indeks
+        unique_together = ('user', 'test')
+        indexes = [models.Index(fields=["user", "test"])]
+
+    def __str__(self):
+        return f"{self.user} -> {self.test.title}"
+
+
+class Test(models.Model):
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="tests", verbose_name="Fan")
+    title = models.CharField("Test nomi", max_length=255)
+    slug = models.SlugField("Slug", max_length=255, unique=True)
+    description = models.TextField("Test sharti", null=True, blank=True)
+
+    duration_minutes = models.PositiveIntegerField("Davomiyligi (daqiqa)", default=60)
+    random_questions_count = models.PositiveIntegerField(
+        "Tasodifiy savollar soni", default=0,
+        help_text="0 = barcha savollar ko'rsatiladi.",
+    )
+    rasch_theta_pass_threshold = models.FloatField(
+        "O'tish chegarasi (θ, logit)", default=0.0,
+    )
+    max_attempts = models.PositiveIntegerField("Maksimal urinishlar soni", default=1)
+    access_code = models.CharField("Kirish kodi", max_length=50, blank=True, null=True)
+    is_active = models.BooleanField("Faol", default=True, db_index=True)
+    start_time = models.DateTimeField("Boshlanish vaqti")
+    end_time = models.DateTimeField("Tugash vaqti")
+
+    price = models.DecimalField("Test narxi", max_digits=10, decimal_places=2, default=0.00)
+    discount_price = models.DecimalField("Chegirmadagi narx", max_digits=10, decimal_places=2, null=True, blank=True)
+    max_lifelines = models.PositiveIntegerField("Maksimal Yordam soni", default=3)
+
+    reveal_correct_answers = models.BooleanField(
+        "To'g'ri javoblarni ochish", default=False,
+        help_text="Savollar banki qayta ishlatilsa, O'CHIRIQ holda qoldiring.",
+    )
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='tests', verbose_name="Yaratuvchi",
+    )
+    questions = models.ManyToManyField("Question", through="TestQuestion", related_name="tests", blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "📋 Test"
+        verbose_name_plural = "📋 Testlar"
+        ordering = ["-id"]
+
+    def __str__(self):
+        return f"Test — {self.title}"
+
+    @property
+    def is_available(self):
+        now = timezone.now()
+        return self.is_active and self.start_time <= now <= self.end_time
+
+    @property
+    def is_finished(self):
+        return timezone.now() > self.end_time
+
+
+class Question(models.Model):
+    subject = models.ForeignKey(Subject, on_delete=models.PROTECT, related_name="questions", verbose_name="Fan")
+    text = models.TextField("Savol matni")
+    explanation = models.TextField("Javob izohi", blank=True, null=True)
+    is_active = models.BooleanField("Faol", default=True, db_index=True)
+    dif_group = models.CharField(
+        "DIF guruhi", max_length=50, blank=True, null=True,
+        help_text="Kelajakda Differential Item Functioning tahlili uchun.",
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name='created_questions', verbose_name="Yaratuvchi",
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "❓ Savol"
+        verbose_name_plural = "❔ Savollar"
+        ordering = ["created_at"]
+        indexes = [models.Index(fields=["subject", "dif_group"])]
+
+    def __str__(self):
+        return f"Savol #{self.id}: {self.text[:40]}..."
+
+    @property
+    def active_rasch_parameter(self):
+        calibration = self.subject.get_active_calibration()
+        if calibration is None:
+            return None
+        return self.rasch_parameters.filter(calibration=calibration).first()
+
+
+class TestQuestion(models.Model):
+    test = models.ForeignKey(Test, on_delete=models.CASCADE, related_name="test_questions")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="test_usages")
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "Test savoli"
+        verbose_name_plural = "Test savollari"
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(fields=["test", "question"], name="unique_question_per_test"),
         ]
 
     def __str__(self):
-        return f"{self.user.username if self.user.username else self.user.telegram_id} -> {self.test.title}"
+        return f"{self.test_id} -> Savol #{self.question_id}"
 
+
+class Choice(models.Model):
+    question = models.ForeignKey("Question", on_delete=models.CASCADE, related_name="choices", verbose_name="Savol")
+    text = models.TextField("Variant matni")
+    is_correct = models.BooleanField("To'g'ri javob", default=False, db_index=True)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        verbose_name = "🔘 Javob varianti"
+        verbose_name_plural = "✅ Javob variantlari"
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=['question'], condition=models.Q(is_correct=True),
+                name='unique_correct_choice_per_question',
+            ),
+        ]
+
+    def __str__(self):
+        status = "✅" if self.is_correct else "❌"
+        return f"[{status}] {self.text[:40]}..."
+
+
+# ============================================================
+# TEST SESSION
+# ============================================================
 
 class TestSession(models.Model):
-    """Foydalanuvchining test topshirish seansi, statistikasi va geymifikatsiya hisoblagichi."""
-
     class Status(models.TextChoices):
         IN_PROGRESS = "in_progress", "Jarayonda"
         COMPLETED = "completed", "Yakunlangan"
         EXPIRED = "expired", "Muddati o'tgan"
 
-    id = models.UUIDField(
-        primary_key=True, 
-        default=uuid.uuid4, 
-        editable=False,
-        verbose_name="Seans ID",
-        help_text="Har bir test topshirish seansi uchun unikal UUID identifikator."
-    )
+    id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False, verbose_name="Seans ID")
     user = models.ForeignKey(
-        BaseUser, 
-        on_delete=models.CASCADE, 
-        related_name="test_sessions",
-        verbose_name="Foydalanuvchi",
-        help_text="Testni topshirayotgan (tizimda faol bo'lgan) talaba."
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="test_sessions", verbose_name="Foydalanuvchi",
     )
-    test = models.ForeignKey(
-        'Test', 
-        on_delete=models.CASCADE, 
-        related_name="sessions",
-        verbose_name="Test (Imtihon)",
-        help_text="Topshirilayotgan test yoki imtihon majmuasi."
+    test = models.ForeignKey('Test', on_delete=models.CASCADE, related_name="sessions", verbose_name="Test")
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.IN_PROGRESS, db_index=True)
+
+    # --- Kalibratsiya snapshot — sessiya BOSHLANGANDA o'rnatiladi (services/sessions.py) ---
+    rasch_calibration = models.ForeignKey(
+        "RaschCalibration", on_delete=models.PROTECT, null=True, blank=True,
+        related_name="sessions", verbose_name="Ishlatilgan kalibratsiya",
     )
-    status = models.CharField(
-        max_length=20, 
-        choices=Status.choices, 
-        default=Status.IN_PROGRESS,
-        db_index=True,
-        verbose_name="Seans holati",
-        help_text="Test jarayonining joriy holati: jarayonda, yakunlangan yoki vaqti o'tib ketgan (muddati o'tgan)."
+    scoring_policy = models.ForeignKey(
+        ScoringPolicy, on_delete=models.PROTECT, null=True, blank=True,
+        related_name="sessions", verbose_name="Ishlatilgan siyosat",
     )
-    score = models.FloatField(
-        default=0.0,
-        verbose_name="Yakuniy akademik ball (S)",
-        help_text="S = Sum(C*P) - Sum(W*P*K) formulasi bo'yicha jarima koeffitsiyentini hisobga olgan holda aniqlangan sof ball."
+
+    rasch_theta = models.FloatField(null=True, blank=True, verbose_name="Qobiliyat (θ, logit)")
+    rasch_se = models.FloatField(null=True, blank=True, verbose_name="Standart xatolik (SE)")
+    rasch_converged = models.BooleanField(default=False, verbose_name="θ baholash yaqinlashdimi")
+    person_infit = models.FloatField(null=True, blank=True)
+    person_outfit = models.FloatField(null=True, blank=True)
+
+    scaled_score = models.FloatField(null=True, blank=True, verbose_name="0-100 shkala ball")
+    grade = models.CharField("Daraja", max_length=10, blank=True)
+    grade_description = models.CharField("Daraja tavsifi", max_length=50, blank=True)
+
+    is_provisional = models.BooleanField(
+        "Vaqtinchalik natija", default=False,
+        help_text="True bo'lsa — savollarning muhim qismi hali kalibrlanmagan.",
     )
-    correct_count = models.PositiveIntegerField(
-        default=0,
-        verbose_name="To'g'ri javoblar soni",
-        help_text="Talaba tomonidan ushbu seansda to'g'ri belgilangan savollarning umumiy miqdori."
-    )
-    wrong_count = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Noto'g'ri javoblar soni",
-        help_text="Talaba xato belgilagan yoki noto'g'ri topshirgan savollar soni."
-    )
-    unanswered_count = models.PositiveIntegerField(
-        default=0,
-        verbose_name="Javobsiz qoldirilganlar soni",
-        help_text="Talaba tomonidan belgilamasdan o'tkazib yuborilgan yoki vaqt yetmay umuman ochilmagan savollar soni."
-    )
-    total_xp_earned = models.PositiveIntegerField(
-        default=0,
-        db_index=True,
-        verbose_name="Yutilgan XP ball",
-        help_text="Ushbu urinish natijasida foydalanuvchining global profiliga qo'shish uchun hisoblangan butun sonli mukofot balli."
-    )
-    lifelines_used = models.PositiveIntegerField(
-        "Ishlatilgan Reler (Lifeline) soni",
-        default=0,
-        help_text="Ushbu seansda foydalanuvchi hozirgacha ishlatgan lifeline'lar soni "
-                  "(faqat serverda hisoblanadi, frontend hisoblagichiga ishonilmaydi)."
-    )
-    selected_question_ids = models.JSONField(
-        default=list, 
-        blank=True,
-        verbose_name="Tanlangan savollar IDlari",
-        help_text="Agar random savollar ishlatilgan bo'lsa, shu seansda qaysi savollar berilgani."
-    )
-    started_at = models.DateTimeField(
-        auto_now_add=True, 
-        verbose_name="Boshlangan vaqti",
-        help_text="Foydalanuvchi testni yechishni boshlagan aniq sana va vaqt."
-    )
-    completed_at = models.DateTimeField(
-        null=True, 
-        blank=True, 
-        verbose_name="Yakunlangan vaqti",
-        help_text="Test yakunlangan yoki vaqt tugashi sababli tizim tomonidan yopilgan aniq vaqt."
-    )
+    uncalibrated_question_count = models.PositiveIntegerField(default=0)
+
+    raw_percentage = models.FloatField(default=0.0, verbose_name="Oddiy foiz (%)")
+    correct_count = models.PositiveIntegerField(default=0)
+    wrong_count = models.PositiveIntegerField(default=0)
+    unanswered_count = models.PositiveIntegerField(default=0)
+
+    lifelines_used = models.PositiveIntegerField(default=0)
+    started_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
 
     class Meta:
         verbose_name = "⏱ Test Seansi"
@@ -125,449 +329,182 @@ class TestSession(models.Model):
         indexes = [
             models.Index(fields=["user", "test", "status"]),
             models.Index(fields=["status", "-started_at"]),
+            models.Index(fields=["rasch_calibration"]),
         ]
 
     def __str__(self):
-        username = self.user.username if self.user.username else f"User-{self.user.telegram_id}"
-        return f"{username} - {self.test.title})"
-
-    def calculate_percentage(self):
-        """Yig'ilgan ballni testning jami mumkin bo'lgan XP balliga nisbatan foizini hisoblaydi."""
-        total_possible = self.test.total_possible_xp
-        if total_possible <= 0:
-            return 0.0
-        return max(0.0, (self.score / total_possible) * 100)
-
-    def calculate_mathematical_score(self):
-        from status.models import UserStats
-
-        with transaction.atomic():
-            session = TestSession.objects.select_for_update().get(pk=self.pk)
-            if session.status == session.Status.COMPLETED:
-                return session.score
-
-            penalty_k = session.test.penalty_coefficient
-            correct_count = wrong_count = 0
-            total_score = 0.0
-
-            test_question_ids = session.test.questions.values_list('id', flat=True)
-            user_responses = UserResponse.objects.filter(
-                session_id=session.id, question_id__in=test_question_ids
-            ).select_related("question", "choice")
-
-            answered_ids = set()
-            for r in user_responses:
-                answered_ids.add(r.question_id)
-                if r.choice is None:
-                    continue
-                if r.choice.is_correct:
-                    correct_count += 1
-                    total_score += r.question.xp
-                else:
-                    wrong_count += 1
-                    total_score -= r.question.xp * penalty_k
-
-            unanswered_count = len(test_question_ids) - len(answered_ids)
-            rounded_score = round(total_score, 2)
-            new_xp_earned = max(0, int(rounded_score))
-
-            previous_best = TestSession.objects.filter(
-                user=session.user, test=session.test, status=session.Status.COMPLETED
-            ).order_by('-total_xp_earned').first()
-
-            xp_to_add = new_xp_earned if not previous_best else max(0, new_xp_earned - previous_best.total_xp_earned)
-
-            if xp_to_add > 0:
-                UserStats.add_xp(user=session.user, xp_amount=xp_to_add)
-
-            session.score = rounded_score
-            session.correct_count = correct_count
-            session.wrong_count = wrong_count
-            session.unanswered_count = unanswered_count
-            session.total_xp_earned = new_xp_earned
-            session.status = session.Status.COMPLETED
-            session.completed_at = timezone.now()
-            session.save(update_fields=[
-                "score", "correct_count", "wrong_count", "unanswered_count",
-                "total_xp_earned", "status", "completed_at"
-            ])
-
-        return session.score
-
-class Test(CenterScopedMixin, models.Model):
-    """Imtihonlar va bob (Modul) yakunidagi testlarni boshqaruvchi asosiy model."""
-
-    modul = models.ForeignKey(
-        "courses.Modul",
-        on_delete=models.SET_NULL,
-        related_name="tests",
-        blank=True,
-        null=True,
-        verbose_name="Bob (Modul)",
-        help_text="Agar bo'sh qolsa, bu mustaqil umumiy imtihon testi hisoblanadi. Aks holda, bu bob (modul) yakunidagi test.",
-    )
-    title = models.CharField(
-        "Test nomi", 
-        max_length=255,
-        help_text="Test yoki imtihon majmuasining to'liq sarlavhasi."
-    )
-    slug = models.SlugField(
-        "Slug",
-        max_length=255,
-        unique=True,
-        help_text="URL manzillari uchun avtomatik hosil bo'luvchi qisqa nom."
-    )
-    description = MDTextField(
-        null=True,
-        verbose_name="test sharti (Matn)", 
-        help_text="Markdown formatida masalaning to'liq shartini yozing."
-    )
-    duration_minutes = models.PositiveIntegerField(
-        "Davomiyligi (daqiqa)", 
-        default=60,
-        help_text="Testni yechish uchun foydalanuvchiga beriladigan umumiy vaqt (daqiqa hisobida)."
-    )
-    question_count = models.PositiveIntegerField(
-        "Bazasidagi jami savollar soni", 
-        default=0,
-        help_text="Ushbu test tarkibiga qo'shilgan jami umumiy savollar soni (avtomatik yoki qo'lda yangilanadi)."
-    )
-    random_questions_count = models.PositiveIntegerField(
-        "Foydalanuvchiga ko'rsatiladigan tasodifiy savollar soni", 
-        default=0,
-        help_text="0 = barcha savollar ko'rsatiladi. Agar masalan bazada 100 ta savol bo'lsa va bu yerga 20 yozilsa, foydalanuvchiga random 20 ta savol ajratib beriladi."
-    )
-    min_pass_percentage = models.PositiveIntegerField(
-        "O'tish foizi", 
-        default=60, 
-        validators=[MaxValueValidator(100)],
-        help_text="Testdan muvaffaqiyatli o'tish uchun talaba to'plashi kerak bo'lgan eng kam foiz ko'rsatkichi (0-100)."
-    )
-    max_attempts = models.PositiveIntegerField(
-        "Maksimal urinishlar soni", 
-        default=0,
-        help_text="Foydalanuvchi ushbu testni ko'pi bilan necha marta topshira olishi. 0 = cheksiz urinishlar."
-    )
-    access_code = models.CharField(
-        "Kirish kodi", 
-        max_length=50, 
-        blank=True, 
-        null=True,
-        help_text="Testni boshlash uchun maxsus parol (bo'sh qoldirilsa = hamma uchun ochiq)."
-    )
-    is_active = models.BooleanField(
-        "Faol", 
-        default=True, 
-        db_index=True,
-        help_text="Test talabalarga ko'rinishi yoki vaqtincha yashirib qo'yilishi uchun boshqaruv belgisi."
-    )
-    start_time = models.DateTimeField(
-        "Boshlanish vaqti",
-        help_text="Test tizimda faollashadigan va talabalar kirishi boshlanadigan aniq sana va vaqt."
-    )
-    end_time = models.DateTimeField(
-        "Tugash vaqti",
-        help_text="Test butunlay yopiladigan muddat. Ushbu vaqtdan keyin talabalar testga kira olishmaydi."
-    )
-    price = models.DecimalField(
-        "Test narxi", 
-        max_digits=10, 
-        decimal_places=2, 
-        default=0.00,
-        help_text="Agar test pullik bo'lsa, uning asosiy qiymati (bepul bo'lsa 0.00 qoldiring)."
-    )
-    discount_price = models.DecimalField(
-        "Chegirmadagi narx", 
-        max_digits=10, 
-        decimal_places=2, 
-        null=True, 
-        blank=True,
-        help_text="Aksiya va chegirmalar vaqtida amal qiladigan arzonlashtirilgan narx."
-    )
-    penalty_coefficient = models.FloatField(
-        "Jarima koeffitsiyenti (K)", 
-        default=0.33,
-        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
-        help_text="Noto'g'ri javoblar uchun jarima koeffitsiyenti. Masalan: 0.33 yozilsa, 3 ta xato javob 1 ta to'g'ri javob ballini olib ketadi."
-    )
-    max_lifelines = models.PositiveIntegerField(
-        "Maksimal Reler (Lifeline) soni", 
-        default=3,
-        help_text="Talaba test davomida foydalanishi mumkin bo'lgan yordam vositalari (Lifeline) soni."
-    )
-    intro_video = models.ForeignKey(
-        Video, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        related_name="test_video", 
-        verbose_name="Kirish yoki qoidalar videosi",
-        help_text="Testni boshlashdan oldin ko'rsatiladigan yo'riqnoma yoki tushuntirish videosi."
-    )
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='tests',
-        verbose_name="Yaratuvchi o'qituvchi",
-        help_text="Ushbu test majmuasini yaratgan va unga egalik qiluvchi o'qituvchi/admin."
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
-    
-    class Meta:
-        verbose_name = "📋 Test"
-        verbose_name_plural = "📋 Testlar"
-        ordering = ["-id", "created_at"]
-        
-    def __str__(self):
-        return f"Test — {self.title}"
+        return f"{self.user} - {self.test.title}"
 
     @property
-    def is_available(self):
-        """Test ayni vaqtda topshirish uchun ochiqligini tekshiradi."""
-        now = timezone.now()
-        return self.is_active and self.start_time <= now <= self.end_time
+    def passed(self):
+        if self.rasch_theta is None:
+            return False
+        return self.rasch_theta >= self.test.rasch_theta_pass_threshold
 
-    @property
-    def total_possible_xp(self):
-        """Test tarkibidagi barcha savollarning jami maksimal ballarini hisoblab beradi (Circular importlarsiz)."""
-        return sum(self.questions.values_list('xp', flat=True))
+    def complete(self, requesting_user=None):
+        from .services.scoring import score_session
+        return score_session(self, requesting_user=requesting_user)
 
-class Question(models.Model):
-    """Polimorfik savollar: Ham ``Test``, ham ``Lesson``ga (Darsga) xizmat qila oladi."""
 
-    class Difficulty(models.TextChoices):
-        EASY = "easy", "Oson"
-        MEDIUM = "medium", "O'rtacha"
-        HARD = "hard", "Qiyin"
-
-    DEFAULT_XP_BY_DIFFICULTY = {
-        Difficulty.EASY: 3,
-        Difficulty.MEDIUM: 6,
-        Difficulty.HARD: 10,
-    }
-
-    lesson = models.ForeignKey(
-        "courses.Lesson", 
-        on_delete=models.SET_NULL, 
-        related_name="quiz_questions", 
-        null=True, 
-        blank=True,
-        verbose_name="Darslik",
-        help_text="Agar ushbu savol muayyan dars ichidagi amaliyot uchun bo'lsa, darsni tanlang."
-    )
-    test = models.ForeignKey(
-        Test, 
-        on_delete=models.SET_NULL, 
-        related_name="questions", 
-        null=True, 
-        blank=True,
-        verbose_name="Test (Imtihon)",
-        help_text="Agar ushbu savol biror imtihon yoki modul yakuniy testi tarkibiga kirsa, testni tanlang."
-    )
-    difficulty = models.CharField(
-        max_length=10, 
-        choices=Difficulty.choices, 
-        default=Difficulty.EASY,
-        verbose_name="Qiyinchilik darajasi",
-        help_text="Savolning murakkablik darajasi. Darajaga qarab avtomatik XP ballari belgilanadi."
-    )
-    explanation_video = models.ForeignKey(
-        Video, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        related_name="question_explanations",
-        verbose_name="Savol video tahlili",
-        help_text="Talaba xato qilganda javobni tushunishi va tahlilini ko'rishi uchun biriktiriladigan video darslik."
-    )
-    text = MDTextField(
-        verbose_name="Savol matni",
-        help_text="Markdown formatida savol matnini va shartini to'liq yozing."
-    )
-    order = models.PositiveIntegerField(
-        default=0, 
-        verbose_name="Tartib raqami",
-        help_text="Savollarning test sahifasida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.",
-        db_index=True,
-    )
-    xp = models.PositiveIntegerField(
-        verbose_name="XP mukofoti",
-        help_text="Ushbu savol to'g'ri topilganda foydalanuvchiga beriladigan ball miqdori (5 dan 20 gacha).",
-        default=5, 
-        validators=[MinValueValidator(5), MaxValueValidator(20)]
-    )
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='created_questions',
-        verbose_name="Yaratuvchi o'qituvchi",
-        help_text="Ushbu savolni tizimga qo'shgan mas'ul xodim yoki o'qituvchi."
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
+class TestSessionQuestion(models.Model):
+    """Sessiya uchun tanlangan savollar — tartib bilan (random_questions_count qo'llanganda ham)."""
+    session = models.ForeignKey(TestSession, on_delete=models.CASCADE, related_name="session_questions")
+    question = models.ForeignKey(Question, on_delete=models.PROTECT, related_name="session_usages")
+    order = models.PositiveIntegerField(default=0)
 
     class Meta:
-        verbose_name = "❓ Savol"
-        verbose_name_plural = "❔ Savollar"
-        ordering = ["order", "created_at"]
-        constraints = [
-            models.CheckConstraint(
-                check=(
-                    models.Q(lesson__isnull=False, test__isnull=True)
-                    | models.Q(lesson__isnull=True, test__isnull=False)
-                ),
-                name="question_belongs_to_lesson_xor_test",
-            )
-        ]
-    def __str__(self):
-        # Markdown belgilari toza chiqishi uchun qisqartirib ko'rsatish
-        return f"Savol #{self.id}: {self.text[:40]}..."
-
-    def clean(self):
-        super().clean()
-        
-        # 1. Ikkalasi ham bo'sh bo'lsa xatolik
-        if not self.lesson and not self.test:
-            raise ValidationError(
-                "Savol kamida bitta joyga (Dars yoki Test) bog'lanishi shart!"
-            )
-            
-        # 2. Ikkalasi ham tanlangan bo'lsa xatolik
-        if self.lesson and self.test:
-            raise ValidationError(
-                "Savol bir vaqtning o'zida ham Darsga, ham Testga bog'lana olmaydi! Faqat bittasini tanlang."
-            )
-
-    def save(self, *args, **kwargs):
-        # Agar XP qo'lda kiritilmagan bo'lsa, qiyinchilik darajasidan kelib chiqib avtomat belgilash
-        if not self.xp or self.xp == 3:  # default 3 bo'lgani uchun tekshiriladi
-            self.xp = self.DEFAULT_XP_BY_DIFFICULTY.get(self.difficulty, 3)
-        super().save(*args, **kwargs)
-
-class Choice(models.Model):
-    """Savol javoblari variantlari (Choice)."""
-
-    question = models.ForeignKey(
-        "Question", 
-        on_delete=models.CASCADE, 
-        related_name="choices",
-        verbose_name="Tegishli savol",
-        help_text="Ushbu variant qaysi savolga tegishli ekanligini belgilang."
-    )
-    text = MDTextField(
-        verbose_name="Variant matni",  # ✅ TUZATISH: "Savol matni" -> "Variant matni" ga o'zgartirildi
-        help_text="Markdown formatida javob variantining matnini kiriting."
-    )
-    is_correct = models.BooleanField(
-        "To'g'ri javob", 
-        default=False, 
-        db_index=True,
-        help_text="Agar ushbu variant savolning to'g'ri javobi bo'lsa, belgilang."
-    )
-    explanation = MDTextField(
-        verbose_name="Javob izohi / Tushuntirish", 
-        blank=True, 
-        null=True,
-        help_text="Talaba ushbu variantni tanlaganidan keyin (yoki test yakunida) nega bu javob to'g'ri/noto'g'ri ekanligini tushuntiruvchi matn."
-    )
-    order = models.PositiveIntegerField(
-        "Tartib raqami", 
-        default=0,
-        help_text="Javob variantlarining foydalanuvchiga qaysi ketma-ketlikda chiqishini belgilovchi raqam."
-    )
-    owner = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.CASCADE,
-        related_name='created_choices',
-        verbose_name="Yaratuvchi o'qituvchi",
-        help_text="Ushbu variantni tizimga qo'shgan mas'ul xodim yoki o'qituvchi."
-    )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
-    
-    class Meta:
-        verbose_name = "🔘 Javob varianti"
-        verbose_name_plural = "✅ Javob variantlari"
+        verbose_name = "Seans savoli"
+        verbose_name_plural = "Seans savollari"
         ordering = ["order", "id"]
         constraints = [
-            models.UniqueConstraint(
-                fields=['question'],
-                condition=models.Q(is_correct=True),
-                name='unique_correct_choice_per_question'
-            ),
+            models.UniqueConstraint(fields=["session", "question"], name="unique_question_per_session"),
         ]
 
     def __str__(self):
-        # Markdown belgilari xalaqit bermasligi uchun qisqartirib ko'rsatish
-        status = "✅" if self.is_correct else "❌"
-        return f"[{status}] {self.text[:40]}..."
+        return f"{self.session_id} -> Savol #{self.question_id}"
 
-    def clean(self):
-        super().clean()
-        
-        if self.is_correct and self.question_id:
-            qs = Choice.objects.filter(question=self.question, is_correct=True)
-            if self.pk:
-                qs = qs.exclude(pk=self.pk)
-            if qs.exists():
-                raise ValidationError(
-                    {"is_correct": "Ushbu savolda allaqachon to'g'ri javob varianti mavjud! Bittadan ortiq to'g'ri javob belgilash mumkin emas."}
-                )
 
 class UserResponse(models.Model):
-    """Talabaning har bir savolga bergan javobi (Ko'p marta javob berishga moslangan versiya)."""
-
     session = models.ForeignKey(
-        "TestSession",
-        on_delete=models.CASCADE,
-        related_name="responses",
-        null=True,
-        blank=True,
-        verbose_name="Test seansi",
-        help_text="Ushbu javob aynan qaysi test topshirish urinishiga (seansiga) tegishli ekanligi."
+        "TestSession", on_delete=models.CASCADE, related_name="responses",
+        null=True, blank=True, verbose_name="Test seansi",
     )
     user = models.ForeignKey(
-        BaseUser, 
-        on_delete=models.CASCADE, 
-        related_name="quiz_responses",
-        verbose_name="Foydalanuvchi",
-        help_text="Javob bergan talaba."
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="quiz_responses", verbose_name="Foydalanuvchi",
     )
-    question = models.ForeignKey(
-        Question, 
-        on_delete=models.CASCADE, 
-        related_name="user_responses",
-        verbose_name="Savol",
-        help_text="Javob berilgan test yoki darslik savoli."
-    )
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="user_responses", verbose_name="Savol")
     choice = models.ForeignKey(
-        Choice, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True,
-        verbose_name="Tanlangan variant",
-        help_text="Talaba tomonidan belgilangan javob varianti (bo'sh qolsa = javobsiz qoldirilgan)."
+        Choice, on_delete=models.SET_NULL, null=True, blank=True,
+        verbose_name="Tanlangan variant", help_text="Bo'sh = javobsiz qoldirilgan.",
     )
-    created_at = models.DateTimeField(
-        auto_now_add=True, 
-        verbose_name="Javob berilgan vaqt",
-        help_text="Talaba joriy savolga javob tugmasini bosgan aniq vaqt."
-    )
+    created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         verbose_name = "🎯 Foydalanuvchi Javobi"
         verbose_name_plural = "🎯 Foydalanuvchi Javoblari"
-
-    def __str__(self):
-        status_text = "Javob berilgan" if self.choice else "Javobsiz qoldirilgan"
-        username = self.user.username if self.user.username else f"User-{self.user.telegram_id}"
-        return f"{username} -> Savol №{self.question_id} [{status_text}]"
+        constraints = [
+            models.UniqueConstraint(fields=["session", "question"], name="unique_response_per_session_question"),
+        ]
 
     def clean(self):
         super().clean()
-        
-        if self.choice and self.choice.question_id != self.question_id:
-            raise ValidationError(
-                {"choice": "Siz buzib kirishga urindingiz! Tanlangan javob varianti ushbu savolga tegishli emas."}
-            )
+        if self.choice_id and self.choice.question_id != self.question_id:
+            raise ValidationError({"choice": "Tanlangan javob ushbu savolga tegishli emas."})
+        if self.session_id and self.user_id and self.user_id != self.session.user_id:
+            raise ValidationError({"user": "Javob foydalanuvchisi seans foydalanuvchisiga mos emas."})
+
+
+# ============================================================
+# RASCH — Fan darajasidagi kalibratsiya
+# ============================================================
+
+class RaschCalibration(models.Model):
+    class Status(models.TextChoices):
+        PENDING = "pending", "Kutilmoqda"
+        RUNNING = "running", "Hisoblanmoqda"
+        COMPLETED = "completed", "Yakunlandi (ko'rib chiqilmoqda)"
+        FAILED = "failed", "Xatolik"
+        REJECTED = "rejected", "Rad etildi"
+        ACTIVE = "active", "Faol"
+        RETIRED = "retired", "Almashtirildi"
+
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="rasch_calibrations")
+    version = models.PositiveIntegerField()
+    algorithm_version = models.CharField(max_length=50, default="rasch-mml-v3")
+    response_policy = models.CharField(max_length=30, default="first_attempt_only")
+
+    sample_size = models.PositiveIntegerField(default=0, help_text="Noyob shaxslar (userlar) soni.")
+    response_count = models.PositiveIntegerField(default=0)
+    item_count = models.PositiveIntegerField(default=0)
+    mean_beta = models.FloatField(default=0.0)
+    std_beta = models.FloatField(default=0.0)
+    min_beta = models.FloatField(default=0.0)
+    max_beta = models.FloatField(default=0.0)
+    converged = models.BooleanField(default=False)
+    rejection_reason = models.TextField(blank=True, default="")
+
+    created_at = models.DateTimeField(auto_now_add=True)
+    completed_at = models.DateTimeField(null=True, blank=True)
+    activated_at = models.DateTimeField(null=True, blank=True)
+    data_cutoff_at = models.DateTimeField(null=True, blank=True)
+    is_active = models.BooleanField(default=False)
+    status = models.CharField(max_length=20, choices=Status.choices, default=Status.PENDING)
+
+    class Meta:
+        verbose_name = "Rasch kalibratsiyasi"
+        verbose_name_plural = "Rasch kalibratsiyalari"
+        constraints = [
+            models.UniqueConstraint(fields=["subject", "version"], name="unique_rasch_calibration_version"),
+            models.UniqueConstraint(
+                fields=["subject"], condition=models.Q(is_active=True),
+                name="unique_active_calibration_per_subject",
+            ),
+        ]
+        indexes = [
+            models.Index(fields=["subject", "status"]),
+            models.Index(fields=["subject", "is_active"]),
+        ]
+
+    def __str__(self):
+        return f"{self.subject.name} — v{self.version} ({self.status})"
+
+
+class RaschItemParameter(models.Model):
+    calibration = models.ForeignKey(RaschCalibration, on_delete=models.CASCADE, related_name="item_parameters")
+    question = models.ForeignKey(Question, on_delete=models.CASCADE, related_name="rasch_parameters")
+
+    beta = models.FloatField("β qiyinchilik", default=0.0)
+    beta_se = models.FloatField("β SE", default=999.0)
+    infit = models.FloatField(null=True, blank=True)
+    outfit = models.FloatField(null=True, blank=True)
+    sample_size = models.PositiveIntegerField(default=0)
+    is_calibrated = models.BooleanField(default=False)
+    flagged_for_review = models.BooleanField(default=False)
+    is_extreme = models.BooleanField(default=False)
+
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Rasch item parametri"
+        verbose_name_plural = "Rasch item parametrlari"
+        constraints = [
+            models.UniqueConstraint(fields=["calibration", "question"], name="unique_item_per_calibration"),
+        ]
+        indexes = [models.Index(fields=["question"])]
+
+    def __str__(self):
+        return f"Savol #{self.question_id} (v{self.calibration.version}) β={self.beta:.2f}"
+
+
+class UserSubjectAbility(models.Model):
+    """Foydalanuvchining fan bo'yicha JORIY ability'si — read model / kesh."""
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="subject_abilities")
+    subject = models.ForeignKey(Subject, on_delete=models.CASCADE, related_name="user_abilities")
+
+    theta = models.FloatField("Qobiliyat (θ)")
+    theta_se = models.FloatField("Standart xatolik", default=999.0)
+    person_infit = models.FloatField(null=True, blank=True)
+    person_outfit = models.FloatField(null=True, blank=True)
+
+    calibration = models.ForeignKey(RaschCalibration, on_delete=models.PROTECT, related_name="subject_abilities")
+    calibration_version = models.PositiveIntegerField()
+
+    response_count = models.PositiveIntegerField(default=0)
+    correct_count = models.PositiveIntegerField(default=0)
+
+    updated_at = models.DateTimeField(auto_now=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        verbose_name = "Foydalanuvchi fan darajasi"
+        verbose_name_plural = "Foydalanuvchi fan darajalari"
+        constraints = [
+            models.UniqueConstraint(fields=["user", "subject"], name="unique_user_subject_ability"),
+        ]
+        indexes = [
+            models.Index(fields=["user", "subject"]),
+            models.Index(fields=["subject", "-theta"]),
+        ]
+
+    def __str__(self):
+        return f"{self.user_id} — {self.subject.name} θ={self.theta:.2f}"

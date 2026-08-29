@@ -22,6 +22,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    "crispy_forms",
     'storages',
     'django_celery_results',
     'django_bolt',
@@ -39,7 +40,13 @@ INSTALLED_APPS = [
     'mdeditor',
     'paytechuz.integrations.django',
     'centers.apps.CentersConfig',
+
+    "import_export",
 ]
+
+CRISPY_TEMPLATE_PACK = "unfold_crispy"
+
+CRISPY_ALLOWED_TEMPLATE_PACKS = ["unfold_crispy"]
 
 from .payteach import payteach
 PAYTECH_API_KEY = "5cf1ea79-737f-472c-ab8a-fa3c690b7a13"
@@ -146,10 +153,22 @@ CACHES = {
 
 # Celery ham shu URL dan foydalansin
 CELERY_BROKER_URL = config('CELERY_BROKER_URL', default=f"{REDIS_URL}/0")
-CELERY_RESULT_BACKEND = 'django-db'
+CELERY_RESULT_BACKEND = config('CELERY_RESULT_BACKEND', default='django-db')
 CELERY_ACCEPT_CONTENT = ['json']
 CELERY_TASK_SERIALIZER = 'json'
 
+from celery.schedules import crontab
+
+CELERY_BEAT_SCHEDULE = {
+        "close-expired-sessions": {
+            "task": "quizs.tasks.close_expired_sessions",
+            "schedule": crontab(minute="*/1"),
+        },
+        "check-recalibration-needed": {
+            "task": "quizs.tasks.check_recalibration_needed",
+            "schedule": crontab(minute=0),
+        },
+}
 import os
 from decouple import config, Csv  # Agar python-decouple ishlatayotgan bo'lsangiz
 
@@ -158,7 +177,7 @@ CONN_MAX_AGE = 600
 # Tizim hodisalari (Signals) faollashtirildi
 BOLT_EMIT_SIGNALS = True
 # Ishlab chiqish jarayonida majburiy polling (so'rov yuborish) rejimini yoqish
-BOLT_DEV_FORCE_POLLING = True
+BOLT_DEV_FORCE_POLLING = False
 # 500 MB = 500 * 1024 * 1024 bayt
 BOLT_MAX_UPLOAD_SIZE = 500 * 1024 * 1024  
 # RAM chegarasi: 50 MB (50MB gacha xotirada, undan kattasi vaqtinchalik diskda yoziladi)
@@ -192,7 +211,6 @@ CORS_ALLOW_HEADERS = [
 # Cookie va autentifikatsiya tokenlarini (Session) yuborishga ruxsat berish
 CORS_ALLOW_CREDENTIALS = True
 
-BOLT_DEV_FORCE_POLLING = True
 
 AUTHENTICATION_BACKENDS = [
     'baseuser.backends.EmailOrUsernameModelBackend',

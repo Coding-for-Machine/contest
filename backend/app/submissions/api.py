@@ -267,7 +267,6 @@ async def run(request: Request, body: RunCode, request_user: BaseUser = Depends(
 async def submit(request: Request, body: SubmissionCode, request_user: BaseUser = Depends(get_current_user)):
     print("BODY:", body)
     print(body.code, "\n", body.language_id, "\n", body.problem_id)
-    task_id = uuid.uuid4()
     result = submit_code_task.apply_async(
         kwargs=dict(
             user_id=request_user.id,

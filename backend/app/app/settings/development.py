@@ -38,17 +38,26 @@ ALLOWED_HOSTS = ['*']
 #     },
 # }
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'handlers': {
-        'console': {
-            'class': 'logging.StreamHandler',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "handlers": {
+        "console": {
+            "class": "logging.StreamHandler",
         },
     },
-    'loggers': {
-        'django.db.backends': {
-            'handlers': ['console'],
-            'level': 'DEBUG',  # 💡 SQL so'rovlarini terminalda ko'rish uchun
+    "loggers": {
+        "django_bolt": {
+            "handlers": ["console"],
+            "level": "INFO",
+        },
+        "app.sse": {  # SHU QATORNI QO'SHING
+            "handlers": ["console"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "submissions": {  # Celery loglari uchun
+            "handlers": ["console"],
+            "level": "INFO",
         },
     },
 }

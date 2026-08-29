@@ -1,0 +1,1 @@
+export const DJANGO_API_ENDPOINT = process.env.DJANGO_API_ENDPOINT ?? "http://localhost:8000/api/v1";

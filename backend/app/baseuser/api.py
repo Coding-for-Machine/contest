@@ -24,7 +24,7 @@ from certificate.models import Certificate
 from contests.models import ContestRegistration
 from courses.models import Enrollment
 from quizs.models import TestSession
-from status.models import UserActivityDaily
+from status.models import CourseStatus, UserActivityDaily
 from submissions.models import Submission
 
 from .authenticate import get_current_user, get_current_user_option
@@ -154,73 +154,166 @@ async def get_user_profile(
 # ============================================================
 # 2. HEATMAP
 # ============================================================
-
 @api.get("/heatmap/{telegram_id}")
-async def get_user_heatmap(request: Request, telegram_id: int, days: int = 365):
-    """GitHub-uslubidagi kunlik faollik xaritasi + streak hisob-kitobi."""
+async def get_user_heatmap(
+    request: Request,
+    telegram_id: int,
+    year: int | None = None,
+):
+    """
+    GitHub/LeetCode uslubidagi yillik activity heatmap.
 
-    days = min(max(days, 1), MAX_HEATMAP_DAYS)
+    Misollar:
+        /heatmap/123456?year=2026
+        /heatmap/123456?year=2025
 
-    cache_key = f"heatmap:{telegram_id}:{days}"
+    Agar year berilmasa — joriy yil olinadi.
+    """
+
+    current_date = timezone.localdate()
+    selected_year = year or current_date.year
+
+    # Juda uzoq yoki noto'g'ri yillarni cheklash
+    if selected_year < current_date.year - 10 or selected_year > current_date.year:
+        return JSON(
+            {"detail": "Noto'g'ri yil"},
+            status_code=status.HTTP_400_BAD_REQUEST,
+        )
+
+    cache_key = f"heatmap:{telegram_id}:{selected_year}"
+
     cached = cache.get(cache_key)
     if cached is not None:
         return cached
 
+    # --------------------------------------------------------
+    # USER
+    # --------------------------------------------------------
+
     user_data = await BaseUser.objects.filter(
-        telegram_id=telegram_id, is_active=True
+        telegram_id=telegram_id,
+        is_active=True,
     ).values("id").afirst()
 
     if not user_data:
         return _not_found()
 
     internal_user_id = user_data["id"]
-    today = timezone.now().date()
-    start_date = today - timedelta(days=days)
 
-    rows = UserActivityDaily.objects.filter(
-        user_id=internal_user_id,
-        date__gte=start_date,
-        date__lte=today,
-    ).order_by("date").values_list("date", "tasks_count")
+    # --------------------------------------------------------
+    # DATE RANGE
+    # --------------------------------------------------------
 
-    heatmap_sparse = {}
-    current_streak = 0
-    max_streak = 0
+    start_date = datetime(
+        selected_year,
+        1,
+        1,
+    ).date()
+
+    end_date = datetime(
+        selected_year,
+        12,
+        31,
+    ).date()
+
+    # Joriy yil bo'lsa kelajak kunlarini ko'rsatmaymiz
+    if selected_year == current_date.year:
+        end_date = current_date
+
+    # --------------------------------------------------------
+    # ACTIVITY
+    # --------------------------------------------------------
+
+    rows = (
+        UserActivityDaily.objects
+        .filter(
+            user_id=internal_user_id,
+            date__gte=start_date,
+            date__lte=end_date,
+        )
+        .order_by("date")
+        .values_list("date", "tasks_count")
+    )
+
+    heatmap = {}
+
+    async for date, tasks_count in rows:
+        heatmap[date.isoformat()] = tasks_count
+
+    # --------------------------------------------------------
+    # STATS
+    # --------------------------------------------------------
+
     total_active_days = 0
-    prev_date = None
+    total_tasks = 0
 
-    async for d, tasks in rows:
-        if tasks > 0:
-            heatmap_sparse[d.isoformat()] = tasks
+    for count in heatmap.values():
+        if count > 0:
             total_active_days += 1
+            total_tasks += count
 
-            if prev_date is not None and (d - prev_date).days == 1:
-                current_streak += 1
-            else:
-                current_streak = 1
-            max_streak = max(max_streak, current_streak)
-            prev_date = d
+    # --------------------------------------------------------
+    # MAX STREAK
+    # --------------------------------------------------------
+
+    max_streak = 0
+    streak = 0
+
+    cursor = start_date
+
+    while cursor <= end_date:
+        count = heatmap.get(cursor.isoformat(), 0)
+
+        if count > 0:
+            streak += 1
+            max_streak = max(max_streak, streak)
         else:
-            current_streak = 0
-            prev_date = d
+            streak = 0
 
-    if prev_date is None or (today - prev_date).days > 1:
-        current_streak = 0
+        cursor += timedelta(days=1)
+
+    # --------------------------------------------------------
+    # CURRENT STREAK
+    # --------------------------------------------------------
+
+    current_streak = 0
+    cursor = end_date
+
+    while cursor >= start_date:
+        count = heatmap.get(cursor.isoformat(), 0)
+
+        if count <= 0:
+            break
+
+        current_streak += 1
+        cursor -= timedelta(days=1)
+
+    # --------------------------------------------------------
+    # RESULT
+    # --------------------------------------------------------
 
     result = {
         "telegram_id": telegram_id,
+        "year": selected_year,
         "start_date": start_date.isoformat(),
-        "end_date": today.isoformat(),
+        "end_date": end_date.isoformat(),
+
+        "total_tasks": total_tasks,
         "total_active_days": total_active_days,
+
         "current_streak": current_streak,
         "max_streak": max_streak,
-        "heatmap": heatmap_sparse,
+
+        "heatmap": heatmap,
     }
 
-    cache.set(cache_key, result, timeout=HEATMAP_CACHE_SECONDS)
+    cache.set(
+        cache_key,
+        result,
+        timeout=HEATMAP_CACHE_SECONDS,
+    )
+
     return result
-
-
 # ============================================================
 # 3. SUBMISSION TARIXI (xavfsiz, paginatsiyalangan)
 # ============================================================
@@ -443,40 +536,72 @@ async def get_profile_activity(
 # ============================================================
 
 @api.get("/{tg_id_or_username}/certificates")
-async def get_user_certificates(request: Request, tg_id_or_username: str):
+async def get_user_certificates(
+    request: Request,
+    tg_id_or_username: str,
+):
     """
-    Foydalanuvchining barcha berilgan sertifikatlari (kurs / test / musobaqa).
+    Foydalanuvchining tayyor bo'lgan sertifikatlarini qaytaradi.
 
-    Faqat `status="completed"` bo'lgan (PDF muvaffaqiyatli tayyorlangan)
-    sertifikatlar qaytariladi — hali jarayonda yoki xato bo'lganlari
-    profilga chiqarilmaydi.
+    Faqat status='completed' sertifikatlar chiqadi.
     """
 
     user = await _resolve_user(tg_id_or_username)
+
     if not user:
         return _not_found()
 
     cache_key = f"certificates:{user.id}"
+
     cached = cache.get(cache_key)
+
     if cached is not None:
         return cached
 
     certs_qs = (
-        Certificate.objects.filter(user=user, status="completed")
-        .select_related("course", "test", "contest", "test_session", "contest_registration")
+        Certificate.objects
+        .filter(
+            user=user,
+            status=Certificate.Status.COMPLETED,
+        )
+        .select_related(
+            "course",
+            "test",
+            "contest",
+            "template",
+        )
         .order_by("-issued_at")
     )
 
     certificates = []
+
     async for cert in certs_qs:
         certificates.append({
             "id": str(cert.id),
             "certificate_code": cert.certificate_code,
-            "source_type": cert.source_type,           # course | test | contest | default
+
+            "source_type": cert.source_type,
             "source_title": cert.source_title,
+
             "verify_url": cert.verify_url,
-            "pdf_url": cert.pdf_file.url if cert.pdf_file else None,
-            "issued_at": cert.issued_at.isoformat() if cert.issued_at else None,
+
+            "pdf_url": (
+                cert.pdf_file.url
+                if cert.pdf_file and cert.pdf_file.name
+                else None
+            ),
+
+            "issued_at": (
+                cert.issued_at.isoformat()
+                if cert.issued_at
+                else None
+            ),
+
+            "completed_at": (
+                cert.completed_at.isoformat()
+                if cert.completed_at
+                else None
+            ),
         })
 
     result = {
@@ -486,10 +611,21 @@ async def get_user_certificates(request: Request, tg_id_or_username: str):
         "count": len(certificates),
     }
 
-    cache.set(cache_key, result, timeout=CERTIFICATES_CACHE_SECONDS)
+    cache.set(
+        cache_key,
+        result,
+        timeout=CERTIFICATES_CACHE_SECONDS,
+    )
+
     return result
 
 
+# ============================================================
+# 7. A'ZO BO'LGAN KURSLAR (Enrollments)
+# ============================================================
+# ============================================================
+# 7. A'ZO BO'LGAN KURSLAR (Enrollments)
+# ============================================================
 # ============================================================
 # 7. A'ZO BO'LGAN KURSLAR (Enrollments)
 # ============================================================
@@ -502,57 +638,406 @@ async def get_user_courses(
     only_active: bool = False,
 ):
     """
-    Foydalanuvchi a'zo (enroll) bo'lgan barcha kurslar, progress bilan.
+    Foydalanuvchining a'zo bo'lgan kurslarini progress bilan qaytaradi.
 
-    `is_paid` maydoni faqat profil egasiga ko'rsatiladi (to'lov holati
-    shaxsiy ma'lumot hisoblanadi). `only_active=true` bo'lsa, faqat
-    hali yakunlanmagan kurslar qaytariladi.
+    Progress CourseStatus modelidan olinadi.
+
+    Qaytariladi:
+        - course
+        - is_paid
+        - is_completed
+        - finished_modules
+        - total_modules
+        - finished_lessons
+        - total_lessons
+        - finished_tests
+        - total_tests
+        - finished_problems
+        - progress_percent
+        - completed_at
+        - enrolled_at
+
+    `is_paid` faqat kurs egasiga ko'rsatiladi.
+
+    `only_active=true` bo'lsa:
+        faqat tugatilmagan kurslar qaytariladi.
     """
 
+    # ========================================================
+    # 1. USER
+    # ========================================================
+
     user = await _resolve_user(tg_id_or_username)
+
     if not user:
         return _not_found()
 
-    is_owner = request_user is not None and request_user.id == user.id
+    is_owner = (
+        request_user is not None
+        and request_user.id == user.id
+    )
 
-    qs = (
-        Enrollment.objects.filter(user=user)
+    # ========================================================
+    # 2. ENROLLMENTS
+    # ========================================================
+
+    enrollments_qs = (
+        Enrollment.objects
+        .filter(user=user)
         .select_related("course")
         .order_by("-created_at")
     )
-    if only_active:
-        qs = qs.filter(is_completed=False)
+
+    enrollments = [
+        enrollment
+        async for enrollment in enrollments_qs
+    ]
+
+    # Foydalanuvchining kurslari bo'lmasa
+    if not enrollments:
+        return {
+            "telegram_id": user.telegram_id,
+            "username": user.username,
+            "courses": [],
+            "count": 0,
+        }
+
+    # ========================================================
+    # 3. COURSE IDS
+    # ========================================================
+
+    course_ids = [
+        enrollment.course_id
+        for enrollment in enrollments
+        if enrollment.course_id is not None
+    ]
+
+    if not course_ids:
+        return {
+            "telegram_id": user.telegram_id,
+            "username": user.username,
+            "courses": [],
+            "count": 0,
+        }
+
+    # ========================================================
+    # 4. COURSE STATUSES
+    # ========================================================
+    #
+    # N+1 query oldini olish uchun barcha statuslarni bitta
+    # query bilan olamiz.
+    #
+    # course_id -> CourseStatus
+    #
+
+    statuses_qs = (
+        CourseStatus.objects
+        .filter(
+            user=user,
+            course_id__in=course_ids,
+        )
+    )
+
+    statuses = [
+        status_obj
+        async for status_obj in statuses_qs
+    ]
+
+    status_map = {
+        status_obj.course_id: status_obj
+        for status_obj in statuses
+    }
+
+    # ========================================================
+    # 5. BUILD RESPONSE
+    # ========================================================
 
     courses = []
-    async for enr in qs:
-        if not enr.course:
+
+    for enrollment in enrollments:
+
+        course = enrollment.course
+
+        # ----------------------------------------------------
+        # Course mavjud bo'lmasa o'tkazib yuboramiz
+        # ----------------------------------------------------
+
+        if course is None:
             continue
 
-        total_lessons = enr.course.total_lessons_count or 0
-        total_tests = enr.course.total_test_count or 0
-        total_units = total_lessons + total_tests
-        finished_units = enr.finished_darslar_soni + enr.finished_test_soni
-        progress_percent = (
-            round((finished_units / total_units) * 100, 1) if total_units else 0
+        # ----------------------------------------------------
+        # CourseStatus
+        # ----------------------------------------------------
+
+        course_status = status_map.get(course.id)
+
+        # ====================================================
+        # DEFAULT PROGRESS
+        # ====================================================
+
+        finished_lessons = 0
+        finished_tests = 0
+        finished_problems = 0
+        finished_modules = 0
+
+        is_completed = False
+        completed_at = None
+
+        # ====================================================
+        # COURSE STATUS MAVJUD BO'LSA
+        # ====================================================
+
+        if course_status is not None:
+
+            finished_lessons = (
+                getattr(
+                    course_status,
+                    "completed_lessons",
+                    0,
+                )
+                or 0
+            )
+
+            finished_tests = (
+                getattr(
+                    course_status,
+                    "completed_tests",
+                    0,
+                )
+                or 0
+            )
+
+            finished_problems = (
+                getattr(
+                    course_status,
+                    "completed_problems",
+                    0,
+                )
+                or 0
+            )
+
+            finished_modules = (
+                getattr(
+                    course_status,
+                    "completed_modules",
+                    0,
+                )
+                or 0
+            )
+
+            is_completed = bool(
+                getattr(
+                    course_status,
+                    "is_completed",
+                    False,
+                )
+            )
+
+            completed_at_value = getattr(
+                course_status,
+                "completed_at",
+                None,
+            )
+
+            if completed_at_value:
+                completed_at = (
+                    completed_at_value.isoformat()
+                )
+
+        # ====================================================
+        # COURSE TOTALS
+        # ====================================================
+
+        total_lessons = (
+            getattr(
+                course,
+                "total_lessons_count",
+                0,
+            )
+            or 0
         )
+
+        total_tests = (
+            getattr(
+                course,
+                "total_test_count",
+                0,
+            )
+            or 0
+        )
+
+        total_modules = (
+            getattr(
+                course,
+                "total_modules_count",
+                0,
+            )
+            or 0
+        )
+
+        # ====================================================
+        # PROGRESS
+        # ====================================================
+        #
+        # Formula:
+        #
+        # completed_lessons + completed_tests
+        # ----------------------------------- * 100
+        # total_lessons + total_tests
+        #
+
+        total_units = (
+            total_lessons
+            + total_tests
+        )
+
+        finished_units = (
+            finished_lessons
+            + finished_tests
+        )
+
+        if total_units > 0:
+            progress_percent = round(
+                (
+                    finished_units
+                    / total_units
+                ) * 100,
+                1,
+            )
+        else:
+            progress_percent = 0
+
+        # 0-100 oralig'ida ushlab qolamiz
+        progress_percent = min(
+            max(progress_percent, 0),
+            100,
+        )
+
+        # ====================================================
+        # ACTIVE FILTER
+        # ====================================================
+
+        if only_active and is_completed:
+            continue
+
+        # ====================================================
+        # ENROLLED DATE
+        # ====================================================
+
+        created_at = getattr(
+            enrollment,
+            "created_at",
+            None,
+        )
+
+        enrolled_at = (
+            created_at.isoformat()
+            if created_at
+            else None
+        )
+
+        # ====================================================
+        # IS PAID
+        # ====================================================
+
+        #
+        # Muhim:
+        # Enrollment modelida is_paid bo'lmasa,
+        # getattr(..., False) xato bermaydi.
+        #
+
+        enrollment_is_paid = getattr(
+            enrollment,
+            "is_paid",
+            False,
+        )
+
+        is_paid = (
+            enrollment_is_paid
+            if is_owner
+            else None
+        )
+
+        # ====================================================
+        # RESPONSE
+        # ====================================================
 
         courses.append({
             "course": {
-                "id": enr.course.id,
-                "slug": enr.course.slug,
-                "title": enr.course.title,
-                "is_active": enr.course.is_active,
+                "id": course.id,
+                "slug": getattr(
+                    course,
+                    "slug",
+                    None,
+                ),
+                "title": getattr(
+                    course,
+                    "title",
+                    None,
+                ),
+                "is_active": getattr(
+                    course,
+                    "is_active",
+                    True,
+                ),
             },
-            "is_paid": enr.is_paid if is_owner else None,
-            "is_completed": enr.is_completed,
-            "finished_lessons": enr.finished_darslar_soni,
+
+            # -----------------------------------------------
+            # PAYMENT
+            # -----------------------------------------------
+
+            "is_paid": is_paid,
+
+            # -----------------------------------------------
+            # COURSE STATUS
+            # -----------------------------------------------
+
+            "is_completed": is_completed,
+
+            # -----------------------------------------------
+            # MODULE PROGRESS
+            # -----------------------------------------------
+
+            "finished_modules": finished_modules,
+            "total_modules": total_modules,
+
+            # -----------------------------------------------
+            # LESSON PROGRESS
+            # -----------------------------------------------
+
+            "finished_lessons": finished_lessons,
             "total_lessons": total_lessons,
-            "finished_tests": enr.finished_test_soni,
+
+            # -----------------------------------------------
+            # TEST PROGRESS
+            # -----------------------------------------------
+
+            "finished_tests": finished_tests,
             "total_tests": total_tests,
+
+            # -----------------------------------------------
+            # PROBLEM PROGRESS
+            # -----------------------------------------------
+
+            "finished_problems": finished_problems,
+
+            # -----------------------------------------------
+            # OVERALL PROGRESS
+            # -----------------------------------------------
+
             "progress_percent": progress_percent,
-            "completed_at": enr.completed_at.isoformat() if enr.completed_at else None,
-            "enrolled_at": enr.created_at.isoformat() if enr.created_at else None,
+
+            # -----------------------------------------------
+            # DATES
+            # -----------------------------------------------
+
+            "completed_at": completed_at,
+            "enrolled_at": enrolled_at,
         })
+
+    # ========================================================
+    # 6. RESULT
+    # ========================================================
 
     return {
         "telegram_id": user.telegram_id,

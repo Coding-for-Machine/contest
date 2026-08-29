@@ -1,0 +1,1198 @@
+{% extends "admin/base.html" %}
+
+{% load admin_urls i18n unfold %}
+
+{% block extrahead %}
+    {{ block.super }}
+
+    <script src="{% url 'admin:jsi18n' %}"></script>
+
+    {{ form.media }}
+
+    {% if choice_formset %}
+        {{ choice_formset.media }}
+    {% endif %}
+
+    {% if matching_formset %}
+        {{ matching_formset.media }}
+    {% endif %}
+
+    {% if arrange_formset %}
+        {{ arrange_formset.media }}
+    {% endif %}
+
+    {% if blank_formset %}
+        {{ blank_formset.media }}
+    {% endif %}
+{% endblock %}
+
+
+{% block content %}
+
+<div class="flex flex-col gap-6">
+
+    {# ========================================================= #}
+    {# HEADER                                                     #}
+    {# ========================================================= #}
+
+    <div class="flex flex-col gap-1">
+        {% component "unfold/components/title.html" %}
+            {{ title|default:"Yangi savol yaratish" }}
+        {% endcomponent %}
+
+        {% component "unfold/components/text.html" with class="text-base-500 dark:text-base-400" %}
+            {% trans "Yangi test savolini yaratish" %}
+        {% endcomponent %}
+    </div>
+
+
+    {# ========================================================= #}
+    {# MESSAGES                                                    #}
+    {# ========================================================= #}
+
+    {% if messages %}
+        <div class="flex flex-col gap-2">
+
+            {% for message in messages %}
+
+                <div
+                    class="
+                        rounded-default
+                        border
+                        px-4 py-3
+                        text-sm
+                        {% if message.tags == 'success' %}
+                            border-green-200
+                            bg-green-50
+                            text-green-800
+                            dark:border-green-900/50
+                            dark:bg-green-950/30
+                            dark:text-green-300
+                        {% elif message.tags == 'error' %}
+                            border-red-200
+                            bg-red-50
+                            text-red-800
+                            dark:border-red-900/50
+                            dark:bg-red-950/30
+                            dark:text-red-300
+                        {% else %}
+                            border-yellow-200
+                            bg-yellow-50
+                            text-yellow-800
+                            dark:border-yellow-900/50
+                            dark:bg-yellow-950/30
+                            dark:text-yellow-300
+                        {% endif %}
+                    "
+                >
+                    {{ message }}
+                </div>
+
+            {% endfor %}
+
+        </div>
+    {% endif %}
+
+
+    {# ========================================================= #}
+    {# FORM                                                        #}
+    {# ========================================================= #}
+
+    <form
+        method="post"
+        action=""
+        novalidate
+        class="flex flex-col gap-6"
+    >
+
+        {% csrf_token %}
+
+
+        {# ===================================================== #}
+        {# ASOSIY MA'LUMOTLAR                                     #}
+        {# ===================================================== #}
+
+        {% component "unfold/components/card.html" with title="Asosiy ma'lumotlar" %}
+
+            <div class="flex flex-col gap-6">
+
+                {# --------------------------------------------- #}
+                {# QUESTION TYPE / DIFFICULTY                     #}
+                {# --------------------------------------------- #}
+
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+                    <div>
+                        {% include "unfold/helpers/field.html" with field=form.question_type %}
+                    </div>
+
+                    <div>
+                        {% include "unfold/helpers/field.html" with field=form.difficulty %}
+                    </div>
+
+                </div>
+
+
+                {# --------------------------------------------- #}
+                {# XP / LESSON / TEST                             #}
+                {# --------------------------------------------- #}
+
+                <div class="grid grid-cols-1 gap-6 lg:grid-cols-2">
+
+                    <div>
+                        {% include "unfold/helpers/field.html" with field=form.xp %}
+                    </div>
+
+
+                    <div class="grid grid-cols-1 gap-6 sm:grid-cols-2">
+
+                        <div>
+                            {% include "unfold/helpers/field.html" with field=form.lesson %}
+                        </div>
+
+                        <div>
+                            {% include "unfold/helpers/field.html" with field=form.test %}
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {# --------------------------------------------- #}
+                {# QUESTION TEXT                                   #}
+                {# --------------------------------------------- #}
+
+                <div>
+                    {% include "unfold/helpers/field.html" with field=form.text %}
+                </div>
+
+
+                {# --------------------------------------------- #}
+                {# EXPLANATION                                     #}
+                {# --------------------------------------------- #}
+
+                <div>
+                    {% include "unfold/helpers/field.html" with field=form.explanation %}
+                </div>
+
+
+                {# --------------------------------------------- #}
+                {# NON FIELD ERRORS                                #}
+                {# --------------------------------------------- #}
+
+                {% if form.non_field_errors %}
+
+                    <div
+                        class="
+                            rounded-default
+                            border
+                            border-red-200
+                            bg-red-50
+                            px-4 py-3
+                            text-sm
+                            text-red-800
+                            dark:border-red-900/50
+                            dark:bg-red-950/30
+                            dark:text-red-300
+                        "
+                    >
+                        {{ form.non_field_errors }}
+                    </div>
+
+                {% endif %}
+
+            </div>
+
+        {% endcomponent %}
+
+
+
+        {# ========================================================= #}
+        {# MULTIPLE CHOICE                                            #}
+        {# ========================================================= #}
+
+        <div
+            id="section-multiple_choice"
+            class="question-section"
+            style="display: none;"
+        >
+
+            {% component "unfold/components/card.html" with title="Variantlar" %}
+
+                <div class="flex flex-col gap-5">
+
+                    <div class="text-sm text-base-500 dark:text-base-400">
+                        {% trans "Kamida 2 ta variant va 1 ta to'g'ri javob belgilang." %}
+                    </div>
+
+
+                    {{ choice_formset.management_form }}
+
+
+                    <div
+                        id="choices-container"
+                        class="flex flex-col gap-3"
+                    >
+
+                        {% for choice in choice_formset %}
+
+                            <div
+                                class="
+                                    choice-row
+                                    rounded-default
+                                    border
+                                    border-base-200
+                                    bg-base-50
+                                    p-4
+                                    dark:border-base-700
+                                    dark:bg-base-900
+                                "
+                            >
+
+                                <div
+                                    class="
+                                        grid
+                                        grid-cols-1
+                                        gap-4
+                                        md:grid-cols-[1fr_auto_auto]
+                                        md:items-end
+                                    "
+                                >
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=choice.text %}
+                                    </div>
+
+
+                                    <div class="pb-1">
+                                        {% include "unfold/helpers/field.html" with field=choice.is_correct %}
+                                    </div>
+
+
+                                    {% if choice.DELETE %}
+                                        <div class="pb-1">
+                                            {% include "unfold/helpers/field.html" with field=choice.DELETE %}
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if choice.id %}
+                                    {{ choice.id }}
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <div class="flex">
+
+                        {% component "unfold/components/button.html" with name="add_choice" type="button" class="w-fit" %}
+                            + {% trans "Variant qo'shish" %}
+                        {% endcomponent %}
+
+                    </div>
+
+                </div>
+
+            {% endcomponent %}
+
+        </div>
+
+
+
+        {# ========================================================= #}
+        {# MATCHING                                                    #}
+        {# ========================================================= #}
+
+        <div
+            id="section-matching"
+            class="question-section"
+            style="display: none;"
+        >
+
+            {% component "unfold/components/card.html" with title="Juftliklar" %}
+
+                <div class="flex flex-col gap-5">
+
+                    <div class="text-sm text-base-500 dark:text-base-400">
+                        {% trans "Chap va o'ng tomonlarni juftlang." %}
+                    </div>
+
+
+                    {{ matching_formset.management_form }}
+
+
+                    <div
+                        id="matching-container"
+                        class="flex flex-col gap-3"
+                    >
+
+                        {% for matching in matching_formset %}
+
+                            <div
+                                class="
+                                    matching-row
+                                    rounded-default
+                                    border
+                                    border-base-200
+                                    bg-base-50
+                                    p-4
+                                    dark:border-base-700
+                                    dark:bg-base-900
+                                "
+                            >
+
+                                <div
+                                    class="
+                                        grid
+                                        grid-cols-1
+                                        gap-4
+                                        md:grid-cols-[1fr_auto_1fr_auto]
+                                        md:items-end
+                                    "
+                                >
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=matching.left %}
+                                    </div>
+
+
+                                    <div
+                                        class="
+                                            hidden
+                                            items-center
+                                            justify-center
+                                            pb-2
+                                            text-base-400
+                                            md:flex
+                                        "
+                                    >
+                                        ↔
+                                    </div>
+
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=matching.right %}
+                                    </div>
+
+
+                                    {% if matching.DELETE %}
+                                        <div class="pb-1">
+                                            {% include "unfold/helpers/field.html" with field=matching.DELETE %}
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {{ matching.order }}
+
+                                {% if matching.id %}
+                                    {{ matching.id }}
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <div class="flex">
+
+                        {% component "unfold/components/button.html" with name="add_matching" type="button" class="w-fit" %}
+                            + {% trans "Juftlik qo'shish" %}
+                        {% endcomponent %}
+
+                    </div>
+
+                </div>
+
+            {% endcomponent %}
+
+        </div>
+
+
+
+        {# ========================================================= #}
+        {# ARRANGE WORDS                                               #}
+        {# ========================================================= #}
+
+        <div
+            id="section-arrange_words"
+            class="question-section"
+            style="display: none;"
+        >
+
+            {% component "unfold/components/card.html" with title="So'zlar va pozitsiyalar" %}
+
+                <div class="flex flex-col gap-5">
+
+                    <div class="text-sm text-base-500 dark:text-base-400">
+                        {% trans "So'zlarni to'g'ri tartibda joylashtirish uchun pozitsiyalarni belgilang." %}
+                    </div>
+
+
+                    {{ arrange_formset.management_form }}
+
+
+                    <div
+                        id="arrange-container"
+                        class="flex flex-col gap-3"
+                    >
+
+                        {% for arrange in arrange_formset %}
+
+                            <div
+                                class="
+                                    arrange-row
+                                    rounded-default
+                                    border
+                                    border-base-200
+                                    bg-base-50
+                                    p-4
+                                    dark:border-base-700
+                                    dark:bg-base-900
+                                "
+                            >
+
+                                <div
+                                    class="
+                                        grid
+                                        grid-cols-1
+                                        gap-4
+                                        md:grid-cols-[1fr_180px_auto]
+                                        md:items-end
+                                    "
+                                >
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=arrange.text %}
+                                    </div>
+
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=arrange.correct_position %}
+                                    </div>
+
+
+                                    {% if arrange.DELETE %}
+                                        <div class="pb-1">
+                                            {% include "unfold/helpers/field.html" with field=arrange.DELETE %}
+                                        </div>
+                                    {% endif %}
+
+                                </div>
+
+
+                                {% if arrange.id %}
+                                    {{ arrange.id }}
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <div class="flex">
+
+                        {% component "unfold/components/button.html" with name="add_arrange" type="button" class="w-fit" %}
+                            + {% trans "So'z qo'shish" %}
+                        {% endcomponent %}
+
+                    </div>
+
+                </div>
+
+            {% endcomponent %}
+
+        </div>
+
+
+
+        {# ========================================================= #}
+        {# FILL BLANKS                                                 #}
+        {# ========================================================= #}
+
+        <div
+            id="section-fill_blanks"
+            class="question-section"
+            style="display: none;"
+        >
+
+            {% component "unfold/components/card.html" with title="Bo'sh joylar va javoblar" %}
+
+                <div class="flex flex-col gap-5">
+
+                    <div class="text-sm text-base-500 dark:text-base-400">
+                        {% trans "Har bir bo'sh joy uchun pozitsiya, katta-kichik harf sezuvchanligi va javoblarni kiriting." %}
+                    </div>
+
+
+                    {{ blank_formset.management_form }}
+
+
+                    <div
+                        id="blank-container"
+                        class="flex flex-col gap-3"
+                    >
+
+                        {% for blank in blank_formset %}
+
+                            <div
+                                class="
+                                    blank-row
+                                    rounded-default
+                                    border
+                                    border-base-200
+                                    bg-base-50
+                                    p-4
+                                    dark:border-base-700
+                                    dark:bg-base-900
+                                "
+                            >
+
+                                <div class="flex flex-col gap-4">
+
+                                    <div
+                                        class="
+                                            grid
+                                            grid-cols-1
+                                            gap-4
+                                            md:grid-cols-[180px_1fr_auto]
+                                            md:items-end
+                                        "
+                                    >
+
+                                        <div>
+                                            {% include "unfold/helpers/field.html" with field=blank.position %}
+                                        </div>
+
+
+                                        <div>
+                                            {% include "unfold/helpers/field.html" with field=blank.case_sensitive %}
+                                        </div>
+
+
+                                        {% if blank.DELETE %}
+                                            <div class="pb-1">
+                                                {% include "unfold/helpers/field.html" with field=blank.DELETE %}
+                                            </div>
+                                        {% endif %}
+
+                                    </div>
+
+
+                                    <div>
+                                        {% include "unfold/helpers/field.html" with field=blank.answers %}
+                                    </div>
+
+                                </div>
+
+
+                                {% if blank.id %}
+                                    {{ blank.id }}
+                                {% endif %}
+
+                            </div>
+
+                        {% endfor %}
+
+                    </div>
+
+
+                    <div class="flex">
+
+                        {% component "unfold/components/button.html" with name="add_blank" type="button" class="w-fit" %}
+                            + {% trans "Bo'sh joy qo'shish" %}
+                        {% endcomponent %}
+
+                    </div>
+
+                </div>
+
+            {% endcomponent %}
+
+        </div>
+
+
+
+        {# ========================================================= #}
+        {# ACTIONS                                                     #}
+        {# ========================================================= #}
+
+        <div
+            class="
+                flex
+                flex-col
+                gap-3
+                border-t
+                border-base-200
+                pt-5
+                dark:border-base-800
+                sm:flex-row
+                sm:items-center
+                sm:justify-end
+            "
+        >
+
+            <a
+                href="{% url 'admin:courses_coursequestion_changelist' %}"
+                class="
+                    inline-flex
+                    min-h-10
+                    items-center
+                    justify-center
+                    rounded-default
+                    border
+                    border-base-200
+                    bg-white
+                    px-4
+                    text-sm
+                    font-medium
+                    text-font-default-light
+                    transition
+                    hover:bg-base-50
+                    dark:border-base-700
+                    dark:bg-base-900
+                    dark:text-font-default-dark
+                    dark:hover:bg-base-800
+                "
+            >
+                {% trans "Bekor qilish" %}
+            </a>
+
+
+            {% component "unfold/components/button.html" with submit=1 %}
+                {% trans "Saqlash" %}
+            {% endcomponent %}
+
+        </div>
+
+    </form>
+
+</div>
+
+
+{# ================================================================= #}
+{# JAVASCRIPT                                                        #}
+{# ================================================================= #}
+
+<script>
+(function () {
+    "use strict";
+
+    function getQuestionTypeElement() {
+        return document.getElementById("id_question_type");
+    }
+
+
+    function toggleQuestionTypeFields() {
+        const typeElement = getQuestionTypeElement();
+
+        if (!typeElement) {
+            return;
+        }
+
+        const type = String(typeElement.value || "").toLowerCase();
+
+        document.querySelectorAll(".question-section").forEach(function (section) {
+            section.style.display = "none";
+        });
+
+        const section = document.getElementById("section-" + type);
+
+        if (section) {
+            section.style.display = "";
+        }
+    }
+
+
+    function getTotalForms(prefix) {
+        return document.getElementById(
+            "id_" + prefix + "-TOTAL_FORMS"
+        );
+    }
+
+
+    function addChoice() {
+        const container = document.getElementById("choices-container");
+        const totalForms = getTotalForms("choices");
+
+        if (!container || !totalForms) {
+            return;
+        }
+
+        const formNum = parseInt(totalForms.value, 10);
+
+        const row = document.createElement("div");
+
+        row.className =
+            "choice-row rounded-default border border-base-200 " +
+            "bg-base-50 p-4 dark:border-base-700 dark:bg-base-900";
+
+        row.innerHTML = `
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto] md:items-end">
+
+                <div>
+                    <label
+                        for="id_choices-${formNum}-text"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        Variant
+                    </label>
+
+                    <input
+                        type="text"
+                        name="choices-${formNum}-text"
+                        id="id_choices-${formNum}-text"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            placeholder:text-font-subtle-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                            dark:placeholder:text-font-subtle-dark
+                        "
+                        placeholder="Variant matni..."
+                    >
+                </div>
+
+                <label class="flex items-center gap-2 pb-2 text-sm text-font-default-light dark:text-font-default-dark">
+                    <input
+                        type="checkbox"
+                        name="choices-${formNum}-is_correct"
+                        id="id_choices-${formNum}-is_correct"
+                        class="rounded border-base-300 text-primary-600 focus:ring-primary-500 dark:border-base-600"
+                    >
+                    <span>To'g'ri javob</span>
+                </label>
+
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        totalForms.value = formNum + 1;
+    }
+
+
+    function addMatching() {
+        const container = document.getElementById("matching-container");
+        const totalForms = getTotalForms("matching");
+
+        if (!container || !totalForms) {
+            return;
+        }
+
+        const formNum = parseInt(totalForms.value, 10);
+
+        const row = document.createElement("div");
+
+        row.className =
+            "matching-row rounded-default border border-base-200 " +
+            "bg-base-50 p-4 dark:border-base-700 dark:bg-base-900";
+
+        row.innerHTML = `
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
+
+                <div>
+                    <label
+                        for="id_matching-${formNum}-left"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        Chap tomon
+                    </label>
+
+                    <input
+                        type="text"
+                        name="matching-${formNum}-left"
+                        id="id_matching-${formNum}-left"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                        "
+                        placeholder="Chap tomon..."
+                    >
+                </div>
+
+                <div class="hidden pb-2 text-base-400 md:block">
+                    ↔
+                </div>
+
+                <div>
+                    <label
+                        for="id_matching-${formNum}-right"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        O'ng tomon
+                    </label>
+
+                    <input
+                        type="text"
+                        name="matching-${formNum}-right"
+                        id="id_matching-${formNum}-right"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                        "
+                        placeholder="O'ng tomon..."
+                    >
+                </div>
+
+            </div>
+
+            <input
+                type="hidden"
+                name="matching-${formNum}-order"
+                value="${formNum + 1}"
+            >
+        `;
+
+        container.appendChild(row);
+
+        totalForms.value = formNum + 1;
+    }
+
+
+    function addArrange() {
+        const container = document.getElementById("arrange-container");
+        const totalForms = getTotalForms("arrange");
+
+        if (!container || !totalForms) {
+            return;
+        }
+
+        const formNum = parseInt(totalForms.value, 10);
+
+        const row = document.createElement("div");
+
+        row.className =
+            "arrange-row rounded-default border border-base-200 " +
+            "bg-base-50 p-4 dark:border-base-700 dark:bg-base-900";
+
+        row.innerHTML = `
+            <div class="grid grid-cols-1 gap-4 md:grid-cols-[1fr_180px] md:items-end">
+
+                <div>
+                    <label
+                        for="id_arrange-${formNum}-text"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        So'z
+                    </label>
+
+                    <input
+                        type="text"
+                        name="arrange-${formNum}-text"
+                        id="id_arrange-${formNum}-text"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                        "
+                        placeholder="So'z..."
+                    >
+                </div>
+
+                <div>
+                    <label
+                        for="id_arrange-${formNum}-correct_position"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        Pozitsiya
+                    </label>
+
+                    <input
+                        type="number"
+                        name="arrange-${formNum}-correct_position"
+                        id="id_arrange-${formNum}-correct_position"
+                        min="1"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                        "
+                        placeholder="1"
+                    >
+                </div>
+
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        totalForms.value = formNum + 1;
+    }
+
+
+    function addBlank() {
+        const container = document.getElementById("blank-container");
+        const totalForms = getTotalForms("blanks");
+
+        if (!container || !totalForms) {
+            return;
+        }
+
+        const formNum = parseInt(totalForms.value, 10);
+
+        const row = document.createElement("div");
+
+        row.className =
+            "blank-row rounded-default border border-base-200 " +
+            "bg-base-50 p-4 dark:border-base-700 dark:bg-base-900";
+
+        row.innerHTML = `
+            <div class="flex flex-col gap-4">
+
+                <div class="grid grid-cols-1 gap-4 md:grid-cols-[180px_1fr] md:items-end">
+
+                    <div>
+                        <label
+                            for="id_blanks-${formNum}-position"
+                            class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                        >
+                            Pozitsiya
+                        </label>
+
+                        <input
+                            type="number"
+                            name="blanks-${formNum}-position"
+                            id="id_blanks-${formNum}-position"
+                            min="1"
+                            class="
+                                block
+                                w-full
+                                rounded-default
+                                border
+                                border-base-200
+                                bg-white
+                                px-3
+                                py-2
+                                text-sm
+                                text-font-default-light
+                                focus:border-primary-600
+                                focus:outline-none
+                                dark:border-base-700
+                                dark:bg-base-900
+                                dark:text-font-default-dark
+                            "
+                        >
+                    </div>
+
+
+                    <label
+                        class="
+                            flex
+                            items-center
+                            gap-2
+                            pb-2
+                            text-sm
+                            text-font-default-light
+                            dark:text-font-default-dark
+                        "
+                    >
+
+                        <input
+                            type="checkbox"
+                            name="blanks-${formNum}-case_sensitive"
+                            id="id_blanks-${formNum}-case_sensitive"
+                            class="
+                                rounded
+                                border-base-300
+                                text-primary-600
+                                focus:ring-primary-500
+                                dark:border-base-600
+                            "
+                        >
+
+                        <span>
+                            Katta-kichik harf sezuvchan
+                        </span>
+
+                    </label>
+
+                </div>
+
+
+                <div>
+
+                    <label
+                        for="id_blanks-${formNum}-answers"
+                        class="mb-2 block text-sm font-medium text-font-default-light dark:text-font-default-dark"
+                    >
+                        Javoblar
+                    </label>
+
+                    <input
+                        type="text"
+                        name="blanks-${formNum}-answers"
+                        id="id_blanks-${formNum}-answers"
+                        class="
+                            block
+                            w-full
+                            rounded-default
+                            border
+                            border-base-200
+                            bg-white
+                            px-3
+                            py-2
+                            text-sm
+                            text-font-default-light
+                            placeholder:text-font-subtle-light
+                            focus:border-primary-600
+                            focus:outline-none
+                            dark:border-base-700
+                            dark:bg-base-900
+                            dark:text-font-default-dark
+                            dark:placeholder:text-font-subtle-dark
+                        "
+                        placeholder="apple, Apple, APPLE"
+                    >
+
+                </div>
+
+            </div>
+        `;
+
+        container.appendChild(row);
+
+        totalForms.value = formNum + 1;
+    }
+
+
+    document.addEventListener("DOMContentLoaded", function () {
+
+        toggleQuestionTypeFields();
+
+
+        const questionType = getQuestionTypeElement();
+
+        if (questionType) {
+            questionType.addEventListener(
+                "change",
+                toggleQuestionTypeFields
+            );
+        }
+
+
+        const addChoiceButton = document.querySelector(
+            '[name="add_choice"]'
+        );
+
+        const addMatchingButton = document.querySelector(
+            '[name="add_matching"]'
+        );
+
+        const addArrangeButton = document.querySelector(
+            '[name="add_arrange"]'
+        );
+
+        const addBlankButton = document.querySelector(
+            '[name="add_blank"]'
+        );
+
+
+        if (addChoiceButton) {
+            addChoiceButton.addEventListener(
+                "click",
+                addChoice
+            );
+        }
+
+        if (addMatchingButton) {
+            addMatchingButton.addEventListener(
+                "click",
+                addMatching
+            );
+        }
+
+        if (addArrangeButton) {
+            addArrangeButton.addEventListener(
+                "click",
+                addArrange
+            );
+        }
+
+        if (addBlankButton) {
+            addBlankButton.addEventListener(
+                "click",
+                addBlank
+            );
+        }
+
+    });
+
+})();
+</script>
+
+{% endblock %}

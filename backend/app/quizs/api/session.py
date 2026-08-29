@@ -9,7 +9,7 @@ MUHIM PRINSIP — JAVOBLAR QANDAY TEKSHIRILADI:
     Har bir /answer chaqiruvi FAQAT saqlaydi (UserResponse.update_or_create),
     HECH QANDAY tekshirish (grading) qilmaydi. Grading FAQAT /finish
     chaqirilganda, bitta atomik blokda, SESSIYADAGI BARCHA javoblar
-    BIRGALIKDA (bittalab emas) TestSession.calculate_mathematical_score()
+    BIRGALIKDA (bittalab emas) TestSession.calculate_rasch_theta()
     orqali hisoblanadi.
 """
 
@@ -39,12 +39,12 @@ session_api = Router(tags=["Test Session API"])
 #              REQUEST / QUERY STRUKTURALARI (msgspec)
 # =========================================================
 class StartTestIn(msgspec.Struct):
-    access_code: str | None = None
+    access_code: Optional[str] = None
 
 
 class AnswerIn(msgspec.Struct):
     question_id: int
-    choice_id: int | None = None  # None = javobsiz qoldirish
+    choice_id: Optional[int] = None  # None = javobsiz qoldirish
 
 
 class BulkAnswersIn(msgspec.Struct):
@@ -133,7 +133,7 @@ def _check_attempts(test: Test, user: BaseUser):
         )
 
 
-def _selected_questions_for(session: TestSession) -> list[dict]:
+def _selected_questions_for(session: TestSession) -> List[dict]:
     """
     Agar test tasodifiy (random) savol tanlovidan foydalansa, tanlangan savol
     ID-lari seans davomida keshda saqlanadi.
@@ -413,6 +413,7 @@ async def use_lifeline(
 #      5. TESTNI YAKUNLASH   (POST /session/{id}/finish)
 #
 #      BU YERDA (va FAQAT SHU YERDA) grading amalga oshadi.
+#      Rasch MLE + XP + JMLE Celery task.
 # =========================================================
 @session_api.post("/session/{session_id}/finish")
 async def finish_test_session(
@@ -420,40 +421,38 @@ async def finish_test_session(
     session_id: uuid.UUID,
     request_user: BaseUser = Depends(get_current_user),
 ):
-    def _run():
+    def _validate():
         session = _get_owned_session(session_id, request_user)
 
         if session.status == TestSession.Status.COMPLETED:
-            return session
+            return session, True  # Allaqachon yakunlangan
 
         if session.status == TestSession.Status.IN_PROGRESS and _is_time_expired(session):
             session.status = TestSession.Status.EXPIRED
             session.save(update_fields=["status"])
 
-        # Asosiy hisoblash - model metodi orqali
-        session.calculate_mathematical_score()
-        session.refresh_from_db()
-        return session
+        return session, False
 
-    session = await sync_to_async(_run, thread_sensitive=True)()
+    session, already_completed = await sync_to_async(_validate, thread_sensitive=True)()
 
-    def _final_view():
-        percentage = round(session.calculate_percentage(), 2)
-        passed = percentage >= session.test.min_pass_percentage
-        return percentage, passed
-
-    percentage, passed = await sync_to_async(_final_view, thread_sensitive=True)()
+    # Agar hali yakunlanmagan va faol bo'lsa — Rasch hisoblash
+    if not already_completed and session.status == TestSession.Status.IN_PROGRESS:
+        await session.calculate_rasch_theta()
+        # DB dan yangilangan qiymatlarni o'qiymiz
+        session = await TestSession.objects.select_related("test").aget(pk=session.id)
 
     return {
         "session_id": str(session.id),
         "status": session.status,
-        "score": session.score,
-        "percentage": percentage,
-        "passed": passed,
+        "rasch_theta": session.rasch_theta,
+        "rasch_se": session.rasch_se,
+        "raw_percentage": session.raw_percentage,
+        "progress": round(session.calculate_percentage(), 2) if session.rasch_theta is not None else 0.0,
+        "passed": session.passed,
         "correct_count": session.correct_count,
         "wrong_count": session.wrong_count,
         "unanswered_count": session.unanswered_count,
-        "xp_earned": session.total_xp_earned,
+        "total_xp_earned": session.total_xp_earned,
     }
 
 
@@ -557,13 +556,15 @@ async def get_session_review(
             "session_id": str(session.id),
             "test_title": session.test.title,
             "status": session.status,
-            "score": session.score,
-            "percentage": round(session.calculate_percentage(), 2),
-            "passed": session.calculate_percentage() >= session.test.min_pass_percentage,
+            "rasch_theta": session.rasch_theta,
+            "rasch_se": session.rasch_se,
+            "raw_percentage": session.raw_percentage,
+            "progress": round(session.calculate_percentage(), 2) if session.rasch_theta is not None else 0.0,
+            "passed": session.passed,
             "correct_count": session.correct_count,
             "wrong_count": session.wrong_count,
             "unanswered_count": session.unanswered_count,
-            "xp_earned": session.total_xp_earned,
+            "total_xp_earned": session.total_xp_earned,
             "started_at": session.started_at.isoformat(),
             "completed_at": session.completed_at.isoformat() if session.completed_at else None,
             "questions": items,
@@ -583,35 +584,89 @@ async def get_my_sessions_for_test(
     params: Annotated[SessionHistoryParams, Query()],
     request_user: BaseUser = Depends(get_current_user),
 ):
-    test_id = await Test.objects.filter(slug=slug).values_list("id", flat=True).afirst()
-    if not test_id:
-        raise HTTPException(status_code=404, detail="Test topilmadi.")
-
-    queryset = (
-        TestSession.objects.filter(user_id=request_user.id, test_id=test_id)
-        .only(
-            "id", "status", "score", "correct_count", "wrong_count",
-            "unanswered_count", "total_xp_earned", "started_at", "completed_at",
-        )
-        .order_by("-started_at")[params.offset : params.offset + params.limit]
+    test_id = await (
+        Test.objects
+        .filter(slug=slug)
+        .values_list("id", flat=True)
+        .afirst()
     )
 
-    data = [
-        {
+    if not test_id:
+        raise HTTPException(
+            status_code=404,
+            detail="Test topilmadi.",
+        )
+
+    queryset = (
+        TestSession.objects
+        .filter(
+            user_id=request_user.id,
+            test_id=test_id,
+        )
+        .select_related("test")
+        .only(
+            "id",
+            "status",
+            "rasch_theta",
+            "rasch_se",
+            "raw_percentage",
+            "correct_count",
+            "wrong_count",
+            "unanswered_count",
+            "total_xp_earned",
+            "started_at",
+            "completed_at",
+
+            # s.passed / test threshold uchun
+            "test__rasch_theta_pass_threshold",
+        )
+        .order_by("-started_at")[
+            params.offset : params.offset + params.limit
+        ]
+    )
+
+    data = []
+
+    async for s in queryset:
+        passed = (
+            s.rasch_theta is not None
+            and s.rasch_theta >= s.test.rasch_theta_pass_threshold
+        )
+
+        progress = (
+            round(s.calculate_percentage(), 2)
+            if s.rasch_theta is not None
+            else 0.0
+        )
+
+        data.append({
             "session_id": str(s.id),
             "status": s.status,
-            "score": s.score,
+            "rasch_theta": s.rasch_theta,
+            "rasch_se": s.rasch_se,
+            "raw_percentage": s.raw_percentage,
+            "progress": progress,
+            "passed": passed,
             "correct": s.correct_count,
             "wrong": s.wrong_count,
             "unanswered": s.unanswered_count,
             "xp": s.total_xp_earned,
             "started_at": s.started_at.strftime("%Y-%m-%d %H:%M"),
-            "completed_at": s.completed_at.strftime("%Y-%m-%d %H:%M") if s.completed_at else None,
-        }
-        async for s in queryset
-    ]
+            "completed_at": (
+                s.completed_at.strftime("%Y-%m-%d %H:%M")
+                if s.completed_at
+                else None
+            ),
+        })
 
-    total_count = await TestSession.objects.filter(user_id=request_user.id, test_id=test_id).acount()
+    total_count = await (
+        TestSession.objects
+        .filter(
+            user_id=request_user.id,
+            test_id=test_id,
+        )
+        .acount()
+    )
 
     return {
         "count": total_count,
@@ -619,13 +674,11 @@ async def get_my_sessions_for_test(
         "offset": params.offset,
         "data": data,
     }
-
-
 # =========================================================
 #   10. UMUMIY STATISTIKA WIDJETI   (GET /stats/)
 # =========================================================
 @session_api.get("/stats")
-async def test_stats(request: Request, request_user: BaseUser | None = Depends(get_current_user_option)):
+async def test_stats(request: Request, request_user: Optional[BaseUser] = Depends(get_current_user_option)):
     cache_key = "tests_stats_total_active"
     total_active = await cache.aget(cache_key)
     if total_active is None:
@@ -643,21 +696,21 @@ async def test_stats(request: Request, request_user: BaseUser | None = Depends(g
             .count()
         )
 
-        best_sessions: dict = {}
+        best_sessions = {}
         completed_qs = TestSession.objects.filter(
             user_id=request_user.id, status=TestSession.Status.COMPLETED
         ).select_related("test")
 
         for s in completed_qs:
             prev = best_sessions.get(s.test_id)
-            if not prev or s.score > prev.score:
+            if not prev or (s.rasch_theta or -999) > (prev.rasch_theta or -999):
                 best_sessions[s.test_id] = s
 
         passed_count = 0
         total_xp = 0
         for s in best_sessions.values():
             total_xp += s.total_xp_earned
-            if s.calculate_percentage() >= s.test.min_pass_percentage:
+            if s.passed:
                 passed_count += 1
 
         return attempted_count, passed_count, total_xp
@@ -670,5 +723,5 @@ async def test_stats(request: Request, request_user: BaseUser | None = Depends(g
         "total": total_active,
         "attempted": attempted_count,
         "passed": passed_count,
-        "total_xp": total_xp,
+        "xp": total_xp,
     }

@@ -1,13 +1,17 @@
-from django.db import models
+import uuid
+from django.core.exceptions import ValidationError
+from django.db import models, transaction
 from django.utils.text import slugify
 from django.utils import timezone
 from django.conf import settings
-from centers.models import CenterScopedMixin
-from baseuser.models import BaseUser
-from problems.models import Problem
 from mdeditor.fields import MDTextField
 from django.core.validators import MinValueValidator, MaxValueValidator
 from django.utils.translation import gettext_lazy as _
+
+from centers.models import CenterScopedMixin
+from baseuser.models import BaseUser
+from video.models import Video
+
 
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField("Yaratilgan vaqti", auto_now_add=True)
@@ -38,21 +42,21 @@ class Course(CenterScopedMixin, TimeStampedModel):
 
     # NARX QISMI
     price = models.DecimalField(
-        "Kurs narxi", 
-        max_digits=10, 
-        decimal_places=2, 
+        "Kurs narxi",
+        max_digits=10,
+        decimal_places=2,
         default=0.00,
         help_text="Kursning asosiy narxi (masalan: 500000.00)"
     )
     discount_price = models.DecimalField(
-        "Chegirmadagi narx", 
-        max_digits=10, 
-        decimal_places=2, 
-        null=True, 
+        "Chegirmadagi narx",
+        max_digits=10,
+        decimal_places=2,
+        null=True,
         blank=True,
         help_text="Agar chegirma bo'lsa, yakuniy narxni kiriting"
     )
-    
+
     intro_video = models.ForeignKey(
         'video.Video', on_delete=models.SET_NULL, null=True, blank=True,
         related_name="intro_courses", verbose_name="Kirish yoki qoidalar videosi",
@@ -63,7 +67,11 @@ class Course(CenterScopedMixin, TimeStampedModel):
         on_delete=models.CASCADE,
         related_name='courses',
     )
-    level = models.CharField(max_length=20, choices=[('beginner','Boshlang\'ich'),('intermediate','O\'rta'),('advanced','Yuqori')], default='beginner')
+    level = models.CharField(
+        max_length=20,
+        choices=[('beginner', "Boshlang'ich"), ('intermediate', "O'rta"), ('advanced', "Yuqori")],
+        default='beginner'
+    )
     total_modules_count = models.PositiveSmallIntegerField(default=0, editable=False)
     total_lessons_count = models.PositiveSmallIntegerField(default=0, verbose_name="Jami darslar soni")
     total_test_count = models.PositiveSmallIntegerField(default=0, verbose_name="Jami test soni")
@@ -71,7 +79,16 @@ class Course(CenterScopedMixin, TimeStampedModel):
     class Meta:
         verbose_name = "✨ Kurs"
         verbose_name_plural = "✨ Kurslar"
-        ordering = ['-created_at'] 
+        ordering = ['-created_at']
+
+    def clean(self):
+        super().clean()
+        if self.discount_price is not None and self.discount_price >= self.price:
+            raise ValidationError({
+                "discount_price": "Chegirma narxi asosiy narxdan kichik bo'lishi kerak."
+            })
+        if self.price is not None and self.price < 0:
+            raise ValidationError({"price": "Narx manfiy bo'lishi mumkin emas."})
 
     @property
     def current_price(self):
@@ -135,6 +152,12 @@ class Modul(TimeStampedModel):
         ordering = ["order", "id"]
         verbose_name = "📚 Kurs Bobi"
         verbose_name_plural = "📚 Kurs boblari"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["course", "order"],
+                name="unique_module_order_per_course",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.title} ({self.course.title})"
@@ -172,9 +195,13 @@ class Lesson(TimeStampedModel):
         related_name='lessons',
     )
     order = models.PositiveIntegerField(
-        default=0,
+        default=1,
+        validators=[MinValueValidator(1)],
         verbose_name=_("Tartib raqami"),
-        help_text=_("Ushbu blok dars interfeysida qaysi ketma-ketlikda chiqishini tartiblovchi raqam.")
+        help_text=_(
+            "1 dan boshlanadigan natural son. "
+            "Masalan: 1, 2, 3, 4..."
+        ),
     )
     is_active = models.BooleanField(
         default=True,
@@ -192,11 +219,17 @@ class Lesson(TimeStampedModel):
 
     def __str__(self):
         return f"kurs-{self.modul.course.title[:20]}:modul-{self.modul.title[:15]}:dars-{self.title[:15]}"
-    
+
     class Meta:
         ordering = ["order", "id"]
-        verbose_name = "📝 Dars"
-        verbose_name_plural = "📝 Darslar"
+        verbose_name = "📚 Darslik"
+        verbose_name_plural = "📚 Darslik"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["modul", "order"],
+                name="unique_lesson_order_per_module",
+            ),
+        ]
 
     async def get_previous(self):
         """Shu darsdan oldingi bitta darsni qaytaradi."""
@@ -232,6 +265,15 @@ class Lesson(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
+            if self._state.adding and not self.order:
+                last_order = (
+                    Lesson.objects
+                    .filter(modul=self.modul)
+                    .aggregate(max_order=models.Max("order"))
+                )["max_order"] or 0
+
+                self.order = last_order + 1
+
             base_slug = slugify(self.title)
             slug = base_slug
             counter = 1
@@ -265,19 +307,19 @@ class Lecture(TimeStampedModel):
         verbose_name=_("Darslik"),
         help_text=_("Ushbu ma'ruza/video qaysi dars tarkibiga kirishini tanlang.")
     )
-    
+
     video = models.ForeignKey(
-        'video.Video', 
-        on_delete=models.SET_NULL, 
-        null=True, 
+        'video.Video',
+        on_delete=models.SET_NULL,
+        null=True,
         blank=True,
-        related_name="lectures", 
+        related_name="lectures",
         verbose_name=_("Video darslik"),
         help_text=_("Agar ushbu mavzuda video darslik bo'lsa, tanlang. Bo'sh qolsa, faqat matnli ma'ruza bo'ladi.")
     )
 
     title = models.CharField(
-        _("Mavzu sarlavhasi"), 
+        _("Mavzu sarlavhasi"),
         max_length=200,
         help_text=_("Mavzu nomi (masalan: 1.2. *args va **kwargs argumentlari)")
     )
@@ -305,10 +347,10 @@ class Lecture(TimeStampedModel):
         verbose_name=_("O'qish vaqti (daqiqa)"),
         help_text=_("Faqat matnni o'qish uchun taxminiy vaqt.")
     )
-    
+
     xp = models.PositiveIntegerField(
         verbose_name=_("XP mukofoti"),
-        default=10, 
+        default=10,
         validators=[MinValueValidator(5), MaxValueValidator(20)],
         help_text=_(
             "Ushbu ma'ruza muvaffaqiyatli yakunlanganda (video ko'rilganda yoki "
@@ -332,13 +374,18 @@ class Lecture(TimeStampedModel):
             models.Index(fields=['slug']),
             models.Index(fields=['video']),
         ]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["lesson", "order"],
+                name="unique_lecture_order_per_lesson",
+            ),
+        ]
 
     def __str__(self):
         type_prefix = "🎥 Video+Matn" if self.video and self.body else ("🎥 Faqat Video" if self.video else "📄 Faqat Matn")
         return f"[{type_prefix}] {self.lesson.title[:15]} -> {self.title[:25]}"
 
     def clean(self):
-        from django.core.exceptions import ValidationError
         if not self.video and not self.body:
             raise ValidationError(
                 _("Ma'ruza bloki bo'sh bo'lishi mumkin emas! Kamida Video darslik yuklang yoki Matn kiriting.")
@@ -354,3 +401,1086 @@ class Lecture(TimeStampedModel):
                 counter += 1
             self.slug = slug
         super().save(*args, **kwargs)
+
+
+class CourseTestSession(models.Model):
+    id = models.UUIDField(
+        primary_key=True,
+        default=uuid.uuid4,
+        editable=False,
+        verbose_name="Seans ID",
+        help_text="Har bir test topshirish seansi uchun unikal UUID identifikator."
+    )
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="test_sessions",
+        verbose_name="Foydalanuvchi",
+        help_text="Testni topshirayotgan (tizimda faol bo'lgan) talaba."
+    )
+    test = models.ForeignKey(
+        "CourseTest",
+        on_delete=models.CASCADE,
+        related_name="sessions",
+        verbose_name="Test",
+    )
+    correct_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="To'g'ri javoblar soni",
+        help_text="Talaba tomonidan ushbu seansda to'g'ri belgilangan savollarning umumiy miqdori."
+    )
+    wrong_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Noto'g'ri javoblar soni",
+        help_text="Talaba xato belgilagan yoki noto'g'ri topshirgan savollar soni."
+    )
+    unanswered_count = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Javobsiz qoldirilganlar soni",
+        help_text="Talaba tomonidan belgilamasdan o'tkazib yuborilgan yoki vaqt yetmay umuman ochilmagan savollar soni."
+    )
+    total_xp_earned = models.PositiveIntegerField(
+        default=0,
+        db_index=True,
+        verbose_name="Yutilgan XP ball",
+        help_text="Ushbu urinish natijasida foydalanuvchining global profiliga qo'shish uchun hisoblangan butun sonli mukofot balli."
+    )
+    lifelines_used = models.PositiveIntegerField(
+        "Ishlatilgan Reler (Lifeline) soni",
+        default=0,
+        help_text="Ushbu seansda foydalanuvchi hozirgacha ishlatgan lifeline'lar soni "
+                  "(faqat serverda hisoblanadi, frontend hisoblagichiga ishonilmaydi)."
+    )
+
+    started_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Boshlangan vaqti",
+        help_text="Foydalanuvchi testni yechishni boshlagan aniq sana va vaqt."
+    )
+    completed_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="Yakunlangan vaqti",
+        help_text="Test yakunlangan yoki vaqt tugashi sababli tizim tomonidan yopilgan aniq vaqt."
+    )
+
+    class Meta:
+        verbose_name = "⏱ Test Seansi"
+        verbose_name_plural = "⏱ Test Seanslari"
+        ordering = ["-started_at"]
+        indexes = [
+            models.Index(fields=["user", "test"]),
+            models.Index(fields=["-started_at"]),
+        ]
+
+    def __str__(self):
+        username = self.user.username if self.user.username else f"User-{self.user.telegram_id}"
+        return f"{username} - {self.test.title})"
+
+    def calculate_mathematical_score(self):
+        """
+        Seansdagi barcha javoblarni (MULTIPLE_CHOICE, MATCHING, ARRANGE_WORDS,
+        FILL_BLANKS) tekshiradi, ball hisoblaydi va XP beradi.
+        Har bir savol turi CourseUserResponse.check_and_score() orqali
+        o'zini tekshiradi — bu yerda faqat yig'indi hisoblanadi.
+        """
+        from status.models import UserStats
+
+        with transaction.atomic():
+            session = (
+                CourseTestSession.objects
+                .select_for_update()
+                .select_related("test", "user")
+                .get(pk=self.pk)
+            )
+
+            if session.completed_at is not None:
+                return session.total_xp_earned
+
+            penalty_k = session.test.penalty_coefficient
+
+            correct_count = 0
+            wrong_count = 0
+            total_score = 0.0
+
+            test_questions = list(session.test.questions.all())
+            test_question_ids = [q.id for q in test_questions]
+
+            user_responses = (
+                CourseUserResponse.objects
+                .filter(
+                    session=session,
+                    question_id__in=test_question_ids,
+                )
+                .select_related("question", "choice")
+                .prefetch_related("question__matching_pairs", "question__arrange_items", "question__blanks")
+            )
+
+            responses_by_question = {r.question_id: r for r in user_responses}
+            answered_ids = set()
+
+            for question in test_questions:
+                response = responses_by_question.get(question.id)
+                if response is None:
+                    continue
+
+                is_answered, is_correct = response.check_and_score()
+                if not is_answered:
+                    continue
+
+                answered_ids.add(question.id)
+
+                if is_correct:
+                    correct_count += 1
+                    total_score += question.xp
+                else:
+                    wrong_count += 1
+                    total_score -= question.xp * penalty_k
+
+            unanswered_count = len(test_question_ids) - len(answered_ids)
+
+            rounded_score = round(total_score, 2)
+            new_xp_earned = max(0, int(rounded_score))
+
+            previous_best = (
+                CourseTestSession.objects
+                .filter(
+                    user=session.user,
+                    test=session.test,
+                    completed_at__isnull=False,
+                )
+                .exclude(pk=session.pk)
+                .order_by("-total_xp_earned")
+                .first()
+            )
+
+            xp_to_add = (
+                new_xp_earned
+                if not previous_best
+                else max(0, new_xp_earned - previous_best.total_xp_earned)
+            )
+
+            if xp_to_add > 0:
+                UserStats.add_xp(
+                    user=session.user,
+                    xp_amount=xp_to_add,
+                )
+
+            session.correct_count = correct_count
+            session.wrong_count = wrong_count
+            session.unanswered_count = unanswered_count
+            session.total_xp_earned = new_xp_earned
+            session.completed_at = timezone.now()
+
+            session.save(
+                update_fields=[
+                    "correct_count",
+                    "wrong_count",
+                    "unanswered_count",
+                    "total_xp_earned",
+                    "completed_at",
+                ]
+            )
+
+            return rounded_score
+
+
+class CourseTest(TimeStampedModel):
+    """Imtihonlar va bob (Modul) yakunidagi testlarni boshqaruvchi asosiy model."""
+
+    modul = models.OneToOneField(
+        Modul,
+        on_delete=models.CASCADE,
+        related_name="test",
+        verbose_name="Bob (Modul)",
+    )
+    title = models.CharField(
+        "Test nomi",
+        max_length=255,
+        help_text="Test yoki imtihon majmuasining to'liq sarlavhasi."
+    )
+    slug = models.SlugField(
+        "Slug",
+        max_length=255,
+        unique=True,
+        blank=True,
+        help_text="URL manzillari uchun avtomatik hosil bo'luvchi qisqa nom."
+    )
+    description = MDTextField(
+        null=True,
+        blank=True,
+        verbose_name="test sharti (Matn)",
+        help_text="Markdown formatida masalaning to'liq shartini yozing."
+    )
+    duration = models.PositiveIntegerField(
+        "Davomiyligi (daqiqa)",
+        default=60,
+        help_text="Testni yechish uchun foydalanuvchiga beriladigan umumiy vaqt (daqiqa hisobida)."
+    )
+    question_count = models.PositiveIntegerField(
+        "Bazasidagi jami savollar soni",
+        default=0,
+        help_text="Ushbu test tarkibiga qo'shilgan jami umumiy savollar soni (avtomatik yoki qo'lda yangilanadi)."
+    )
+
+    min_pass_percentage = models.PositiveIntegerField(
+        "O'tish foizi",
+        default=60,
+        validators=[MaxValueValidator(100)],
+        help_text="Testdan muvaffaqiyatli o'tish uchun talaba to'plashi kerak bo'lgan eng kam foiz ko'rsatkichi (0-100)."
+    )
+    is_active = models.BooleanField(
+        "Faol",
+        default=True,
+        db_index=True,
+        help_text="Test talabalarga ko'rinishi yoki vaqtincha yashirib qo'yilishi uchun boshqaruv belgisi."
+    )
+
+    penalty_coefficient = models.FloatField(
+        "Jarima koeffitsiyenti (K)",
+        default=0.33,
+        validators=[MinValueValidator(0.0), MaxValueValidator(1.0)],
+        help_text="Noto'g'ri javoblar uchun jarima koeffitsiyenti. Masalan: 0.33 yozilsa, 3 ta xato javob 1 ta to'g'ri javob ballini olib ketadi."
+    )
+    max_lifelines = models.PositiveIntegerField(
+        "Maksimal Reler (Lifeline) soni",
+        default=3,
+        help_text="Talaba test davomida foydalanishi mumkin bo'lgan yordam vositalari (Lifeline) soni."
+    )
+
+    intro_video = models.ForeignKey(
+        Video,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="test_video",
+        verbose_name="Kirish yoki qoidalar videosi",
+        help_text="Testni boshlashdan oldin ko'rsatiladigan yo'riqnoma yoki tushuntirish videosi."
+    )
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name='course_tests',
+        verbose_name="Yaratuvchi o'qituvchi",
+        help_text="Ushbu test majmuasini yaratgan va unga egalik qiluvchi o'qituvchi/admin."
+    )
+
+    class Meta:
+        verbose_name = "📋 Test"
+        verbose_name_plural = "📋 Testlar"
+        ordering = ["-id", "created_at"]
+
+    def __str__(self):
+        return f"Test — {self.title}"
+
+    @property
+    def total_possible_xp(self):
+        """Test tarkibidagi barcha savollarning jami maksimal ballarini hisoblab beradi (Circular importlarsiz)."""
+        return sum(self.questions.values_list('xp', flat=True))
+
+    def clean(self):
+        super().clean()
+        if self.penalty_coefficient is not None and not (0.0 <= self.penalty_coefficient <= 1.0):
+            raise ValidationError({
+                "penalty_coefficient": "Jarima koeffitsiyenti 0 va 1 oralig'ida bo'lishi kerak."
+            })
+
+    def validate_ready_to_activate(self):
+        """
+        Testni faollashtirishdan (is_active=True) oldin chaqirish uchun:
+        testda kamida bitta savol borligini va har bir savol o'zi
+        to'liq (nashrga tayyor) ekanligini tekshiradi.
+        """
+        questions = list(self.questions.all())
+        if not questions:
+            raise ValidationError("Testda kamida bitta savol bo'lishi kerak.")
+
+        errors = []
+        for question in questions:
+            try:
+                question.validate_children_completeness()
+            except ValidationError as e:
+                messages = e.message_dict if hasattr(e, "message_dict") else e.messages
+                errors.append(f"Savol #{question.pk}: {messages}")
+
+        if errors:
+            raise ValidationError(errors)
+        return True
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.title)
+            slug = base_slug
+            counter = 1
+            while CourseTest.objects.filter(slug=slug).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
+
+
+class CourseQuestion(TimeStampedModel):
+    """Test yoki Lesson uchun ishlatiladigan savol modeli."""
+
+    class QuestionType(models.TextChoices):
+        MULTIPLE_CHOICE = ("MULTIPLE_CHOICE", "Ko'p tanlovli test")
+        ARRANGE_WORDS = ("ARRANGE_WORDS", "So'zlarni tartiblash")
+        MATCHING = ("MATCHING", "Moslashtirish")
+        FILL_BLANKS = ("FILL_BLANKS", "Bo'shliqlarni to'ldirish")
+
+    class Difficulty(models.TextChoices):
+        EASY = "easy", "Oson"
+        MEDIUM = "medium", "O'rtacha"
+        HARD = "hard", "Qiyin"
+
+    DEFAULT_XP_BY_DIFFICULTY = {
+        Difficulty.EASY: 3,
+        Difficulty.MEDIUM: 6,
+        Difficulty.HARD: 10,
+    }
+
+    MIN_CHOICES = 2
+    MAX_CHOICES = 6
+    MIN_MATCHING_PAIRS = 2
+    MIN_ARRANGE_ITEMS = 2
+
+    text = MDTextField(
+        verbose_name="Savol matni",
+        help_text="Savol matnini Markdown formatida kiriting.",
+    )
+    lesson = models.ForeignKey(
+        Lesson,
+        on_delete=models.CASCADE,
+        related_name="questions",
+        null=True,
+        blank=True,
+        verbose_name="Darslik",
+    )
+
+    test = models.ForeignKey(
+        CourseTest,
+        on_delete=models.CASCADE,
+        related_name="questions",
+        null=True,
+        blank=True,
+        verbose_name="Test",
+    )
+    instruction = models.TextField(
+        blank=True,
+        verbose_name="Ko'rsatma",
+        help_text=(
+            "O'quvchiga beriladigan ko'rsatmani kiriting. "
+            "Masalan: 'So'zlarni to'g'ri tartibda joylashtiring.'"
+        )
+    )
+
+    question_type = models.CharField(
+        max_length=30,
+        choices=QuestionType.choices,
+        verbose_name="Savol turi",
+        help_text=(
+            "Savol turini tanlang: "
+            "Ko'p tanlovli test, So'zlarni tartiblash, "
+            "Moslashtirish yoki Bo'shliqlarni to'ldirish."
+        )
+    )
+
+    difficulty = models.CharField(
+        max_length=10,
+        choices=Difficulty.choices,
+        default=Difficulty.EASY,
+        verbose_name="Qiyinchilik darajasi",
+    )
+
+    explanation_video = models.ForeignKey(
+        Video,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="question_explanations",
+        verbose_name="Savol video tahlili",
+    )
+
+    explanation = MDTextField(
+        verbose_name="Javob izohi",
+        blank=True,
+        null=True,
+    )
+
+    xp = models.PositiveIntegerField(
+        verbose_name="XP mukofoti",
+        default=3,
+        validators=[MinValueValidator(2), MaxValueValidator(20)],
+    )
+
+    # Difficulty o'zgarganda xp ni qayta hisoblash kerakligini aniqlash uchun:
+    # agar admin xp ni difficulty bo'yicha standart qiymatdan boshqacha
+    # qo'lda kiritgan bo'lsa, keyingi difficulty o'zgarishlarida xp avtomatik
+    # qayta yozib yuborilmaydi.
+    xp_is_custom = models.BooleanField(
+        default=False,
+        editable=False,
+        verbose_name="XP qo'lda o'zgartirilganmi",
+    )
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE,
+        related_name='course_created_questions',
+    )
+
+    class Meta:
+        ordering = ["created_at"]
+        constraints = [
+            models.CheckConstraint(
+                condition=(
+                    models.Q(lesson__isnull=False, test__isnull=True)
+                    | models.Q(lesson__isnull=True, test__isnull=False)
+                ),
+                name="question_belongs_to_lesson_xor_test",
+            ),
+        ]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self._original_difficulty = self.difficulty
+        self._original_xp = self.xp
+
+    def clean(self):
+        super().clean()
+
+        if bool(self.lesson_id) == bool(self.test_id):
+            raise ValidationError(
+                "Savol aynan Lesson yoki Testdan bittasiga tegishli bo'lishi kerak."
+            )
+
+        if not self.text or not str(self.text).strip():
+            raise ValidationError({"text": "Savol matni bo'sh bo'lishi mumkin emas."})
+
+    def validate_children_completeness(self):
+        """
+        Savolni "nashrga tayyor"ligini tekshiradi: savol turiga qarab
+        yetarli sonli va to'g'ri to'ldirilgan child-obyektlar (Choice,
+        MatchingPair, ArrangeItem, Blank/BlankAnswer) mavjudligini
+        tasdiqlaydi. Bu tekshiruv `clean()` ichida emas, alohida chaqiriladi,
+        chunki savol va uning child-obyektlari odatda bosqichma-bosqich
+        (bir nechta so'rov davomida) yaratiladi.
+        """
+        errors = []
+
+        if self.question_type == self.QuestionType.MULTIPLE_CHOICE:
+            choices = list(self.choices.all())
+            if len(choices) < self.MIN_CHOICES:
+                errors.append(
+                    f"Kamida {self.MIN_CHOICES} ta javob varianti bo'lishi kerak "
+                    f"(hozir {len(choices)} ta)."
+                )
+            correct_count = sum(1 for c in choices if c.is_correct)
+            if correct_count != 1:
+                errors.append(
+                    f"Aynan 1 ta to'g'ri javob belgilangan bo'lishi kerak (hozir {correct_count} ta)."
+                )
+            empty_texts = [c for c in choices if not c.text or not str(c.text).strip()]
+            if empty_texts:
+                errors.append("Bo'sh matnli javob variant(lar)i mavjud.")
+
+        elif self.question_type == self.QuestionType.MATCHING:
+            pairs = list(self.matching_pairs.all())
+            if len(pairs) < self.MIN_MATCHING_PAIRS:
+                errors.append(
+                    f"Kamida {self.MIN_MATCHING_PAIRS} ta moslashtirish juftligi bo'lishi kerak "
+                    f"(hozir {len(pairs)} ta)."
+                )
+            lefts = [p.left.strip().lower() for p in pairs if p.left]
+            rights = [p.right.strip().lower() for p in pairs if p.right]
+            if len(lefts) != len(set(lefts)):
+                errors.append("Takrorlanuvchi 'chap tomon' qiymatlari mavjud.")
+            if len(rights) != len(set(rights)):
+                errors.append("Takrorlanuvchi 'o'ng tomon' qiymatlari mavjud.")
+
+        elif self.question_type == self.QuestionType.ARRANGE_WORDS:
+            items = list(self.arrange_items.order_by("correct_position"))
+            if len(items) < self.MIN_ARRANGE_ITEMS:
+                errors.append(
+                    f"Kamida {self.MIN_ARRANGE_ITEMS} ta so'z bo'lishi kerak (hozir {len(items)} ta)."
+                )
+            else:
+                positions = [i.correct_position for i in items]
+                expected = list(range(1, len(positions) + 1))
+                if positions != expected:
+                    errors.append(
+                        "correct_position qiymatlari 1 dan boshlab uzilishsiz ketma-ket bo'lishi kerak "
+                        f"(kutilgan: {expected}, mavjud: {positions})."
+                    )
+
+        elif self.question_type == self.QuestionType.FILL_BLANKS:
+            blanks = list(self.blanks.all())
+            if not blanks:
+                errors.append("Kamida 1 ta bo'sh joy (Blank) bo'lishi kerak.")
+            else:
+                for blank in blanks:
+                    if not blank.answers.exists():
+                        errors.append(
+                            f"{blank.position}-bo'sh joy uchun kamida 1 ta to'g'ri javob kiritilishi kerak."
+                        )
+
+        if errors:
+            raise ValidationError(errors)
+        return True
+
+    def save(self, *args, **kwargs):
+        if self._state.adding:
+            self.xp = self.DEFAULT_XP_BY_DIFFICULTY[self.difficulty]
+        else:
+            difficulty_changed = self.difficulty != self._original_difficulty
+            was_default_xp = self._original_xp == self.DEFAULT_XP_BY_DIFFICULTY.get(
+                self._original_difficulty
+            )
+            xp_changed_manually = self.xp != self._original_xp
+
+            if xp_changed_manually and not difficulty_changed:
+                # Admin xp ni qo'lda o'zgartirdi -> bundan buyon avtomatik qayta yozilmasin
+                self.xp_is_custom = True
+            elif difficulty_changed and was_default_xp and not self.xp_is_custom:
+                # Difficulty o'zgardi va xp hali standart qiymatda edi -> yangi standartga o'tkazamiz
+                self.xp = self.DEFAULT_XP_BY_DIFFICULTY[self.difficulty]
+
+        super().save(*args, **kwargs)
+        self._original_difficulty = self.difficulty
+        self._original_xp = self.xp
+
+    def __str__(self):
+        location = f"Lesson #{self.lesson_id}" if self.lesson_id else f"Test #{self.test_id}"
+        return f"Savol #{self.pk} — {location}"
+
+
+class CourseChoice(models.Model):
+    """Savol javoblari variantlari (Choice) — faqat MULTIPLE_CHOICE uchun."""
+
+    question = models.ForeignKey(
+        "CourseQuestion",
+        on_delete=models.CASCADE,
+        related_name="choices",
+        verbose_name="Tegishli savol",
+    )
+
+    text = MDTextField(
+        verbose_name="Variant matni",
+        help_text="Markdown formatida javob variantining matnini kiriting."
+    )
+
+    is_correct = models.BooleanField(
+        "To'g'ri javob",
+        default=False,
+        db_index=True,
+        help_text="Agar ushbu variant savolning to'g'ri javobi bo'lsa, belgilang."
+    )
+
+    owner = models.ForeignKey(
+        settings.AUTH_USER_MODEL,
+        on_delete=models.CASCADE,
+        related_name="created_choices",
+        verbose_name="Yaratuvchi",
+    )
+
+    created_at = models.DateTimeField(auto_now_add=True, verbose_name="Yaratilgan vaqti")
+    updated_at = models.DateTimeField(auto_now=True, verbose_name="Yangilangan vaqti")
+
+    class Meta:
+        verbose_name = "🔘 Javob varianti"
+        verbose_name_plural = "✅ Javob variantlari"
+        constraints = [
+            models.UniqueConstraint(
+                fields=['question'], condition=models.Q(is_correct=True),
+                name='unique_course_correct_choice',
+            ),
+        ]
+
+    def __str__(self):
+        status = "✅" if self.is_correct else "❌"
+        return f"[{status}] {self.text[:40]}..."
+
+    def clean(self):
+        super().clean()
+
+        if self.question_id and self.question.question_type != CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+            raise ValidationError(
+                "Javob varianti (Choice) faqat 'Ko'p tanlovli test' turidagi savollarga qo'shilishi mumkin."
+            )
+
+        if not self.text or not str(self.text).strip():
+            raise ValidationError({"text": "Variant matni bo'sh bo'lishi mumkin emas."})
+
+        if self.question_id:
+            duplicate_qs = CourseChoice.objects.filter(
+                question_id=self.question_id, text__iexact=str(self.text).strip()
+            )
+            if self.pk:
+                duplicate_qs = duplicate_qs.exclude(pk=self.pk)
+            if duplicate_qs.exists():
+                raise ValidationError({
+                    "text": "Ushbu savolda xuddi shunday matnli variant allaqachon mavjud."
+                })
+
+        if self.is_correct and self.question_id:
+            qs = CourseChoice.objects.filter(question=self.question, is_correct=True)
+
+            if self.pk:
+                qs = qs.exclude(pk=self.pk)
+
+            if qs.exists():
+                raise ValidationError({
+                    "is_correct": (
+                        "Ushbu savolda allaqachon to'g'ri javob mavjud! "
+                        "Bittadan ortiq to'g'ri javob belgilash mumkin emas."
+                    )
+                })
+
+
+class MatchingPair(models.Model):
+    """
+    Matching turidagi savollar uchun moslashtirish juftligi.
+
+    Masalan:
+    Apple -> Olma
+    Book  -> Kitob
+    """
+
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="matching_pairs",
+        verbose_name="Savol",
+        help_text="Ushbu juftlik tegishli bo'lgan Matching savolini tanlang."
+    )
+
+    left = models.CharField(
+        max_length=255,
+        verbose_name="Chap tomon",
+        help_text="Moslashtirishning chap tomonidagi elementni kiriting."
+    )
+
+    right = models.CharField(
+        max_length=255,
+        verbose_name="O'ng tomon",
+        help_text="Chap tomonga mos keladigan javobni kiriting."
+    )
+
+    order = models.PositiveIntegerField(
+        default=0,
+        verbose_name="Tartib raqami",
+        help_text="Juftlikning savol ichidagi tartibini belgilang."
+    )
+
+    class Meta:
+        verbose_name = "🔗 Moslashtirish juftligi"
+        verbose_name_plural = "🔗 Moslashtirish juftliklari"
+        ordering = ["order", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question", "order"],
+                name="unique_matching_order_per_question",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.left} → {self.right}"
+
+    def clean(self):
+        super().clean()
+        if self.question_id and self.question.question_type != CourseQuestion.QuestionType.MATCHING:
+            raise ValidationError(
+                "Moslashtirish juftligi faqat 'Moslashtirish' turidagi savollarga qo'shilishi mumkin."
+            )
+
+        if not self.left or not self.left.strip():
+            raise ValidationError({"left": "Chap tomon bo'sh bo'lishi mumkin emas."})
+        if not self.right or not self.right.strip():
+            raise ValidationError({"right": "O'ng tomon bo'sh bo'lishi mumkin emas."})
+
+        if self.question_id:
+            duplicate_left = MatchingPair.objects.filter(
+                question_id=self.question_id, left__iexact=self.left.strip()
+            )
+            duplicate_right = MatchingPair.objects.filter(
+                question_id=self.question_id, right__iexact=self.right.strip()
+            )
+            if self.pk:
+                duplicate_left = duplicate_left.exclude(pk=self.pk)
+                duplicate_right = duplicate_right.exclude(pk=self.pk)
+            if duplicate_left.exists():
+                raise ValidationError({"left": "Bu savolda xuddi shu 'chap tomon' qiymati allaqachon mavjud."})
+            if duplicate_right.exists():
+                raise ValidationError({"right": "Bu savolda xuddi shu 'o'ng tomon' qiymati allaqachon mavjud."})
+
+
+class ArrangeItem(models.Model):
+    """
+    Arrange Words savollari uchun so'zlar.
+    """
+
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="arrange_items",
+        verbose_name="Savol",
+        help_text="Ushbu so'z tegishli bo'lgan Arrange Words savolini tanlang."
+    )
+
+    text = models.CharField(
+        max_length=255,
+        verbose_name="So'z",
+        help_text="Tartiblanadigan so'zni kiriting."
+    )
+
+    correct_position = models.PositiveIntegerField(
+        verbose_name="To'g'ri pozitsiya",
+        validators=[MinValueValidator(1)],
+        help_text=(
+            "Ushbu so'zning to'g'ri gapdagi pozitsiyasini kiriting (1 dan boshlab). "
+            "Masalan: 1, 2, 3, 4."
+        )
+    )
+
+    class Meta:
+        verbose_name = "🔤 Tartiblanadigan so'z"
+        verbose_name_plural = "🔤 Tartiblanadigan so'zlar"
+        ordering = ["correct_position", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question", "correct_position"],
+                name="unique_arrange_position_per_question"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(correct_position__gte=1),
+                name="arrange_item_position_gte_1",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.correct_position}. {self.text}"
+
+    def clean(self):
+        super().clean()
+        if self.question_id and self.question.question_type != CourseQuestion.QuestionType.ARRANGE_WORDS:
+            raise ValidationError(
+                "Bu element faqat 'So'zlarni tartiblash' turidagi savollarga qo'shilishi mumkin."
+            )
+        if not self.text or not self.text.strip():
+            raise ValidationError({"text": "So'z bo'sh bo'lishi mumkin emas."})
+
+
+class Blank(models.Model):
+    """
+    Fill in the Blanks savolidagi bo'sh joy.
+    Har bir Blank bir nechta to'g'ri javobga ega bo'lishi mumkin (sinonimlar) —
+    ular BlankAnswer orqali saqlanadi.
+    """
+
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="blanks",
+        verbose_name="Savol",
+        help_text="Ushbu bo'sh joy tegishli bo'lgan savolni tanlang."
+    )
+
+    position = models.PositiveIntegerField(
+        verbose_name="Bo'sh joy tartibi",
+        validators=[MinValueValidator(1)],
+        help_text="Bo'sh joyning gap ichidagi tartib raqamini kiriting (1 dan boshlab)."
+    )
+
+    case_sensitive = models.BooleanField(
+        default=False,
+        verbose_name="Katta-kichik harfga sezgir",
+        help_text="Yoqilsa, javob tekshirilganda harflar registri ham hisobga olinadi."
+    )
+
+    class Meta:
+        verbose_name = "◻️ Bo'sh joy"
+        verbose_name_plural = "◻️ Bo'sh joylar"
+        ordering = ["position", "id"]
+        constraints = [
+            models.UniqueConstraint(
+                fields=["question", "position"],
+                name="unique_blank_position_per_question"
+            ),
+            models.CheckConstraint(
+                condition=models.Q(position__gte=1),
+                name="blank_position_gte_1",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.question.text[:30]} - {self.position}-bo'sh joy"
+
+    def clean(self):
+        super().clean()
+        if self.question_id and self.question.question_type != CourseQuestion.QuestionType.FILL_BLANKS:
+            raise ValidationError(
+                "Bo'sh joy faqat 'Bo'shliqlarni to'ldirish' turidagi savollarga qo'shilishi mumkin."
+            )
+
+    def is_correct_answer(self, submitted_text: str) -> bool:
+        """Berilgan matn ushbu bo'sh joy uchun qabul qilinadigan javoblardan biriga mos kelishini tekshiradi."""
+        if submitted_text is None:
+            return False
+
+        candidates = list(self.answers.values_list("answer", flat=True))
+
+        if self.case_sensitive:
+            return submitted_text.strip() in [c.strip() for c in candidates]
+
+        submitted_norm = submitted_text.strip().lower()
+        return submitted_norm in [c.strip().lower() for c in candidates]
+
+
+class BlankAnswer(models.Model):
+    """
+    Bitta bo'sh joy uchun qabul qilinadigan to'g'ri javob(lar).
+
+    Masalan (bitta Blank uchun bir nechta yozuv):
+    am
+    I'm
+    """
+
+    blank = models.ForeignKey(
+        Blank,
+        on_delete=models.CASCADE,
+        related_name="answers",
+        verbose_name="Bo'sh joy",
+        help_text="Javob tegishli bo'lgan bo'sh joyni tanlang."
+    )
+
+    answer = models.CharField(
+        max_length=255,
+        verbose_name="To'g'ri javob",
+        help_text="Ushbu bo'sh joy uchun qabul qilinadigan to'g'ri javobni kiriting."
+    )
+
+    class Meta:
+        verbose_name = "◻️ Bo'sh joy javobi"
+        verbose_name_plural = "◻️ Bo'sh joy javoblari"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["blank", "answer"],
+                name="unique_answer_per_blank",
+            )
+        ]
+
+    def __str__(self):
+        return self.answer
+
+    def clean(self):
+        super().clean()
+        if not self.answer or not self.answer.strip():
+            raise ValidationError({"answer": "Javob matni bo'sh bo'lishi mumkin emas."})
+
+
+class CourseUserResponse(models.Model):
+    """
+    Talabaning har bir savolga bergan javobi.
+
+    - MULTIPLE_CHOICE  -> `choice` maydoni orqali
+    - MATCHING         -> `answer_data` = {"pairs": [{"left_id": 1, "right_text": "..."}]}
+                           yoki {"1": "right text", ...} formatida
+    - ARRANGE_WORDS     -> `answer_data` = {"order": [item_id1, item_id2, ...]}
+    - FILL_BLANKS       -> `answer_data` = {"blank_id": "javob matni", ...}
+
+    `answer_data` formatidagi konkret shakl frontend/serializer darajasida
+    kelishilishi kerak; bu yerda faqat saqlash va tekshirish logikasi bor.
+    """
+
+    session = models.ForeignKey(
+        "CourseTestSession",
+        on_delete=models.CASCADE,
+        related_name="responses",
+        null=True,
+        blank=True,
+        verbose_name="Test seansi",
+    )
+    user = models.ForeignKey(
+        BaseUser,
+        on_delete=models.CASCADE,
+        related_name="quiz_responses",
+        verbose_name="Foydalanuvchi",
+        help_text="Javob bergan talaba."
+    )
+    question = models.ForeignKey(
+        CourseQuestion,
+        on_delete=models.CASCADE,
+        related_name="user_responses",
+        verbose_name="Savol",
+        help_text="Javob berilgan test yoki darslik savoli."
+    )
+
+    # Faqat MULTIPLE_CHOICE uchun:
+    choice = models.ForeignKey(
+        CourseChoice,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        verbose_name="Tanlangan variant",
+        help_text="Talaba tomonidan belgilangan javob varianti (bo'sh qolsa = javobsiz qoldirilgan)."
+    )
+
+    # MATCHING / ARRANGE_WORDS / FILL_BLANKS uchun:
+    answer_data = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="Javob (JSON)",
+        help_text="Matching, Arrange Words yoki Fill Blanks turidagi savollar uchun talaba javobi."
+    )
+
+    is_correct = models.BooleanField(
+        null=True,
+        blank=True,
+        verbose_name="To'g'ri javob",
+        help_text="Tekshirilgandan so'ng avtomatik hisoblab qo'yiladi (null = hali tekshirilmagan)."
+    )
+
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="Javob berilgan vaqt",
+        help_text="Talaba joriy savolga javob tugmasini bosgan aniq vaqt."
+    )
+
+    class Meta:
+        verbose_name = "🎯 Foydalanuvchi Javobi"
+        verbose_name_plural = "🎯 Foydalanuvchi Javoblari"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["session", "question"],
+                name="unique_response_per_question_per_session",
+            ),
+        ]
+
+    def __str__(self):
+        status_text = "Javob berilgan" if (self.choice or self.answer_data) else "Javobsiz qoldirilgan"
+        username = self.user.username if self.user.username else f"User-{self.user.telegram_id}"
+        return f"{username} -> Savol №{self.question_id} [{status_text}]"
+
+    def clean(self):
+        super().clean()
+
+        if self.choice and self.choice.question_id != self.question_id:
+            raise ValidationError(
+                {"choice": "Siz buzib kirishga urindingiz! Tanlangan javob varianti ushbu savolga tegishli emas."}
+            )
+
+        # session mavjud bo'lsa, javob shu session tegishli bo'lgan testning savoliga berilganligini tekshiramiz.
+        if self.session_id and self.question_id:
+            if self.question.test_id and self.question.test_id != self.session.test_id:
+                raise ValidationError(
+                    {"question": "Bu savol ushbu test seansiga tegishli test tarkibida emas."}
+                )
+
+        q_type = self.question.question_type if self.question_id else None
+
+        if q_type == CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+            if self.answer_data:
+                raise ValidationError(
+                    "Ko'p tanlovli savol uchun 'answer_data' emas, 'choice' maydoni ishlatilishi kerak."
+                )
+        elif q_type in (
+            CourseQuestion.QuestionType.MATCHING,
+            CourseQuestion.QuestionType.ARRANGE_WORDS,
+            CourseQuestion.QuestionType.FILL_BLANKS,
+        ):
+            if self.choice_id:
+                raise ValidationError(
+                    "Ushbu savol turi uchun 'choice' emas, 'answer_data' maydoni ishlatilishi kerak."
+                )
+
+    def _check_multiple_choice(self) -> bool:
+        if not self.choice_id:
+            return False
+        return self.choice.is_correct
+
+    def _check_matching(self) -> bool:
+        """
+        Kutilgan `answer_data` formati:
+        {"<pair_id>": "<talaba tanlagan right matni>", ...}
+        """
+        if not self.answer_data:
+            return False
+
+        pairs = {str(p.id): p.right for p in self.question.matching_pairs.all()}
+        if not pairs:
+            return False
+
+        for pair_id, correct_right in pairs.items():
+            submitted = self.answer_data.get(pair_id)
+            if submitted is None or submitted.strip().lower() != correct_right.strip().lower():
+                return False
+        return True
+
+    def _check_arrange_words(self) -> bool:
+        """
+        Kutilgan `answer_data` formati:
+        {"order": [item_id_in_position_1, item_id_in_position_2, ...]}
+        """
+        if not self.answer_data:
+            return False
+
+        submitted_order = self.answer_data.get("order")
+        if not submitted_order:
+            return False
+
+        correct_order = list(
+            self.question.arrange_items.order_by("correct_position").values_list("id", flat=True)
+        )
+
+        try:
+            submitted_order = [int(i) for i in submitted_order]
+        except (TypeError, ValueError):
+            return False
+
+        return submitted_order == correct_order
+
+    def _check_fill_blanks(self) -> bool:
+        """
+        Kutilgan `answer_data` formati:
+        {"<blank_id>": "talaba yozgan matn", ...}
+        """
+        if not self.answer_data:
+            return False
+
+        blanks = list(self.question.blanks.all())
+        if not blanks:
+            return False
+
+        for blank in blanks:
+            submitted = self.answer_data.get(str(blank.id))
+            if not blank.is_correct_answer(submitted):
+                return False
+        return True
+
+    def check_and_score(self):
+        """
+        Javobni savol turiga qarab tekshiradi, `is_correct`ni yangilaydi va
+        (is_answered: bool, is_correct: bool) qaytaradi.
+        """
+        q_type = self.question.question_type
+
+        is_answered = bool(self.choice_id) or bool(self.answer_data)
+        if not is_answered:
+            if self.is_correct is not None:
+                self.is_correct = None
+                self.save(update_fields=["is_correct"])
+            return False, False
+
+        checkers = {
+            CourseQuestion.QuestionType.MULTIPLE_CHOICE: self._check_multiple_choice,
+            CourseQuestion.QuestionType.MATCHING: self._check_matching,
+            CourseQuestion.QuestionType.ARRANGE_WORDS: self._check_arrange_words,
+            CourseQuestion.QuestionType.FILL_BLANKS: self._check_fill_blanks,
+        }
+        checker = checkers.get(q_type)
+        result = bool(checker()) if checker else False
+
+        if self.is_correct != result:
+            self.is_correct = result
+            self.save(update_fields=["is_correct"])
+
+        return True, result

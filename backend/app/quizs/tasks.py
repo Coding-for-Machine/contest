@@ -1,157 +1,147 @@
-# certificates/tasks.py
+"""
+Celery tasklari.
 
+TUZATILGAN MUAMMOLAR:
+  - Hardcoded "quizs.services..." importi olib tashlandi — endi nisbiy
+    import (.services...) ishlatiladi, ilova nomidan qat'i nazar ishlaydi.
+  - run_calibration_task endi calibration COMPLETED bo'lgach avtomatik
+    publish_calibration_task'ni chaqiradi (avval "pass" bilan hech narsa
+    qilinmasdi va kalibratsiya abadiy faollashmay qolardi).
+
+CELERY_BEAT_SCHEDULE (settings.py):
+
+    from celery.schedules import crontab
+
+    CELERY_BEAT_SCHEDULE = {
+        "close-expired-sessions": {
+            "task": "<app_label>.tasks.close_expired_sessions",
+            "schedule": crontab(minute="*/1"),
+        },
+        "check-recalibration-needed": {
+            "task": "<app_label>.tasks.check_recalibration_needed",
+            "schedule": crontab(minute=0),
+        },
+    }
+
+Bu yerdagi <app_label> — sizning ilovangiz nomi (models.py joylashgan papka).
+"""
 import logging
-from django.db import transaction
+
 from celery import shared_task
 from django.utils import timezone
-from django.db.models import F
-
-from courses.models import Enrollment
-from status.models import LessonStatus, UserActivityDaily, UserStats
-"""
-Test javoblarini fon rejimida (background) qayta ishlovchi Celery vazifasi.
-
-Foydalanuvchi barcha javoblarni bittada (list) yuborganda, og'ir bo'lishi mumkin
-bo'lgan validatsiya + yozish ishi request-response tsiklidan chiqarib, shu yerga
-topshiriladi. Bitta-bitta keladigan javoblar esa API ichida sinxron tarzda
-(darhol) qayta ishlanadi (qarang: session_api.py -> submit_single_answer).
-"""
-
-from .models import TestSession, Question, Choice, UserResponse
 
 logger = logging.getLogger(__name__)
 
-@shared_task
-def task_process_lesson_question(response_id, user_id, question_id, lesson_id, is_correct):
-    """
-    Celery task: Talaba dars ichidagi savolga to'g'ri javob berganida XP beradi,
-    Heatmapni yangilaydi va dars/kurs progressini oshiradi.
-    """
-    from .models import UserResponse
-
-    with transaction.atomic():
-        try:
-            question = Question.objects.select_related('lesson').get(id=question_id)
-        except Question.DoesNotExist:
-            return f"Xatolik: Question {question_id} topilmadi."
-
-        should_give_xp = False
-        if is_correct:
-            # Foydalanuvchi bu dars savoliga oldin ham to'g'ri javob berganmi tekshiramiz
-            previous_correct = UserResponse.objects.filter(
-                user_id=user_id,
-                question_id=question_id,
-                choice__is_correct=True
-            ).exclude(pk=response_id).exists()
-
-            if not previous_correct:
-                should_give_xp = True
-
-        # 1. USER STATS (Global XP va Daraja)
-        stats, _ = UserStats.objects.get_or_create(user_id=user_id)
-        stats = UserStats.objects.select_for_update().get(pk=stats.pk)
-        question_xp = getattr(question, 'xp', 0) or 0
-
-        if should_give_xp and question_xp > 0:
-            stats.xp += question_xp
-            stats.level = stats.compute_level()
-            stats.save(update_fields=["xp", "level", "updated_at"])
-
-        # 2. USER ACTIVITY DAILY
-        today = timezone.now().date()
-        activity, _ = UserActivityDaily.objects.get_or_create(user_id=user_id, date=today)
-        if should_give_xp and question_xp > 0:
-            activity.xp_earned = F('xp_earned') + question_xp
-        activity.tasks_count = F('tasks_count') + 1  # Kalendarda faollik katakchasi doim +1 oshadi
-        activity.save()
-
-        # 3. LESSON STATUS VA ENROLLMENT
-        lesson = question.lesson
-        if should_give_xp and lesson is not None:
-            lesson_status, _ = LessonStatus.objects.get_or_create(user_id=user_id, lesson_id=lesson_id)
-            lesson_status.finished_tasks_count = F('finished_tasks_count') + 1
-            lesson_status.save()
-            lesson_status.refresh_from_db()
-
-            total_tasks = getattr(lesson, 'total_tasks_count', 0) or 0
-
-            # Dars to'liq tugaganini tekshirish
-            if total_tasks > 0 and lesson_status.finished_tasks_count >= total_tasks:
-                if not lesson_status.is_completed:
-                    lesson_status.is_completed = True
-                    lesson_status.completed_at = timezone.now()
-                    lesson_status.save(update_fields=['is_completed', 'completed_at'])
-
-                    # 4. Enrollment (Kurs progressi)
-                    modul = getattr(lesson, 'modul', None)
-                    course = getattr(modul, 'course', None) if modul else None
-                    
-                    if course is not None:
-                        enrollment, _ = Enrollment.objects.get_or_create(user_id=user_id, course_id=course.id)
-                        enrollment.finished_darslar_soni = F('finished_darslar_soni') + 1
-                        enrollment.save()
-                        enrollment.refresh_from_db()
-
-                        total_lessons = getattr(course, 'total_lessons_count', 0) or 0
-                        if total_lessons > 0 and enrollment.finished_darslar_soni >= total_lessons:
-                            if not enrollment.is_completed:
-                                enrollment.is_completed = True
-                                enrollment.completed_at = timezone.now()
-                                enrollment.save(update_fields=['is_completed', 'completed_at'])
-
-    return f"Lesson response {response_id} processed."
+CLOSE_EXPIRED_CHUNK_SIZE = 100
+AUTO_PUBLISH_ENABLED = True  # False qiling — yuqori xavfli imtihonlar uchun faqat qo'lda (admin) faollashtirish
 
 
+# ============================================================
+# Session lifecycle
+# ============================================================
 
+@shared_task(bind=True, max_retries=3)
+def score_session_task(self, session_id: str):
+    """Bitta sessiyani baholaydi. finish_session API va close_expired_sessions chaqiradi."""
+    from .models import TestSession
+    from .services.scoring import score_session
 
-
-@shared_task(bind=True, max_retries=3, default_retry_delay=5)
-def process_bulk_answers(self, session_id: str, user_id: int, answers: list, auto_finish: bool = False):
-    """
-    answers: [{"question_id": int, "choice_id": int | None}, ...]
-
-    Har bir javob uchun xavfsizlik tekshiruvi API darajasida ham, shu yerda ham
-    QAYTA bajariladi (defence in depth) — chunki bulk so'rov to'g'ridan-to'g'ri
-    task navbatiga tushadi va orada boshqa jarayon seansni yopib qo'yishi mumkin.
-    """
     try:
-        session = TestSession.objects.select_related("test").get(id=session_id, user_id=user_id)
+        session = TestSession.objects.get(id=session_id)
     except TestSession.DoesNotExist:
-        return {"ok": False, "error": "session_not_found"}
+        return
 
-    if session.status != TestSession.Status.IN_PROGRESS:
-        return {"ok": False, "error": "session_not_active"}
+    try:
+        score_session(session)
+    except Exception as exc:  # noqa: BLE001
+        raise self.retry(exc=exc, countdown=5)
 
-    # Ushbu testga tegishli barcha savol ID-lari (begona savol yuborilishining oldini olish)
-    valid_question_ids = set(session.test.questions.values_list("id", flat=True))
 
-    saved = 0
-    skipped = []
+@shared_task
+def close_expired_sessions():
+    """Muddati o'tgan sessiyalarni yopadi. Katta hajmni chunk'lab navbatga qo'yadi."""
+    from .models import TestSession
 
-    with transaction.atomic():
-        for item in answers:
-            q_id = item.get("question_id")
-            c_id = item.get("choice_id")
+    session_ids = list(
+        TestSession.objects.filter(
+            status=TestSession.Status.IN_PROGRESS, test__end_time__lte=timezone.now(),
+        ).values_list("id", flat=True)
+    )
 
-            if q_id not in valid_question_ids:
-                skipped.append({"question_id": q_id, "reason": "not_in_test"})
-                continue
+    for i in range(0, len(session_ids), CLOSE_EXPIRED_CHUNK_SIZE):
+        for sid in session_ids[i:i + CLOSE_EXPIRED_CHUNK_SIZE]:
+            score_session_task.delay(str(sid))
 
-            if c_id is not None and not Choice.objects.filter(id=c_id, question_id=q_id).exists():
-                skipped.append({"question_id": q_id, "reason": "invalid_choice"})
-                continue
 
-            UserResponse.objects.update_or_create(
-                session_id=session_id,
-                question_id=q_id,
-                user_id=user_id,
-                defaults={"choice_id": c_id},
+# ============================================================
+# Calibration lifecycle
+# ============================================================
+
+@shared_task
+def maybe_trigger_recalibration(subject_id: str):
+    """Arzon tekshiruv — faqat DB count so'raydi."""
+    from .models import Subject
+    from .services.calibration import needs_recalibration
+
+    try:
+        subject = Subject.objects.get(id=subject_id)
+    except Subject.DoesNotExist:
+        return
+
+    if needs_recalibration(subject):
+        run_calibration_task.delay(subject_id)
+
+
+@shared_task
+def check_recalibration_needed():
+    """Davriy (beat, soatiga bir) — barcha faol fanlarni tekshiradi (backup mexanizm)."""
+    from .models import Subject
+
+    for subject in Subject.objects.filter(is_active=True):
+        maybe_trigger_recalibration.delay(str(subject.id))
+
+
+@shared_task(bind=True, max_retries=2)
+def run_calibration_task(self, subject_id: str):
+    """OG'IR operatsiya — to'liq MML kalibratsiya. Muvaffaqiyatli bo'lsa, publish zanjiriga o'tadi."""
+    from .services.calibration import calibrate_subject
+    from .models import RaschCalibration
+
+    try:
+        calibration = calibrate_subject(int(subject_id))
+    except Exception as exc:  # noqa: BLE001
+        raise self.retry(exc=exc, countdown=60)
+
+    if calibration is None:
+        logger.error("Kalibratsiya bajarilmadi (girth o'rnatilmagan bo'lishi mumkin): subject=%s", subject_id)
+        return
+
+    if calibration.status == RaschCalibration.Status.COMPLETED:
+        if AUTO_PUBLISH_ENABLED:
+            publish_calibration_task.delay(calibration.id)
+        else:
+            logger.info(
+                "Kalibratsiya v%d COMPLETED holatida — AUTO_PUBLISH o'chirilgan, "
+                "admin panelidan qo'lda faollashtiring.", calibration.version,
             )
-            saved += 1
 
-    if auto_finish:
-        session.refresh_from_db()
-        # COMPLETED bo'lsa metodning o'zi ichkarida qayta hisoblamaydi (xavfsizlik tekshiruvi bor)
-        session.calculate_mathematical_score()
 
-    return {"ok": True, "saved": saved, "skipped": skipped}
+@shared_task
+def publish_calibration_task(calibration_id: int):
+    """
+    Sifat nazoratidan o'tkazib, faollashtiradi. Admin panelidagi "Faol qilish"
+    action ham AYNAN SHU service funksiyasini (services.publishing.publish_calibration)
+    chaqiradi — mantiq ikki joyda yozilmagan.
+    """
+    from .models import RaschCalibration
+    from quizs.services.publishing import publish_calibration
+
+    try:
+        calibration = RaschCalibration.objects.get(id=calibration_id)
+    except RaschCalibration.DoesNotExist:
+        return
+
+    published = publish_calibration(calibration)
+    logger.info(
+        "Kalibratsiya v%d %s", calibration.version, "FAOLLASHTIRILDI" if published else "RAD ETILDI",
+    )

@@ -1,13 +1,5 @@
 """
 Umumiy, sync-safe event moduli.
-
-Nima uchun alohida fayl: `tasks.py` (Celery worker) SYNC context'da ishlaydi,
-`sse/publisher.py` (django-bolt) esa ASYNC. Ikkalasi ham bir xil EventType/
-Channel/SubmissionEvent'dan foydalanishi kerak, aks holda event nomlari ikki
-joyda qo'lda yozilib, ertami-kechmi bir-biridan chetlashib ketadi. Shu modulda
-hech qanday async/Redis-ga bog'liq kod yo'q — faqat toza struct'lar,
-shu sababli uni ham Celery, ham django-bolt tomondan xavfsiz import qilish
-mumkin.
 """
 
 from __future__ import annotations
@@ -18,28 +10,18 @@ from typing import Any
 import msgspec
 
 
-# ============================================================
-# EVENT TURLARI VA KANALLAR
-# ============================================================
-
 class EventType(str, Enum):
-    QUEUED = "queued"                            # submission navbatga qo'yildi
-    TESTCASE = "testcase"                        # bitta yashirin test natijasi
-    RESULT = "result"                            # testcase'siz natija
-    FINAL = "final"                              # submission yakuniy natijasi
-    ERROR = "error"                              # tizim xatosi
-    NOTIFICATION = "notification"                # yangi bildirishnoma
-    LEADERBOARD = "leaderboard"                  # global reyting
-    CONTEST_LEADERBOARD = "contest_leaderboard"  # contest reytingi
+    QUEUED = "queued"
+    TESTCASE = "testcase"
+    RESULT = "result"
+    FINAL = "final"
+    ERROR = "error"
+    NOTIFICATION = "notification"
+    LEADERBOARD = "leaderboard"
+    CONTEST_LEADERBOARD = "contest_leaderboard"
 
 
 class Channel(str, Enum):
-    """Redis pub/sub kanal shablonlari.
-
-    `.format(**kwargs)` — shablondagi `{}` joylarini to'ldirib, tayyor
-    kanal nomini qaytaradi. Statik kanallar uchun `.value` ishlatiladi.
-    """
-
     USER = "user:{user_id}"
     CONTEST_LEADERBOARD = "contest_leaderboard:{contest_id}"
     LEADERBOARD = "leaderboard"
@@ -48,13 +30,7 @@ class Channel(str, Enum):
         return self.value.format(**kwargs)
 
 
-# ============================================================
-# WIRE-FORMAT STRUKTURALAR
-# ============================================================
-
 class Event(msgspec.Struct):
-    """Redisga yoziladigan/undan o'qiladigan wire-format."""
-
     event: str
     id: str
     data: dict[str, Any]
@@ -64,24 +40,13 @@ class Event(msgspec.Struct):
 
 
 class LeaderboardEntry(msgspec.Struct):
-    """Reyting qatoridagi yozuv. Agar foydalanuvchi o'chirilgan yoki
-    XP hisoblanmagan bo'lsa, ba'zi maydonlar None bo'lishi mumkin."""
-
     rank: int
     user_id: int
     username: str | None = None
     xp: int | None = None
 
 
-# ============================================================
-# EVENT FABRIKALARI
-# ============================================================
-
 class SubmissionEvent:
-    """Submission hayot sikli eventlari."""
-
-    # -------------------- Shaxsiy submission oqimi --------------------
-
     @classmethod
     def queued(cls, task_id: str) -> Event:
         return Event(
@@ -156,8 +121,6 @@ class SubmissionEvent:
 
     @classmethod
     def final(cls, submission, task_id: str | None = None) -> Event:
-        """Yakuniy natija. `task_id` None bo'lishi mumkin (masalan,
-        admin paneldan qo'shilgan submissionlar uchun)."""
         return Event(
             event=EventType.FINAL.value,
             id=str(task_id) if task_id is not None else "unknown",
@@ -191,8 +154,6 @@ class SubmissionEvent:
             data={"message": message},
         )
 
-    # -------------------- Reyting oqimlari --------------------
-
     @classmethod
     def leaderboard(cls, entries: list[LeaderboardEntry]) -> Event:
         return Event(
@@ -218,8 +179,6 @@ class SubmissionEvent:
 
 
 class NotificationEvent:
-    """Bildirishnoma eventlari."""
-
     @classmethod
     def new(
         cls,

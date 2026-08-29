@@ -447,13 +447,13 @@ def unfold():
                     ],
                 },
 
-                # 4. TA'LIM
                 {
                     "title": _("Ta'lim"),
                     "icon": "school",
                     "collapsible": True,
                     "permission": lambda request: request.user.has_perm("courses.view_course"),
                     "items": [
+                        # ── Asosiy kontent ───────────────────────────────
                         {
                             "title": _("Kurslar"),
                             "icon": "menu_book",
@@ -473,10 +473,81 @@ def unfold():
                             "permission": lambda request: request.user.has_perm("courses.view_lesson"),
                         },
                         {
-                            "title": _("Ma'ruza"),
+                            "title": _("Ma'ruzalar"),
                             "icon": "play_lesson",
                             "link": reverse_lazy("admin:courses_lecture_changelist"),
                             "permission": lambda request: request.user.has_perm("courses.view_lecture"),
+                        },
+
+                        # ── Test tizimi ──────────────────────────────────
+                        {
+                            "title": _("Testlar"),
+                            "icon": "quiz",
+                            "link": reverse_lazy("admin:courses_coursetest_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_coursetest"),
+                        },
+                        {
+                            "title": _("Savollar"),
+                            "icon": "help",
+                            "link": reverse_lazy("admin:courses_coursequestion_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_coursequestion"),
+                        },
+                        {
+                            "title": _("Javob variantlari"),
+                            "icon": "check_circle",
+                            "link": reverse_lazy("admin:courses_coursechoice_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_coursechoice"),
+                        },
+                        {
+                            "title": _("Moslashtirish juftliklari"),
+                            "icon": "link",
+                            "link": reverse_lazy("admin:courses_matchingpair_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_matchingpair"),
+                        },
+                        {
+                            "title": _("Tartiblanadigan so'zlar"),
+                            "icon": "sort",
+                            "link": reverse_lazy("admin:courses_arrangeitem_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_arrangeitem"),
+                        },
+                        {
+                            "title": _("Bo'sh joylar"),
+                            "icon": "check_box_outline_blank",
+                            "link": reverse_lazy("admin:courses_blank_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_blank"),
+                        },
+                        {
+                            "title": _("Bo'sh joy javoblari"),
+                            "icon": "text_fields",
+                            "link": reverse_lazy("admin:courses_blankanswer_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_blankanswer"),
+                        },
+
+                        # ── Natijalar va seanslar ────────────────────────
+                        {
+                            "title": _("Test seanslari"),
+                            "icon": "timer",
+                            "link": reverse_lazy("admin:courses_coursetestsession_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_coursetestsession"),
+                        },
+                        {
+                            "title": _("Foydalanuvchi javoblari"),
+                            "icon": "psychology",
+                            "link": reverse_lazy("admin:courses_courseuserresponse_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_courseuserresponse"),
+                        },
+
+                        # ── Yozilishlar ──────────────────────────────────
+                        {
+                            "title": _("Yozilishlar"),
+                            "icon": "how_to_reg",
+                            "link": reverse_lazy("admin:courses_enrollment_changelist"),
+                            "permission": lambda request: request.user.has_perm("courses.view_enrollment"),
+                        },
+                        {
+                            "title": "Yangi savol",
+                            "icon": "add_circle",
+                            "link": "/admin/courses/coursequestion/create-question/",
                         },
                     ],
                 },

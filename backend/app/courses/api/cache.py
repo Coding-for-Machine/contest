@@ -17,8 +17,8 @@ decoder = msgspec.json.Decoder()
 # CACHE PREFIX
 # ==========================================================
 COURSE_LIST_STATIC_KEY = "course:list:static"
-COURSE_DETAIL_STATIC_KEY = "course:detail:{slug}:static"
-COURSE_USER_PROGRESS_KEY = "course:{slug}:user:{user_id}:progress"
+COURSE_DETAIL_STATIC_KEY = "courses:det:{slug}:static"
+COURSE_USER_PROGRESS_KEY = "courses:{slug}:user:{user_id}:progress"
 
 # ==========================================================
 # TTL (Time To Live)
@@ -93,3 +93,23 @@ def set_course_user_cache(slug: str, user_id: int, data):
 def delete_course_user_cache(slug: str, user_id: int):
     key = COURSE_USER_PROGRESS_KEY.format(slug=slug, user_id=user_id)
     cache_delete(key)
+
+
+
+HERO_CACHE_KEY = "course:hero:v1"
+HERO_CACHE_TTL = 300  # 5 daqiqa
+
+
+def get_hero_course_cache() -> dict | None:
+    return cache.get(HERO_CACHE_KEY)
+
+
+def set_hero_course_cache(data: dict, timeout: int = HERO_CACHE_TTL) -> None:
+    cache.set(HERO_CACHE_KEY, data, timeout=timeout)
+
+
+def invalidate_hero_course_cache() -> None:
+    """Yangi Enrollment yaratilganda albatta chaqirish shart emas
+    (5 daqiqalik TTL o'zi yetarli darajada yangi holatni ko'rsatadi),
+    lekin admin panelda kurs faolligini o'zgartirganda chaqiring."""
+    cache.delete(HERO_CACHE_KEY)

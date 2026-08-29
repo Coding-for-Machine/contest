@@ -11,9 +11,38 @@ Qoidalar:
     2. Race-condition mumkin bo'lgan joylarda select_for_update() ishlatiladi —
        hech qachon "o'qi -> tekshir -> yoz" qilinmaydi.
     3. Bu fayldagi barcha funksiyalar SINXRON. Async chaqiruvchi kod
-       (courses/services.py) buni sync_to_async() bilan o'raydi.
+       (courses/api.py) buni sync_to_async() bilan o'raydi.
     4. XP faqat award_xp() orqali beriladi — boshqa hech qanday joyda
        UserStats.xp ga to'g'ridan-to'g'ri yozilmasin.
+
+    !!! MUHIM TUZATISH (bu versiyada) !!!
+    Loyihada ALOHIDA "quizs" app YO'Q — savollar, javoblar va test seanslari
+    barchasi "courses" appida joylashgan:
+        - Savol modeli:        courses.CourseQuestion   (avval: quizs.Question)
+        - Javob modeli:        courses.CourseUserResponse (avval: quizs.UserResponse)
+        - Test seansi modeli:  courses.CourseTestSession  (avval: quizs.TestSession)
+        - Test modeli:         courses.CourseTest         (avval: quizs.Test)
+    Bundan tashqari:
+        - Lesson'dan savollarga reverse nom "questions" ("quiz_questions" EMAS).
+        - CourseTest -> Modul bog'lanishi OneToOneField (related_name="test"),
+          ya'ni "modul.tests" (ko'plik) mavjud emas — "modul.test" (birlik) bor,
+          shu sababli ro'yxat/queryset kerak bo'lganda to'g'ridan-to'g'ri
+          CourseTest.objects.filter(modul_id=...) ishlatiladi.
+        - CourseTestSession'da "status" maydoni YO'Q — tugallanganlikni
+          "completed_at__isnull=False" orqali tekshirish kerak
+          (avvalgi kodda TestSession.Status.COMPLETED ishlatilgan, bu FieldError beradi).
+
+    !!! MUHIM TUZATISH #2 (bu versiyada) !!!
+    recalculate_module_status() ichida CourseStatus'ga cascade qilish sharti
+    noto'g'ri edi: avval faqat "modul to'liq tugallanganda" (just_completed)
+    recalculate_course_status() chaqirilardi. Lekin CourseStatus.completed_lessons/
+    completed_tests/completed_problems — bu butun kurs bo'yicha real vaqtli
+    (LessonStatus/CourseTestSession/ProblemStatus'dan to'liq qayta hisoblanadigan)
+    sonlar, ular modulning har qanday ichki o'zgarishida (masalan, bitta dars
+    yangi tugallanganda, modulning o'zi hali to'liq tugamagan bo'lsa ham)
+    o'zgarishi kerak. Shu sabab CourseStatus deyarli yangilanmay qolardi —
+    faqat modul to'liq tugagan paytda sakrab yangilanardi. Endi bu cascade
+    shartsiz (course_id mavjud bo'lsa doim) chaqiriladi.
 """
 
 import logging
@@ -131,9 +160,13 @@ def recalculate_lesson_status(user_id: int, lesson_id: int) -> None:
     Darsning progress foizi va tugallanganlik holatini qayta hisoblaydi.
     LessonStatus modelida "progress" maydoni bor (0-100), shuning uchun
     bu yerda hisoblab, saqlaymiz.
+
+    TUZATILDI: "quizs" appi mavjud emas. Savollar va javoblar
+    courses.CourseQuestion / courses.CourseUserResponse orqali olinadi.
+    Lesson'dan savollarga reverse nom — "questions" ("quiz_questions" emas).
     """
     Lesson = _get_model("courses", "Lesson")
-    UserResponse = _get_model("quizs", "UserResponse")
+    CourseUserResponse = _get_model("courses", "CourseUserResponse")
     if not Lesson:
         return
 
@@ -143,7 +176,9 @@ def recalculate_lesson_status(user_id: int, lesson_id: int) -> None:
 
     total_lectures = lesson.lectures.filter(is_active=True).count()
     total_problems = lesson.problems.filter(is_active=True).count()
-    total_questions = lesson.quiz_questions.count()
+    # CourseQuestion modelida "lesson XOR test" cheklovi bor, shuning uchun
+    # lesson=lesson bo'lgan savollar avtomatik ravishda faqat darsga tegishli.
+    total_questions = lesson.questions.count()
     total_tasks = total_lectures + total_problems + total_questions
 
     completed_lectures = LectureStatus.objects.filter(
@@ -157,9 +192,9 @@ def recalculate_lesson_status(user_id: int, lesson_id: int) -> None:
     # MUHIM: faqat TO'G'RI javob berilgan savollar "tugallangan" hisoblanadi.
     # session__isnull=True — bu dars-ichi mustaqil savol javobi (test seansi emas).
     completed_questions = 0
-    if UserResponse:
+    if CourseUserResponse:
         completed_questions = (
-            UserResponse.objects.filter(
+            CourseUserResponse.objects.filter(
                 user_id=user_id,
                 question__lesson=lesson,
                 session__isnull=True,
@@ -209,9 +244,29 @@ def recalculate_module_status(user_id: int, modul_id: int) -> None:
     bu yerda progress foizi HISOBLANMAYDI va SAQLANMAYDI — foiz kerak
     bo'lsa, uni API darajasida completed/total orqali frontend yoki
     view chiqarib beradi.
+
+    TUZATILDI:
+      - "quizs" appi mavjud emas -> courses.CourseTest / courses.CourseTestSession
+        ishlatiladi.
+      - CourseTest -> Modul bog'lanishi OneToOneField (related_name="test"),
+        shuning uchun "modul.tests" (ko'plik) MAVJUD EMAS. To'g'ridan-to'g'ri
+        CourseTest.objects.filter(modul_id=...) orqali sanaladi.
+      - CourseTestSession'da "status" maydoni yo'q, faqat "completed_at" bor —
+        tugallanganlik completed_at__isnull=False orqali tekshiriladi.
+
+    TUZATILDI #2:
+      - Avval recalculate_course_status() faqat "just_completed" (modul
+        aynan shu chaqiriqda to'liq tugallangan) holatida chaqirilardi.
+        Bu xato edi: CourseStatus.completed_lessons/tests/problems butun
+        kurs bo'yicha real vaqtli hisoblanadigan sonlar bo'lgani uchun,
+        modul hali to'liq tugamagan bo'lsa ham (masalan ichidagi bitta
+        dars yangi tugallanganda) course darajasi yangilanishi kerak.
+        Shu sabab bu yerda cascade endi shartsiz (course_id mavjud
+        bo'lsa doim) chaqiriladi.
     """
     Modul = _get_model("courses", "Modul")
-    TestSession = _get_model("quizs", "TestSession")
+    CourseTest = _get_model("courses", "CourseTest")
+    CourseTestSession = _get_model("courses", "CourseTestSession")
     if not Modul:
         return
 
@@ -220,7 +275,10 @@ def recalculate_module_status(user_id: int, modul_id: int) -> None:
         return
 
     total_lessons = modul.lessons.filter(is_active=True).count()
-    total_tests = modul.tests.filter(is_active=True).count()
+    total_tests = (
+        CourseTest.objects.filter(modul_id=modul_id, is_active=True).count()
+        if CourseTest else 0
+    )
     total = total_lessons + total_tests
 
     completed_lessons = LessonStatus.objects.filter(
@@ -228,13 +286,13 @@ def recalculate_module_status(user_id: int, modul_id: int) -> None:
     ).count()
 
     completed_tests = 0
-    if TestSession:
+    if CourseTestSession:
         completed_tests = (
-            TestSession.objects.filter(
+            CourseTestSession.objects.filter(
                 user_id=user_id,
-                test__modul=modul,
+                test__modul_id=modul_id,
                 test__is_active=True,
-                status=TestSession.Status.COMPLETED,
+                completed_at__isnull=False,
             )
             .values("test_id")
             .distinct()
@@ -270,7 +328,11 @@ def recalculate_module_status(user_id: int, modul_id: int) -> None:
         ])
         course_id = modul.course_id
 
-    if just_completed and course_id:
+    # CourseStatus sonlari butun kurs bo'yicha real vaqtli qayta hisoblanadi
+    # (recalculate_course_status ichida), shuning uchun modul hali to'liq
+    # tugamagan bo'lsa ham (just_completed=False) course darajasini
+    # yangilash kerak — cascade shartsiz chaqiriladi.
+    if course_id:
         recalculate_course_status(user_id, course_id)
 
 
@@ -279,11 +341,15 @@ def recalculate_course_status(user_id: int, course_id: int) -> None:
     DIQQAT: CourseStatus modelida ham "progress" va "last_activity"
     maydonlari YO'Q. Faqat completed_modules/lessons/tests/problems va
     is_completed bor — shularga yozamiz, boshqasiga yozmaymiz.
+
+    TUZATILDI: "quizs" appi mavjud emas -> courses.CourseTest /
+    courses.CourseTestSession ishlatiladi. Tugallanganlik
+    completed_at__isnull=False orqali tekshiriladi ("status" maydoni yo'q).
     """
     Course = _get_model("courses", "Course")
     Lesson = _get_model("courses", "Lesson")
-    Test = _get_model("quizs", "Test")
-    TestSession = _get_model("quizs", "TestSession")
+    CourseTest = _get_model("courses", "CourseTest")
+    CourseTestSession = _get_model("courses", "CourseTestSession")
     Problem = _get_model("problems", "Problem")
     if not Course or not Lesson:
         return
@@ -296,7 +362,10 @@ def recalculate_course_status(user_id: int, course_id: int) -> None:
 
     total_modules = len(modul_ids)
     total_lessons = Lesson.objects.filter(modul_id__in=modul_ids, is_active=True).count()
-    total_tests = Test.objects.filter(modul_id__in=modul_ids, is_active=True).count() if Test else 0
+    total_tests = (
+        CourseTest.objects.filter(modul_id__in=modul_ids, is_active=True).count()
+        if CourseTest else 0
+    )
     total_problems = (
         Problem.objects.filter(lesson__modul_id__in=modul_ids, is_active=True).count()
         if Problem else 0
@@ -311,13 +380,13 @@ def recalculate_course_status(user_id: int, course_id: int) -> None:
     ).count()
 
     completed_tests = 0
-    if TestSession:
+    if CourseTestSession:
         completed_tests = (
-            TestSession.objects.filter(
+            CourseTestSession.objects.filter(
                 user_id=user_id,
                 test__modul_id__in=modul_ids,
                 test__is_active=True,
-                status=TestSession.Status.COMPLETED,
+                completed_at__isnull=False,
             )
             .values("test_id")
             .distinct()
@@ -377,11 +446,13 @@ def handle_test_session_completed(user_id: int, test_id: int) -> None:
     """
     Test yakunlanganda FAQAT modul progressini qayta hisoblaydi.
     Enrollment'ga yozish yo'q — Enrollment modelida bunday maydonlar yo'q.
+
+    TUZATILDI: "quizs.Test" emas, "courses.CourseTest" ishlatiladi.
     """
-    Test = _get_model("quizs", "Test")
-    if not Test:
+    CourseTest = _get_model("courses", "CourseTest")
+    if not CourseTest:
         return
-    test = Test.objects.filter(id=test_id).select_related("modul").first()
+    test = CourseTest.objects.filter(id=test_id).select_related("modul").first()
     if not test or not test.modul_id:
         return
     recalculate_module_status(user_id, test.modul_id)
@@ -443,5 +514,5 @@ def handle_contest_completion(registration_id: int) -> None:
                 award_xp(reg.user, xp_amount, source="contest")
         except Exception:
             logger.exception("Contest XP berishda xatolik: registration_id=%s", registration_id)
-    # if reg.contest.pass_score_percent > reg.
+
     create_certificate(user_id=reg.user_id, contest_id=reg.contest_id)

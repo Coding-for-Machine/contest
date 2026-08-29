@@ -14,7 +14,7 @@
     <meta name="robots" content="index, follow">
     <link rel="canonical" href="{{ if .URL }}{{ .URL }}{{ else }}https://cfmcontest.uz{{ end }}">
 
-    <!-- Open Graph (Ijtimoiy tarmoqlar va Telegram ulashuvlari uchun) -->
+    <!-- Open Graph -->
     <meta property="og:title" content="{{ if .Title }}{{ .Title }}{{ else }}Professional Dasturlash Kurslari | CfM Contest{{ end }}">
     <meta property="og:description" content="{{ if .Description }}{{ .Description }}{{ else }}Go, Python, Algoritmlar va Backend yo'nalishida noldan boshlab professional onlayn darslar va interaktiv topshiriqlar to'plami.{{ end }}">
     <meta property="og:type" content="website">
@@ -31,7 +31,7 @@
     <meta name="twitter:description" content="{{ if .Description }}{{ .Description }}{{ else }}Go, Python, Algoritmlar va Backend yo'nalishida noldan boshlab professional onlayn darslar.{{ end }}">
     <meta name="twitter:image" content="https://cfmcontest.uz">
 
-    <!-- Schema.org Structured Data -->
+    <!-- Schema.org -->
     <script type="application/ld+json">
     {
         "@context": "https://schema.org",
@@ -58,7 +58,7 @@
     <link rel="icon" type="image/png" sizes="16x16" href="/assets/img/cfm_logo.png">
     <link rel="apple-touch-icon" href="/static/img/cfm_logo.png">
 
-    <!-- Preconnect for performance -->
+    <!-- Preconnect -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 
@@ -68,7 +68,6 @@
     <!-- Google Material Icons -->
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
     <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Outlined" rel="stylesheet">
-    <link href="https://googleapis.com" rel="stylesheet">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
@@ -94,7 +93,7 @@
         }
     </script>
 
-    <!-- 🛠 Rose/Absolute statik yo'llar integratsiyasi (Nisbiy yo'llar olib tashlandi) -->
+    <!-- Global stylesheet -->
     <link rel="stylesheet" href="/assets/css/style.css">
 
     <style>
@@ -109,7 +108,9 @@
             box-shadow: 0 12px 40px rgba(11, 15, 20, 0.08);
         }
         .course-card .course-thumb {
-            height: 140px;
+            /* 16:9 thumbnail — video darsliklarga mos konsistent nisbat */
+            aspect-ratio: 16 / 9;
+            height: auto;
             background: var(--surface-2);
             display: flex;
             align-items: center;
@@ -125,16 +126,17 @@
         }
         .course-card .course-thumb .icon-placeholder {
             color: var(--ink-faint);
+            position: absolute;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
         .course-card .course-thumb .badge-top {
             position: absolute;
             top: 12px;
             left: 12px;
-        }
-        .course-card .course-thumb .badge-top-right {
-            position: absolute;
-            top: 12px;
-            right: 12px;
+            z-index: 2;
         }
         .course-card .course-body {
             padding: 16px 18px 18px;
@@ -143,24 +145,18 @@
             font-family: 'Space Grotesk', sans-serif;
             font-weight: 700;
             font-size: 16px;
-            margin-bottom: 6px;
+            margin-bottom: 10px;
             line-height: 1.3;
-        }
-        .course-card .course-description {
-            font-size: 13px;
-            color: var(--ink-soft);
             display: -webkit-box;
             -webkit-line-clamp: 2;
             -webkit-box-orient: vertical;
             overflow: hidden;
-            line-height: 1.5;
-            margin-bottom: 12px;
         }
         .course-card .course-meta {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 12px;
+            gap: 14px;
+            font-size: 12.5px;
             color: var(--ink-soft);
             flex-wrap: wrap;
         }
@@ -192,37 +188,13 @@
             background: var(--line-soft);
             border-radius: 99px;
             overflow: hidden;
-            margin-top: 8px;
+            margin-top: 10px;
         }
         .course-card .course-progress .fill {
             height: 100%;
             border-radius: 99px;
             background: var(--info);
             transition: width 0.8s ease;
-        }
-
-        .filter-chip {
-            padding: 6px 16px;
-            border-radius: 999px;
-            font-size: 12px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s ease;
-            border: 1.5px solid var(--line);
-            background: #fff;
-            color: var(--ink-soft);
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-        .filter-chip:hover {
-            border-color: var(--ink);
-            color: var(--ink);
-        }
-        .filter-chip.active {
-            background: var(--ink);
-            color: #fff;
-            border-color: var(--ink);
         }
 
         .search-wrapper {
@@ -260,7 +232,7 @@
             background: #fff;
         }
         .skeleton-card .skeleton-thumb {
-            height: 140px;
+            aspect-ratio: 16 / 9;
             background: linear-gradient(90deg, #f1f2f4 25%, #f8f9fa 37%, #f1f2f4 63%);
             background-size: 400% 100%;
             animation: skeleton-loading 1.4s ease infinite;
@@ -276,28 +248,17 @@
             border-radius: 4px;
             margin-bottom: 8px;
         }
-        .skeleton-card .skeleton-line.short {
-            width: 60%;
-        }
-        .skeleton-card .skeleton-line.medium {
-            width: 80%;
-        }
+        .skeleton-card .skeleton-line.short { width: 60%; }
+        .skeleton-card .skeleton-line.medium { width: 80%; }
 
         @keyframes skeleton-loading {
             0% { background-position: 100% 50%; }
             100% { background-position: 0 50%; }
         }
 
-        .material-icons {
-            font-size: 20px;
-            vertical-align: middle;
-        }
-        .material-icons.small {
-            font-size: 16px;
-        }
-        .material-icons.large {
-            font-size: 28px;
-        }
+        .material-icons { font-size: 20px; vertical-align: middle; }
+        .material-icons.small { font-size: 16px; }
+        .material-icons.large { font-size: 28px; }
 
         .badge {
             display: inline-flex;
@@ -311,46 +272,19 @@
             letter-spacing: 0.02em;
         }
         .badge-easy { background: var(--easy-bg); color: var(--easy); }
-        .badge-medium { background: var(--medium-bg); color: var(--medium); }
-        .badge-hard { background: var(--hard-bg); color: var(--hard); }
         .badge-info { background: var(--info-bg); color: var(--info); }
         .badge-neutral { background: var(--surface-2); color: var(--ink-soft); }
 
-        .level-badge {
-            padding: 2px 10px;
-            border-radius: 999px;
-            font-size: 10px;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.03em;
-            display: inline-flex;
-            align-items: center;
-            gap: 3px;
-        }
-        .level-badge .material-icons { font-size: 14px; }
-        .level-badge.beginner { background: var(--easy-bg); color: var(--easy); }
-        .level-badge.intermediate { background: var(--medium-bg); color: var(--medium); }
-        .level-badge.advanced { background: var(--hard-bg); color: var(--hard); }
-
         @media (max-width: 640px) {
-            .course-card .course-thumb { height: 120px; }
+            .course-card .course-thumb { aspect-ratio: 16 / 10; }
         }
     </style>
 </head>
 <body>
 
-    <!-- ===== TOPBAR ===== -->
-    <!-- 🆕 Endi bu yerda faqat bitta bo'sh header — mazmuni main.js
-         (injectNavbar) tomonidan to'ldiriladi. Barcha sahifalarda
-         XUDDI SHU bitta qator yetarli, navbar HTML'ni qayta yozish
-         shart emas. -->
     <header id="navbar" class="topbar" role="banner"></header>
 
-
-
-    <!-- ===== MAIN ===== -->
     <main>
-
         <section class="container-rc py-10">
             <!-- Header -->
             <div class="mb-10">
@@ -368,26 +302,18 @@
 
             <!-- Filters -->
             <div class="flex flex-col gap-4 mb-8">
-                <!-- Search -->
                 <div class="search-wrapper">
                     <span class="material-icons">search</span>
-                    <input
-                        id="searchInput"
-                        type="search"
-                        placeholder="Kurs nomi bo'yicha qidirish... ( / )"
-                    >
+                    <input id="searchInput" type="search" placeholder="Kurs nomi bo'yicha qidirish... ( / )">
                 </div>
 
-                <!-- Sort & view -->
                 <div class="flex flex-wrap items-center justify-between gap-3 pt-2 border-t border-line-soft">
                     <div class="flex items-center gap-3">
                         <span class="material-icons small text-inkfaint">sort</span>
                         <select id="sortSelect" class="select w-auto text-xs py-1.5">
-                            <option value="popular">Eng ommabop</option>
                             <option value="newest">Eng yangi</option>
                             <option value="oldest">Eng eski</option>
-                            <option value="students">Ko'p o'quvchi</option>
-                            <option value="rating">Yuqori baho</option>
+                            <option value="az">Nomi (A-Z)</option>
                         </select>
                         <select id="viewSelect" class="select w-auto text-xs py-1.5">
                             <option value="grid">Grid</option>
@@ -403,13 +329,11 @@
             <!-- Courses grid -->
             <div id="coursesContainer">
                 <div id="coursesGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                    <!-- Skeletons -->
-                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div><div class="skeleton-line short" style="margin-top:6px;"></div></div></div>
-                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div><div class="skeleton-line short" style="margin-top:6px;"></div></div></div>
-                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div><div class="skeleton-line short" style="margin-top:6px;"></div></div></div>
+                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div></div></div>
+                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div></div></div>
+                    <div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div></div></div>
                 </div>
 
-                <!-- Load more -->
                 <div class="flex items-center justify-center mt-8">
                     <button id="loadMoreBtn" class="btn btn-outline text-sm hidden">
                         <span class="material-icons small">expand_more</span>
@@ -417,19 +341,24 @@
                     </button>
                 </div>
 
-                <!-- Empty state -->
                 <div id="emptyState" class="hidden text-center py-16 text-inksoft">
                     <span class="material-icons" style="font-size:64px;">school</span>
                     <h3 class="font-display font-bold text-xl mt-4 mb-2">Kurslar topilmadi</h3>
-                    <p>Qidiruv shartlariga mos kurs mavjud emas.</p>
+                    <p id="emptyStateText">Qidiruv shartlariga mos kurs mavjud emas.</p>
+                </div>
+
+                <div id="errorState" class="hidden text-center py-16 text-inksoft">
+                    <span class="material-icons" style="font-size:64px;color:var(--hard);">error_outline</span>
+                    <h3 class="font-display font-bold text-xl mt-4 mb-2">Kurslarni yuklab bo'lmadi</h3>
+                    <p class="mb-4">Server bilan bog'lanishda xatolik yuz berdi. Iltimos, qayta urinib ko'ring.</p>
+                    <button id="retryBtn" class="btn btn-outline text-sm">
+                        <span class="material-icons small">refresh</span> Qayta urinish
+                    </button>
                 </div>
             </div>
-
         </section>
-
     </main>
 
-    <!-- Toast -->
     <div id="toast-container"></div>
 
     <!-- Global JS -->
@@ -437,406 +366,323 @@
 
     <!-- ===== COURSES PAGE JS ===== -->
     <script>
-        (function() {
-            'use strict';
+    (function () {
+        'use strict';
 
-            // ============================================================
-            // DATA (from API)
-            // ============================================================
-            var apiCourses = [
-                {
-                    "id": 3,
-                    "title": "ok",
-                    "slug": "ok",
-                    "price": 0,
-                    "content": { "lessons": 0, "tests": 0 },
-                    "thumbnail": null,
-                    "progress": null
-                },
-                {
-                    "id": 2,
-                    "title": "name",
-                    "slug": "name",
-                    "price": 0,
-                    "content": { "lessons": 0, "tests": 0 },
-                    "thumbnail": null,
-                    "progress": null
-                },
-                {
-                    "id": 1,
-                    "title": "python ok update",
-                    "slug": "python-kourse",
-                    "price": 0,
-                    "content": { "lessons": 1, "tests": 1 },
-                    "thumbnail": "http://localhost:9000/cfm/media/movies/thumbnails/cfm_logo_Q2ghoMq.jpg",
-                    "progress": {
-                        "is_paid": true,
-                        "lessons": 0,
-                        "tests": 1,
-                        "percent": 50.0
-                    }
-                }
-            ];
+        // ============================================================
+        // API — get_course_list_api bilan mos: GET {DATA_API}/courses/
+        // Javob shakli:
+        //   [{ id, title, slug, price, discount_price?, content:{lessons,tests},
+        //      thumbnail?, progress?: { is_paid, lessons, tests, percent, is_completed? } }]
+        // ============================================================
+        var COURSES_BASE = (window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1') + '/courses';
 
-            // ============================================================
-            // ENRICH DATA (add missing fields)
-            // ============================================================
-            var defaultCourses = [
-                { title: "Python dasturlash asoslari", desc: "Noldan boshlab Python tilining sintaksisi, ma'lumot turlari, funksiyalar va OOP asoslarini o'rganasiz.", students: 3420, rating: 4.8, oldPrice: null, level: 'beginner', tags: ['Python', 'Dasturlash'] },
-                { title: "Algoritmlar va ma'lumotlar tuzilmasi", desc: "Array, Stack, Queue, Linked List, Tree, Graph, Sorting va Searching algoritmlarini o'rganing.", students: 2150, rating: 4.9, oldPrice: null, level: 'intermediate', tags: ['Algoritmlar', 'Ma\'lumotlar'] },
-                { title: "Veb-dasturlash kirish kursi", desc: "HTML, CSS va JavaScript asoslarini o'rganib, o'z birinchi veb-sahifangizni yarating.", students: 1800, rating: 4.6, oldPrice: null, level: 'beginner', tags: ['HTML', 'CSS', 'JavaScript'] },
-                { title: "Python — Yuqori daraja", desc: "Dekoratorlar, generatorlar, kontekst menejerlar, asinxron dasturlash va metaklasslar.", students: 980, rating: 4.7, oldPrice: 320000, level: 'advanced', tags: ['Python', 'Advanced'] },
-                { title: "Machine Learning kirish kursi", desc: "Scikit-learn va TensorFlow yordamida mashinaviy o'qitishning asosiy algoritmlari.", students: 720, rating: 4.5, oldPrice: 550000, level: 'advanced', tags: ['ML', 'AI'] },
-                { title: "Ma'lumotlar bazasi dizayni va SQL", desc: "Relational ma'lumotlar bazasi dizayni, normalizatsiya, SQL so'rovlar va optimize qilish.", students: 1500, rating: 4.4, oldPrice: null, level: 'intermediate', tags: ['SQL', 'Database'] },
-                { title: "React.js — Hooks va State Management", desc: "React komponentlari, Hooks, Context API, Redux va Next.js asoslari.", students: 1650, rating: 4.8, oldPrice: 380000, level: 'intermediate', tags: ['React', 'JavaScript'] },
-                { title: "Docker va DevOps asoslari", desc: "Containerization, Dockerfile, Docker Compose, CI/CD va Kubernetes asoslari.", students: 890, rating: 4.6, oldPrice: null, level: 'advanced', tags: ['Docker', 'DevOps'] }
-            ];
+        async function dataFetch(path) {
+            var url = COURSES_BASE + path;
+            var token = Auth.getToken();
+            var headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+            var res = await fetch(url, { headers: headers });
+            if (!res.ok) throw new Error('HTTP ' + res.status);
+            return res.json();
+        }
 
-            // Enrich: if title is generic, use default description
-            var allCourses = apiCourses.map(function(c, idx) {
-                var def = defaultCourses[idx % defaultCourses.length];
-                // If title is "ok" or "name", use default title
-                var title = (c.title === 'ok' || c.title === 'name') ? def.title : c.title;
-                var desc = (c.title === 'ok' || c.title === 'name') ? def.desc : (c.description || def.desc);
-                return {
-                    id: c.id,
-                    slug: c.slug,
-                    title: title,
-                    description: desc,
-                    price: c.price || 0,
-                    oldPrice: def.oldPrice || null,
-                    lessons: c.content ? c.content.lessons : 0,
-                    tests: c.content ? c.content.tests : 0,
-                    thumbnail: c.thumbnail || null,
-                    level: def.level || 'beginner',
-                    students: def.students || 0,
-                    rating: def.rating || 4.0,
-                    tags: def.tags || [],
-                    // Progress
-                    is_paid: c.progress ? c.progress.is_paid : false,
-                    progress_percent: c.progress ? c.progress.percent : 0,
-                    lessons_done: c.progress ? c.progress.lessons : 0,
-                    tests_done: c.progress ? c.progress.tests : 0,
-                    // Status
-                    enrolled: c.progress ? c.progress.is_paid : false,
-                    completed: c.progress ? c.progress.percent >= 100 : false
-                };
-            });
-
-            // ============================================================
-            // STATE
-            // ============================================================
-            var state = {
-                search: '',
-                sort: 'popular',
-                view: 'grid',
-                page: 1,
-                pageSize: 6,
-                loading: false,
-                hasMore: true,
-                filtered: []
+        function normalizeCourse(c) {
+            var progress = c.progress || null;
+            return {
+                id: c.id,
+                slug: c.slug,
+                title: c.title,
+                price: c.price || 0,
+                discountPrice: (c.discount_price != null) ? c.discount_price : null,
+                lessons: c.content ? (c.content.lessons || 0) : 0,
+                tests: c.content ? (c.content.tests || 0) : 0,
+                thumbnail: c.thumbnail || null,
+                enrolled: !!progress,
+                isPaid: progress ? !!progress.is_paid : false,
+                isCompleted: progress ? !!progress.is_completed : false,
+                progressPercent: progress ? (progress.percent || 0) : 0
             };
+        }
 
-            // ============================================================
-            // DOM REFS
-            // ============================================================
-            var grid = document.getElementById('coursesGrid');
-            var loadMoreBtn = document.getElementById('loadMoreBtn');
-            var remainingCount = document.getElementById('remainingCount');
-            var displayCount = document.getElementById('displayCount');
-            var emptyState = document.getElementById('emptyState');
-            var searchInput = document.getElementById('searchInput');
-            var totalCount = document.getElementById('totalCount');
+        // ============================================================
+        // STATE
+        // ============================================================
+        var allCourses = [];
+        var state = {
+            search: '',
+            sort: 'newest',
+            view: 'grid',
+            page: 1,
+            pageSize: 9,
+            loading: false,
+            hasMore: true,
+            filtered: []
+        };
 
-            // ============================================================
-            // HELPERS
-            // ============================================================
-            function escapeHtml(str) {
-                if (!str) return '';
-                var d = document.createElement('div');
-                d.textContent = str;
-                return d.innerHTML;
+        // ============================================================
+        // DOM REFS
+        // ============================================================
+        var grid = document.getElementById('coursesGrid');
+        var loadMoreBtn = document.getElementById('loadMoreBtn');
+        var remainingCount = document.getElementById('remainingCount');
+        var displayCount = document.getElementById('displayCount');
+        var emptyState = document.getElementById('emptyState');
+        var emptyStateText = document.getElementById('emptyStateText');
+        var errorState = document.getElementById('errorState');
+        var coursesContainer = document.getElementById('coursesContainer');
+        var searchInput = document.getElementById('searchInput');
+        var totalCount = document.getElementById('totalCount');
+        var retryBtn = document.getElementById('retryBtn');
+
+        // ============================================================
+        // HELPERS
+        // ============================================================
+        function escapeHtml(str) {
+            if (!str) return '';
+            var d = document.createElement('div');
+            d.textContent = str;
+            return d.innerHTML;
+        }
+
+        function fmtPrice(n) {
+            return Number(n).toLocaleString('uz-UZ');
+        }
+
+        // ============================================================
+        // FILTER / SORT
+        // ============================================================
+        function getFiltered() {
+            var result = allCourses.slice();
+
+            if (state.search) {
+                var s = state.search.toLowerCase();
+                result = result.filter(function (c) {
+                    return c.title.toLowerCase().indexOf(s) !== -1;
+                });
             }
 
-            function fmtNum(n) {
-                if (n >= 1e6) return (n / 1e6).toFixed(1) + 'M';
-                if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
-                return String(n);
-            }
+            var sortMap = {
+                'newest': function (a, b) { return b.id - a.id; },
+                'oldest': function (a, b) { return a.id - b.id; },
+                'az': function (a, b) { return a.title.localeCompare(b.title, 'uz'); }
+            };
+            if (sortMap[state.sort]) result.sort(sortMap[state.sort]);
 
-            function getLevelBadge(level) {
-                var map = {
-                    beginner: ['beginner', 'Boshlang\'ich', 'school'],
-                    intermediate: ['intermediate', 'O\'rtacha', 'auto_stories'],
-                    advanced: ['advanced', 'Murakkab', 'psychology']
-                };
-                var pair = map[level] || map.beginner;
-                return '<span class="level-badge ' + pair[0] + '"><span class="material-icons">' + pair[2] + '</span> ' + pair[1] + '</span>';
-            }
+            return result;
+        }
 
-            function getStatusBadge(c) {
-                if (c.completed) {
-                    return '<span class="badge badge-easy"><span class="material-icons small" style="font-size:14px;">celebration</span> Tugatilgan</span>';
+        // ============================================================
+        // RENDER
+        // ============================================================
+        function renderCourse(c) {
+            var priceHtml;
+            if (c.price === 0) {
+                priceHtml = '<span class="text-easy"><span class="material-icons small" style="font-size:14px;">check_circle</span> Bepul</span>';
+            } else {
+                priceHtml = fmtPrice(c.discountPrice || c.price) + ' so\'m';
+                if (c.discountPrice) {
+                    priceHtml += ' <span class="old">' + fmtPrice(c.price) + ' so\'m</span>';
                 }
-                if (c.enrolled) {
-                    return '<span class="badge badge-info"><span class="material-icons small" style="font-size:14px;">check_circle</span> Yozilgan</span>';
-                }
-                return '';
             }
 
-            // ============================================================
-            // FILTER
-            // ============================================================
-            function getFiltered() {
-                var result = allCourses.slice();
-
-                if (state.search) {
-                    var s = state.search.toLowerCase();
-                    result = result.filter(function(c) {
-                        return c.title.toLowerCase().includes(s) ||
-                            c.description.toLowerCase().includes(s) ||
-                            c.tags.some(function(t) { return t.toLowerCase().includes(s); });
-                    });
-                }
-
-                var sortMap = {
-                    'popular': function(a, b) { return b.students - a.students; },
-                    'newest': function(a, b) { return b.id - a.id; },
-                    'oldest': function(a, b) { return a.id - b.id; },
-                    'students': function(a, b) { return b.students - a.students; },
-                    'rating': function(a, b) { return b.rating - a.rating; }
-                };
-                if (sortMap[state.sort]) {
-                    result.sort(sortMap[state.sort]);
-                }
-
-                return result;
+            var statusBadge = '';
+            if (c.isCompleted) {
+                statusBadge = '<span class="badge badge-easy"><span class="material-icons small" style="font-size:14px;">celebration</span> Tugatilgan</span>';
+            } else if (c.enrolled) {
+                statusBadge = '<span class="badge badge-info"><span class="material-icons small" style="font-size:14px;">check_circle</span> Yozilgan</span>';
             }
 
-            // ============================================================
-            // RENDER
-            // ============================================================
-            function renderCourse(c) {
-                var priceHtml = '';
-                if (c.price === 0) {
-                    priceHtml = '<span class="text-easy"><span class="material-icons small" style="font-size:14px;">check_circle</span> Bepul</span>';
-                } else {
-                    priceHtml = fmtNum(c.price) + ' so\'m';
-                    if (c.oldPrice) {
-                        priceHtml += ' <span class="old">' + fmtNum(c.oldPrice) + ' so\'m</span>';
-                    }
-                }
-
-                var statusBadge = getStatusBadge(c);
-                var progressHtml = '';
-                if (c.enrolled || c.completed) {
-                    progressHtml = '<div class="course-progress"><div class="fill" style="width:' + c.progress_percent + '%"></div></div>';
-                }
-
-                // Thumbnail: if exists show image, else show icon
-                var thumbHtml = '';
-                if (c.thumbnail) {
-                    thumbHtml = '<img src="' + c.thumbnail + '" alt="' + escapeHtml(c.title) + '" loading="lazy" onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
-                        '<div class="icon-placeholder" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;"><span class="material-icons" style="font-size:40px;">school</span></div>';
-                } else {
-                    thumbHtml = '<span class="material-icons" style="font-size:40px;color:var(--ink-faint);">school</span>';
-                }
-
-                var levelIcons = {
-                    beginner: 'school',
-                    intermediate: 'auto_stories',
-                    advanced: 'psychology'
-                };
-                var thumbIcon = levelIcons[c.level] || 'school';
-
-                return '<a href="/course-detail.html?slug=' + c.slug + '" class="course-card card hover:no-underline">' +
-                    '<div class="course-thumb">' +
-                    (statusBadge ? '<span class="badge-top">' + statusBadge + '</span>' : '') +
-                    '<span class="badge-top-right">' + getLevelBadge(c.level) + '</span>' +
-                    (c.thumbnail ?
-                        '<img src="' + c.thumbnail + '" alt="' + escapeHtml(c.title) + '" loading="lazy" onerror="this.style.display=\'none\';this.parentElement.querySelector(\'.icon-placeholder\').style.display=\'flex\'">' +
-                        '<div class="icon-placeholder" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;"><span class="material-icons" style="font-size:40px;">' +
-                        thumbIcon + '</span></div>' :
-                        '<span class="material-icons" style="font-size:40px;color:var(--ink-faint);">' + thumbIcon +
-                        '</span>'
-                    ) +
-                    '</div>' +
-                    '<div class="course-body">' +
-                    '<div class="course-title">' + escapeHtml(c.title) + '</div>' +
-                    '<div class="course-description">' + escapeHtml(c.description) + '</div>' +
-                    '<div class="course-meta">' +
-                    '<span><span class="material-icons small">description</span> ' + c.lessons + ' dars</span>' +
-                    '<span><span class="material-icons small">quiz</span> ' + c.tests + ' test</span>' +
-                    '<span><span class="material-icons small">people</span> ' + fmtNum(c.students) + '</span>' +
-                    '<span><span class="material-icons small">star</span> ' + c.rating + '</span>' +
-                    '</div>' +
-                    progressHtml +
-                    '<div class="course-footer">' +
-                    '<span class="course-price">' + priceHtml + '</span>' +
-                    '<span class="btn btn-outline btn-sm">' + (c.enrolled ? 'Davom etish →' : 'Ko\'rish →') + '</span>' +
-                    '</div>' +
-                    '</div>' +
-                    '</a>';
+            var progressHtml = '';
+            if (c.enrolled) {
+                progressHtml = '<div class="course-progress"><div class="fill" style="width:' + c.progressPercent + '%"></div></div>';
             }
 
-            function renderSkeletons(count) {
-                var html = '';
-                for (var i = 0; i < count; i++) {
-                    html += '<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div><div class="skeleton-line short" style="margin-top:6px;"></div></div></div>';
-                }
-                return html;
+            var thumbInner = c.thumbnail
+                ? '<img src="' + c.thumbnail + '" alt="' + escapeHtml(c.title) + '" loading="lazy" ' +
+                  'onerror="this.style.display=\'none\';this.nextElementSibling.style.display=\'flex\'">' +
+                  '<div class="icon-placeholder" style="display:none;"><span class="material-icons" style="font-size:40px;">school</span></div>'
+                : '<div class="icon-placeholder"><span class="material-icons" style="font-size:40px;">school</span></div>';
+
+            return '<a href="/course-detail.html?slug=' + encodeURIComponent(c.slug) + '" class="course-card card hover:no-underline">' +
+                '<div class="course-thumb">' +
+                (statusBadge ? '<span class="badge-top">' + statusBadge + '</span>' : '') +
+                thumbInner +
+                '</div>' +
+                '<div class="course-body">' +
+                '<div class="course-title">' + escapeHtml(c.title) + '</div>' +
+                '<div class="course-meta">' +
+                '<span><span class="material-icons small">description</span> ' + c.lessons + ' dars</span>' +
+                '<span><span class="material-icons small">quiz</span> ' + c.tests + ' test</span>' +
+                '</div>' +
+                progressHtml +
+                '<div class="course-footer">' +
+                '<span class="course-price">' + priceHtml + '</span>' +
+                '<span class="btn btn-outline btn-sm">' + (c.enrolled ? 'Davom etish →' : 'Ko\'rish →') + '</span>' +
+                '</div>' +
+                '</div>' +
+                '</a>';
+        }
+
+        function renderSkeletons(count) {
+            var html = '';
+            for (var i = 0; i < count; i++) {
+                html += '<div class="skeleton-card"><div class="skeleton-thumb"></div><div class="skeleton-body"><div class="skeleton-line"></div><div class="skeleton-line short"></div><div class="skeleton-line medium" style="margin-top:12px;"></div></div></div>';
             }
+            return html;
+        }
 
-            function renderStats(filtered) {
-                totalCount.textContent = filtered.length;
-            }
+        // ============================================================
+        // LOAD MORE (client-side pagination — bitta API chaqiruvi
+        // orqali olingan ro'yxat ustidan sahifalash)
+        // ============================================================
+        function loadMore() {
+            if (state.loading || !state.hasMore) return;
+            state.loading = true;
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<span class="material-icons small">hourglass_top</span> Yuklanmoqda...';
 
-            // ============================================================
-            // LOAD MORE
-            // ============================================================
-            function loadMore() {
-                if (state.loading || !state.hasMore) return;
-                state.loading = true;
-                loadMoreBtn.disabled = true;
-                loadMoreBtn.innerHTML = '<span class="material-icons small">hourglass_top</span> Yuklanmoqda...';
+            var start = (state.page - 1) * state.pageSize;
+            var end = start + state.pageSize;
+            var chunk = state.filtered.slice(start, end);
 
-                setTimeout(function() {
-                    var start = (state.page - 1) * state.pageSize;
-                    var end = start + state.pageSize;
-                    var chunk = state.filtered.slice(start, end);
-
-                    if (chunk.length === 0) {
-                        state.hasMore = false;
-                        state.loading = false;
-                        loadMoreBtn.classList.add('hidden');
-                        return;
-                    }
-
-                    var html = chunk.map(renderCourse).join('');
-                    grid.insertAdjacentHTML('beforeend', html);
-
-                    state.page++;
-                    state.loading = false;
-
-                    if (end >= state.filtered.length) {
-                        state.hasMore = false;
-                        loadMoreBtn.classList.add('hidden');
-                    } else {
-                        loadMoreBtn.classList.remove('hidden');
-                    }
-
-                    var displayed = state.page - 1;
-                    var totalDisplayed = Math.min(displayed * state.pageSize, state.filtered.length);
-                    displayCount.textContent = totalDisplayed;
-                    var remaining = state.filtered.length - totalDisplayed;
-                    remainingCount.textContent = remaining > 0 ? remaining : 0;
-                    loadMoreBtn.innerHTML = '<span class="material-icons small">expand_more</span> Yana yuklash <span class="font-mono">' +
-                        remaining + '</span> ta';
-                    loadMoreBtn.disabled = false;
-
-                }, 400);
-            }
-
-            // ============================================================
-            // REFRESH
-            // ============================================================
-            function refresh() {
-                state.page = 1;
-                state.hasMore = true;
+            if (chunk.length === 0) {
+                state.hasMore = false;
                 state.loading = false;
-                grid.innerHTML = '';
-                emptyState.classList.add('hidden');
-
-                state.filtered = getFiltered();
-                renderStats(state.filtered);
-
-                if (state.filtered.length === 0) {
-                    emptyState.classList.remove('hidden');
-                    loadMoreBtn.classList.add('hidden');
-                    displayCount.textContent = '0';
-                    return;
-                }
-
-                grid.innerHTML = renderSkeletons(Math.min(state.pageSize, state.filtered.length));
-
-                setTimeout(function() {
-                    var firstChunk = state.filtered.slice(0, state.pageSize);
-                    grid.innerHTML = firstChunk.map(renderCourse).join('');
-                    state.page = 2;
-
-                    if (state.filtered.length <= state.pageSize) {
-                        state.hasMore = false;
-                        loadMoreBtn.classList.add('hidden');
-                    } else {
-                        loadMoreBtn.classList.remove('hidden');
-                        var remaining = state.filtered.length - state.pageSize;
-                        remainingCount.textContent = remaining;
-                        loadMoreBtn.innerHTML = '<span class="material-icons small">expand_more</span> Yana yuklash <span class="font-mono">' +
-                            remaining + '</span> ta';
-                    }
-
-                    displayCount.textContent = Math.min(state.pageSize, state.filtered.length);
-                }, 300);
+                loadMoreBtn.classList.add('hidden');
+                return;
             }
 
-            // ============================================================
-            // EVENT LISTENERS
-            // ============================================================
+            grid.insertAdjacentHTML('beforeend', chunk.map(renderCourse).join(''));
+            state.page++;
+            state.loading = false;
 
-            searchInput.addEventListener('input', debounce(function() {
-                state.search = this.value.trim();
+            var displayed = Math.min((state.page - 1) * state.pageSize, state.filtered.length);
+            displayCount.textContent = displayed;
+            var remaining = state.filtered.length - displayed;
+
+            if (remaining <= 0) {
+                state.hasMore = false;
+                loadMoreBtn.classList.add('hidden');
+            } else {
+                remainingCount.textContent = remaining;
+                loadMoreBtn.innerHTML = '<span class="material-icons small">expand_more</span> Yana yuklash <span class="font-mono">' + remaining + '</span> ta';
+                loadMoreBtn.disabled = false;
+                loadMoreBtn.classList.remove('hidden');
+            }
+        }
+
+        // ============================================================
+        // REFRESH (filter/sort natijasini qaytadan chizish)
+        // ============================================================
+        function refresh() {
+            state.page = 1;
+            state.hasMore = true;
+            state.loading = false;
+            grid.innerHTML = '';
+            emptyState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            coursesContainer.classList.remove('hidden');
+
+            state.filtered = getFiltered();
+            totalCount.textContent = state.filtered.length;
+
+            if (state.filtered.length === 0) {
+                emptyStateText.textContent = state.search
+                    ? 'Qidiruv shartlariga mos kurs mavjud emas.'
+                    : 'Hozircha faol kurslar mavjud emas.';
+                emptyState.classList.remove('hidden');
+                loadMoreBtn.classList.add('hidden');
+                displayCount.textContent = '0';
+                return;
+            }
+
+            var firstChunk = state.filtered.slice(0, state.pageSize);
+            grid.innerHTML = firstChunk.map(renderCourse).join('');
+            state.page = 2;
+
+            if (state.filtered.length <= state.pageSize) {
+                state.hasMore = false;
+                loadMoreBtn.classList.add('hidden');
+            } else {
+                var remaining = state.filtered.length - state.pageSize;
+                remainingCount.textContent = remaining;
+                loadMoreBtn.innerHTML = '<span class="material-icons small">expand_more</span> Yana yuklash <span class="font-mono">' + remaining + '</span> ta';
+                loadMoreBtn.classList.remove('hidden');
+            }
+
+            displayCount.textContent = Math.min(state.pageSize, state.filtered.length);
+        }
+
+        // ============================================================
+        // LOAD (haqiqiy API'dan)
+        // ============================================================
+        async function loadCourses() {
+            grid.innerHTML = renderSkeletons(3);
+            emptyState.classList.add('hidden');
+            errorState.classList.add('hidden');
+            coursesContainer.classList.remove('hidden');
+
+            try {
+                var raw = await dataFetch('/');
+                allCourses = (raw || []).map(normalizeCourse);
                 refresh();
-            }, 350));
+            } catch (e) {
+                console.error('Kurslarni yuklashda xatolik:', e);
+                coursesContainer.classList.add('hidden');
+                errorState.classList.remove('hidden');
+            }
+        }
 
-            document.getElementById('sortSelect').addEventListener('change', function() {
-                state.sort = this.value;
-                refresh();
-            });
-
-            document.getElementById('viewSelect').addEventListener('change', function() {
-                state.view = this.value;
-                var gridEl = document.getElementById('coursesGrid');
-                if (state.view === 'list') {
-                    gridEl.className = 'grid grid-cols-1 gap-4';
-                } else {
-                    gridEl.className = 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
-                }
-                refresh();
-            });
-
-            loadMoreBtn.addEventListener('click', loadMore);
-
-            // Keyboard shortcuts
-            document.addEventListener('keydown', function(e) {
-                if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
-                    var tag = document.activeElement ? document.activeElement.tagName : '';
-                    if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
-                        e.preventDefault();
-                        searchInput.focus();
-                        searchInput.select();
-                    }
-                }
-                if (e.key === 'Escape' && document.activeElement === searchInput) {
-                    searchInput.value = '';
-                    state.search = '';
-                    refresh();
-                    searchInput.blur();
-                }
-            });
-
-            // ============================================================
-            // INIT
-            // ============================================================
+        // ============================================================
+        // EVENTS
+        // ============================================================
+        searchInput.addEventListener('input', debounce(function () {
+            state.search = this.value.trim();
             refresh();
+        }, 350));
 
-            setTimeout(function() {
-                showToast('📚 ' + allCourses.length + ' ta kurs mavjud', 'info', 3000);
-            }, 800);
+        document.getElementById('sortSelect').addEventListener('change', function () {
+            state.sort = this.value;
+            refresh();
+        });
 
-            window.coursesState = state;
-            window.coursesRefresh = refresh;
+        document.getElementById('viewSelect').addEventListener('change', function () {
+            state.view = this.value;
+            grid.className = state.view === 'list'
+                ? 'grid grid-cols-1 gap-4'
+                : 'grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6';
+            refresh();
+        });
 
-        })();
+        loadMoreBtn.addEventListener('click', loadMore);
+        retryBtn.addEventListener('click', loadCourses);
+
+        document.addEventListener('keydown', function (e) {
+            if (e.key === '/' && !e.ctrlKey && !e.metaKey) {
+                var tag = document.activeElement ? document.activeElement.tagName : '';
+                if (tag !== 'INPUT' && tag !== 'TEXTAREA') {
+                    e.preventDefault();
+                    searchInput.focus();
+                    searchInput.select();
+                }
+            }
+            if (e.key === 'Escape' && document.activeElement === searchInput) {
+                searchInput.value = '';
+                state.search = '';
+                refresh();
+                searchInput.blur();
+            }
+        });
+
+        // ============================================================
+        // INIT
+        // ============================================================
+        loadCourses();
+
+        window.coursesState = state;
+        window.coursesRefresh = refresh;
+    })();
     </script>
 
 </body>

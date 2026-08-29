@@ -25,7 +25,7 @@ class Center(models.Model):
     def get_staff_count(self):
         return self.staff_profiles.count()
     
-    def get_students_count(self):
+    def get_students_count(self): 
         return self.students.count()
     
     class Meta:
