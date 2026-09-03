@@ -39,7 +39,6 @@ from status.models import (
     LessonStatus,
     ModuleStatus,
     ProblemStatus,
-    UserStats,
 )
 from status.services import award_xp, mark_lesson_task_completed, recalculate_module_status
 
@@ -2138,22 +2137,11 @@ async def get_question_by_id(
 
 
 class QuestionAnswerIn(msgspec.Struct):
-    # ------------------------------------------------------
     # SINGLE_CHOICE
-    # ------------------------------------------------------
-
     choice_id: int | None = None
-
-    # ------------------------------------------------------
     # MULTIPLE_CHOICE
-    # ------------------------------------------------------
-
     selected_choice_ids: list[int] | None = None
-
-    # ------------------------------------------------------
     # MATCHING / ARRANGE / FILL_BLANKS
-    # ------------------------------------------------------
-
     answer_data: dict | None = None
 
 

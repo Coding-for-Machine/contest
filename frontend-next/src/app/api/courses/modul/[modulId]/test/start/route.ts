@@ -1,18 +1,27 @@
-// src/app/api/courses/modul/[modulId]/test/start/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import ApiProxy from "@/app/api/proxy";
+import type { StartTestSessionResponse } from "@/lib/types/courses";
 
 export async function POST(
-  request: NextRequest,
+  _req: Request,
   { params }: { params: Promise<{ modulId: string }> }
 ) {
-  const { modulId } = await params;
+  try {
+    const { modulId } = await params;
 
-  const res = await ApiProxy.post(
-    `/courses/modul/${modulId}/test/start/`,
-    null,
-    { withAuth: true }
-  );
+    const { status, data } = await ApiProxy.post<StartTestSessionResponse>(
+      `/modul/${modulId}/test/start/`,
+      null,
+      { withAuth: true }
+    );
 
-  return NextResponse.json(res.data, { status: res.status });
+    return NextResponse.json(data, { status });
+  } catch (error) {
+    console.error("Failed to start test session:", error);
+
+    return NextResponse.json(
+      { message: "Failed to start test session" },
+      { status: 500 }
+    );
+  }
 }

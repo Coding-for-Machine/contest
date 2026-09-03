@@ -1,17 +1,26 @@
-// src/app/api/courses/modul/[modulId]/test/route.ts
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import ApiProxy from "@/app/api/proxy";
+import type { TestInfo } from "@/lib/types/courses";
 
 export async function GET(
-  request: NextRequest,
+  _req: Request,
   { params }: { params: Promise<{ modulId: string }> }
 ) {
-  const { modulId } = await params;
+  try {
+    const { modulId } = await params;
 
-  const res = await ApiProxy.get(`/courses/modul/${modulId}/test/`, {
-    withAuth: true,
-    cache: "no-store",
-  });
+    const { status, data } = await ApiProxy.get<TestInfo>(
+      `/modul/${modulId}/test/`,
+      { withAuth: true }
+    );
 
-  return NextResponse.json(res.data, { status: res.status });
+    return NextResponse.json(data, { status });
+  } catch (error) {
+    console.error("Failed to fetch test info:", error);
+
+    return NextResponse.json(
+      { message: "Failed to fetch test info" },
+      { status: 500 }
+    );
+  }
 }
