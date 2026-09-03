@@ -13,6 +13,24 @@ from baseuser.models import BaseUser
 from video.models import Video
 
 
+# ==========================================================
+# YORDAMCHI: unikal slug generatsiyasi (DRY)
+# ==========================================================
+
+def generate_unique_slug(model_cls, title, **extra_filter):
+    """
+    Berilgan model uchun unikal slug hosil qiladi.
+    extra_filter orqali scope (masalan, course=..., lesson=...) beriladi.
+    """
+    base_slug = slugify(title)
+    slug = base_slug
+    counter = 1
+    while model_cls.objects.filter(slug=slug, **extra_filter).exists():
+        slug = f"{base_slug}-{counter}"
+        counter += 1
+    return slug
+
+
 class TimeStampedModel(models.Model):
     created_at = models.DateTimeField("Yaratilgan vaqti", auto_now_add=True)
     updated_at = models.DateTimeField("Yangilangan vaqti", auto_now=True)
@@ -101,13 +119,7 @@ class Course(CenterScopedMixin, TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title)
-            slug = base_slug
-            counter = 1
-            while Course.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = generate_unique_slug(Course, self.title)
         super().save(*args, **kwargs)
 
 
@@ -164,13 +176,7 @@ class Modul(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title)
-            slug = base_slug
-            counter = 1
-            while Modul.objects.filter(course=self.course, slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = generate_unique_slug(Modul, self.title, course=self.course)
         super().save(*args, **kwargs)
 
 
@@ -274,13 +280,7 @@ class Lesson(TimeStampedModel):
 
                 self.order = last_order + 1
 
-            base_slug = slugify(self.title)
-            slug = base_slug
-            counter = 1
-            while Lesson.objects.filter(modul=self.modul, slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = generate_unique_slug(Lesson, self.title, modul=self.modul)
         super().save(*args, **kwargs)
 
 
@@ -393,13 +393,7 @@ class Lecture(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title)
-            slug = base_slug
-            counter = 1
-            while Lecture.objects.filter(lesson=self.lesson, slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = generate_unique_slug(Lecture, self.title, lesson=self.lesson)
         super().save(*args, **kwargs)
 
 
@@ -471,6 +465,10 @@ class CourseTestSession(models.Model):
         indexes = [
             models.Index(fields=["user", "test"]),
             models.Index(fields=["-started_at"]),
+            # calculate_mathematical_score() dagi "eng yaxshi urinish"
+            # (user, test bo'yicha eng katta total_xp_earned) so'rovini
+            # to'liq qamrab oladigan composite indeks.
+            models.Index(fields=["user", "test", "-total_xp_earned"], name="test_session_best_lookup"),
         ]
 
     def __str__(self):
@@ -513,7 +511,14 @@ class CourseTestSession(models.Model):
                     question_id__in=test_question_ids,
                 )
                 .select_related("question", "choice")
-                .prefetch_related("question__matching_pairs", "question__arrange_items", "question__blanks")
+                .prefetch_related(
+                    "question__matching_pairs",
+                    "question__arrange_items",
+                    # Chuqurroq prefetch: Blank.is_correct_answer() endi
+                    # .answers.all() orqali shu keshdan foydalanadi va
+                    # javob boshiga alohida so'rov yubormaydi.
+                    "question__blanks__answers",
+                )
             )
 
             responses_by_question = {r.question_id: r for r in user_responses}
@@ -709,13 +714,7 @@ class CourseTest(TimeStampedModel):
 
     def save(self, *args, **kwargs):
         if not self.slug:
-            base_slug = slugify(self.title)
-            slug = base_slug
-            counter = 1
-            while CourseTest.objects.filter(slug=slug).exists():
-                slug = f"{base_slug}-{counter}"
-                counter += 1
-            self.slug = slug
+            self.slug = generate_unique_slug(CourseTest, self.title)
         super().save(*args, **kwargs)
 
 
@@ -723,7 +722,8 @@ class CourseQuestion(TimeStampedModel):
     """Test yoki Lesson uchun ishlatiladigan savol modeli."""
 
     class QuestionType(models.TextChoices):
-        MULTIPLE_CHOICE = ("MULTIPLE_CHOICE", "Ko'p tanlovli test")
+        SINGLE_CHOICE = ("SINGLE_CHOICE", "Bitta tanlov")
+        MULTIPLE_CHOICE = ("MULTIPLE_CHOICE", "Ko'p tanlov")
         ARRANGE_WORDS = ("ARRANGE_WORDS", "So'zlarni tartiblash")
         MATCHING = ("MATCHING", "Moslashtirish")
         FILL_BLANKS = ("FILL_BLANKS", "Bo'shliqlarni to'ldirish")
@@ -812,6 +812,14 @@ class CourseQuestion(TimeStampedModel):
         default=3,
         validators=[MinValueValidator(2), MaxValueValidator(20)],
     )
+    is_embeddable = models.BooleanField(
+        default=False,
+        verbose_name="Description ichida ishlatish mumkin",
+        help_text=(
+            "Agar yoqilgan bo'lsa, savol description/body ichida "
+            "{{savol:id:get}} placeholder orqali ishlatilishi mumkin."
+        ),
+    )
 
     # Difficulty o'zgarganda xp ni qayta hisoblash kerakligini aniqlash uchun:
     # agar admin xp ni difficulty bo'yicha standart qiymatdan boshqacha
@@ -830,15 +838,6 @@ class CourseQuestion(TimeStampedModel):
 
     class Meta:
         ordering = ["created_at"]
-        constraints = [
-            models.CheckConstraint(
-                condition=(
-                    models.Q(lesson__isnull=False, test__isnull=True)
-                    | models.Q(lesson__isnull=True, test__isnull=False)
-                ),
-                name="question_belongs_to_lesson_xor_test",
-            ),
-        ]
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -847,11 +846,6 @@ class CourseQuestion(TimeStampedModel):
 
     def clean(self):
         super().clean()
-
-        if bool(self.lesson_id) == bool(self.test_id):
-            raise ValidationError(
-                "Savol aynan Lesson yoki Testdan bittasiga tegishli bo'lishi kerak."
-            )
 
         if not self.text or not str(self.text).strip():
             raise ValidationError({"text": "Savol matni bo'sh bo'lishi mumkin emas."})
@@ -867,21 +861,43 @@ class CourseQuestion(TimeStampedModel):
         """
         errors = []
 
-        if self.question_type == self.QuestionType.MULTIPLE_CHOICE:
+        if self.question_type in (
+                self.QuestionType.SINGLE_CHOICE,
+                self.QuestionType.MULTIPLE_CHOICE,
+            ):
             choices = list(self.choices.all())
+
             if len(choices) < self.MIN_CHOICES:
                 errors.append(
                     f"Kamida {self.MIN_CHOICES} ta javob varianti bo'lishi kerak "
                     f"(hozir {len(choices)} ta)."
                 )
+
             correct_count = sum(1 for c in choices if c.is_correct)
-            if correct_count != 1:
-                errors.append(
-                    f"Aynan 1 ta to'g'ri javob belgilangan bo'lishi kerak (hozir {correct_count} ta)."
-                )
-            empty_texts = [c for c in choices if not c.text or not str(c.text).strip()]
+
+            if self.question_type == self.QuestionType.SINGLE_CHOICE:
+                if correct_count != 1:
+                    errors.append(
+                        f"Single Choice uchun aynan 1 ta to'g'ri javob "
+                        f"bo'lishi kerak (hozir {correct_count} ta)."
+                    )
+
+            elif self.question_type == self.QuestionType.MULTIPLE_CHOICE:
+                if correct_count < 1:
+                    errors.append(
+                        "Multiple Choice uchun kamida 1 ta to'g'ri javob "
+                        "bo'lishi kerak."
+                    )
+
+            empty_texts = [
+                c for c in choices
+                if not c.text or not str(c.text).strip()
+            ]
+
             if empty_texts:
-                errors.append("Bo'sh matnli javob variant(lar)i mavjud.")
+                errors.append(
+                    "Bo'sh matnli javob variant(lar)i mavjud."
+                )
 
         elif self.question_type == self.QuestionType.MATCHING:
             pairs = list(self.matching_pairs.all())
@@ -898,7 +914,7 @@ class CourseQuestion(TimeStampedModel):
                 errors.append("Takrorlanuvchi 'o'ng tomon' qiymatlari mavjud.")
 
         elif self.question_type == self.QuestionType.ARRANGE_WORDS:
-            items = list(self.arrange_items.order_by("correct_position"))
+            items = sorted(self.arrange_items.all(), key=lambda i: i.correct_position)
             if len(items) < self.MIN_ARRANGE_ITEMS:
                 errors.append(
                     f"Kamida {self.MIN_ARRANGE_ITEMS} ta so'z bo'lishi kerak (hozir {len(items)} ta)."
@@ -988,12 +1004,7 @@ class CourseChoice(models.Model):
     class Meta:
         verbose_name = "🔘 Javob varianti"
         verbose_name_plural = "✅ Javob variantlari"
-        constraints = [
-            models.UniqueConstraint(
-                fields=['question'], condition=models.Q(is_correct=True),
-                name='unique_course_correct_choice',
-            ),
-        ]
+       
 
     def __str__(self):
         status = "✅" if self.is_correct else "❌"
@@ -1002,27 +1013,46 @@ class CourseChoice(models.Model):
     def clean(self):
         super().clean()
 
-        if self.question_id and self.question.question_type != CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+        if not self.question_id:
+            return
+
+        question = self.question
+
+        if question.question_type not in (
+            CourseQuestion.QuestionType.SINGLE_CHOICE,
+            CourseQuestion.QuestionType.MULTIPLE_CHOICE,
+        ):
             raise ValidationError(
-                "Javob varianti (Choice) faqat 'Ko'p tanlovli test' turidagi savollarga qo'shilishi mumkin."
+                "Choice faqat Single Choice yoki Multiple Choice savollarda ishlatiladi."
             )
 
         if not self.text or not str(self.text).strip():
-            raise ValidationError({"text": "Variant matni bo'sh bo'lishi mumkin emas."})
+            raise ValidationError({
+                "text": "Variant matni bo'sh bo'lishi mumkin emas."
+            })
 
-        if self.question_id:
-            duplicate_qs = CourseChoice.objects.filter(
-                question_id=self.question_id, text__iexact=str(self.text).strip()
+        duplicate_qs = CourseChoice.objects.filter(
+            question_id=self.question_id,
+            text__iexact=str(self.text).strip(),
+        )
+
+        if self.pk:
+            duplicate_qs = duplicate_qs.exclude(pk=self.pk)
+
+        if duplicate_qs.exists():
+            raise ValidationError({
+                "text": "Ushbu savolda xuddi shunday variant allaqachon mavjud."
+            })
+
+        # SINGLE_CHOICE -> faqat 1 ta correct
+        if (
+            question.question_type == CourseQuestion.QuestionType.SINGLE_CHOICE
+            and self.is_correct
+        ):
+            qs = CourseChoice.objects.filter(
+                question_id=self.question_id,
+                is_correct=True,
             )
-            if self.pk:
-                duplicate_qs = duplicate_qs.exclude(pk=self.pk)
-            if duplicate_qs.exists():
-                raise ValidationError({
-                    "text": "Ushbu savolda xuddi shunday matnli variant allaqachon mavjud."
-                })
-
-        if self.is_correct and self.question_id:
-            qs = CourseChoice.objects.filter(question=self.question, is_correct=True)
 
             if self.pk:
                 qs = qs.exclude(pk=self.pk)
@@ -1030,8 +1060,8 @@ class CourseChoice(models.Model):
             if qs.exists():
                 raise ValidationError({
                     "is_correct": (
-                        "Ushbu savolda allaqachon to'g'ri javob mavjud! "
-                        "Bittadan ortiq to'g'ri javob belgilash mumkin emas."
+                        "Single Choice savolda faqat 1 ta to'g'ri "
+                        "javob bo'lishi mumkin."
                     )
                 })
 
@@ -1222,11 +1252,21 @@ class Blank(models.Model):
             )
 
     def is_correct_answer(self, submitted_text: str) -> bool:
-        """Berilgan matn ushbu bo'sh joy uchun qabul qilinadigan javoblardan biriga mos kelishini tekshiradi."""
+        """
+        Berilgan matn ushbu bo'sh joy uchun qabul qilinadigan javoblardan
+        biriga mos kelishini tekshiradi.
+
+        MUHIM: `.answers.all()` ishlatiladi (`.values_list()` emas), chunki
+        `.all()` Django'ning prefetch_related keshidan foydalanadi —
+        chaqiruvchi (masalan, CourseTestSession.calculate_mathematical_score)
+        `question__blanks__answers` ni oldindan prefetch qilgan bo'lsa, bu
+        yerda hech qanday qo'shimcha DB so'rovi yubormaydi. `.values_list()`
+        esa har doim yangi so'rov yuborardi.
+        """
         if submitted_text is None:
             return False
 
-        candidates = list(self.answers.values_list("answer", flat=True))
+        candidates = [a.answer for a in self.answers.all()]
 
         if self.case_sensitive:
             return submitted_text.strip() in [c.strip() for c in candidates]
@@ -1276,19 +1316,31 @@ class BlankAnswer(models.Model):
         if not self.answer or not self.answer.strip():
             raise ValidationError({"answer": "Javob matni bo'sh bo'lishi mumkin emas."})
 
-
 class CourseUserResponse(models.Model):
     """
     Talabaning har bir savolga bergan javobi.
 
-    - MULTIPLE_CHOICE  -> `choice` maydoni orqali
-    - MATCHING         -> `answer_data` = {"pairs": [{"left_id": 1, "right_text": "..."}]}
-                           yoki {"1": "right text", ...} formatida
-    - ARRANGE_WORDS     -> `answer_data` = {"order": [item_id1, item_id2, ...]}
-    - FILL_BLANKS       -> `answer_data` = {"blank_id": "javob matni", ...}
+    SINGLE_CHOICE
+        -> `choice` orqali bitta variant.
 
-    `answer_data` formatidagi konkret shakl frontend/serializer darajasida
-    kelishilishi kerak; bu yerda faqat saqlash va tekshirish logikasi bor.
+    MULTIPLE_CHOICE
+        -> `selected_choices` orqali bir nechta variant.
+
+    MATCHING
+        -> answer_data = {
+            "1": "Olma",
+            "2": "Kitob",
+        }
+
+    ARRANGE_WORDS
+        -> answer_data = {
+            "order": [item_id1, item_id2, ...]
+        }
+
+    FILL_BLANKS
+        -> answer_data = {
+            "blank_id": "javob matni"
+        }
     """
 
     session = models.ForeignKey(
@@ -1299,50 +1351,86 @@ class CourseUserResponse(models.Model):
         blank=True,
         verbose_name="Test seansi",
     )
+
     user = models.ForeignKey(
         BaseUser,
         on_delete=models.CASCADE,
         related_name="quiz_responses",
         verbose_name="Foydalanuvchi",
-        help_text="Javob bergan talaba."
+        help_text="Javob bergan talaba.",
     )
+
     question = models.ForeignKey(
         CourseQuestion,
         on_delete=models.CASCADE,
         related_name="user_responses",
         verbose_name="Savol",
-        help_text="Javob berilgan test yoki darslik savoli."
+        help_text="Javob berilgan test yoki darslik savoli.",
     )
 
-    # Faqat MULTIPLE_CHOICE uchun:
+    # ======================================================
+    # SINGLE_CHOICE
+    # ======================================================
+
     choice = models.ForeignKey(
         CourseChoice,
         on_delete=models.SET_NULL,
         null=True,
         blank=True,
+        related_name="single_choice_responses",
         verbose_name="Tanlangan variant",
-        help_text="Talaba tomonidan belgilangan javob varianti (bo'sh qolsa = javobsiz qoldirilgan)."
+        help_text=(
+            "SINGLE_CHOICE savol uchun talaba tanlagan "
+            "bitta javob varianti."
+        ),
     )
 
-    # MATCHING / ARRANGE_WORDS / FILL_BLANKS uchun:
+    # ======================================================
+    # MULTIPLE_CHOICE
+    # ======================================================
+
+    selected_choices = models.ManyToManyField(
+        CourseChoice,
+        blank=True,
+        related_name="multiple_choice_responses",
+        verbose_name="Tanlangan variantlar",
+        help_text=(
+            "MULTIPLE_CHOICE savol uchun talaba tanlagan "
+            "bir yoki bir nechta javob variantlari."
+        ),
+    )
+
+    # ======================================================
+    # MATCHING / ARRANGE_WORDS / FILL_BLANKS
+    # ======================================================
+
     answer_data = models.JSONField(
         null=True,
         blank=True,
         verbose_name="Javob (JSON)",
-        help_text="Matching, Arrange Words yoki Fill Blanks turidagi savollar uchun talaba javobi."
+        help_text=(
+            "Matching, Arrange Words yoki Fill Blanks "
+            "savollarining javob ma'lumotlari."
+        ),
     )
 
     is_correct = models.BooleanField(
         null=True,
         blank=True,
         verbose_name="To'g'ri javob",
-        help_text="Tekshirilgandan so'ng avtomatik hisoblab qo'yiladi (null = hali tekshirilmagan)."
+        help_text=(
+            "Tekshirilgandan so'ng avtomatik hisoblab qo'yiladi "
+            "(null = hali tekshirilmagan)."
+        ),
     )
 
     created_at = models.DateTimeField(
         auto_now_add=True,
         verbose_name="Javob berilgan vaqt",
-        help_text="Talaba joriy savolga javob tugmasini bosgan aniq vaqt."
+        help_text=(
+            "Talaba joriy savolga javob tugmasini bosgan "
+            "aniq vaqt."
+        ),
     )
 
     class Meta:
@@ -1356,131 +1444,445 @@ class CourseUserResponse(models.Model):
         ]
 
     def __str__(self):
-        status_text = "Javob berilgan" if (self.choice or self.answer_data) else "Javobsiz qoldirilgan"
-        username = self.user.username if self.user.username else f"User-{self.user.telegram_id}"
-        return f"{username} -> Savol №{self.question_id} [{status_text}]"
+        is_answered = (
+            bool(self.choice_id)
+            or bool(self.answer_data)
+            or (
+                self.pk is not None
+                and self.selected_choices.exists()
+            )
+        )
+
+        status_text = (
+            "Javob berilgan"
+            if is_answered
+            else "Javobsiz qoldirilgan"
+        )
+
+        username = (
+            self.user.username
+            if self.user.username
+            else f"User-{self.user.telegram_id}"
+        )
+
+        return (
+            f"{username} -> "
+            f"Savol №{self.question_id} "
+            f"[{status_text}]"
+        )
+
+    # ======================================================
+    # VALIDATION
+    # ======================================================
 
     def clean(self):
         super().clean()
 
-        if self.choice and self.choice.question_id != self.question_id:
-            raise ValidationError(
-                {"choice": "Siz buzib kirishga urindingiz! Tanlangan javob varianti ushbu savolga tegishli emas."}
-            )
+        if not self.question_id:
+            return
 
-        # session mavjud bo'lsa, javob shu session tegishli bo'lgan testning savoliga berilganligini tekshiramiz.
-        if self.session_id and self.question_id:
-            if self.question.test_id and self.question.test_id != self.session.test_id:
-                raise ValidationError(
-                    {"question": "Bu savol ushbu test seansiga tegishli test tarkibida emas."}
-                )
+        question = self.question
+        q_type = question.question_type
 
-        q_type = self.question.question_type if self.question_id else None
+        # --------------------------------------------------
+        # choice boshqa savolga tegishli emasligini tekshirish
+        # --------------------------------------------------
 
-        if q_type == CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+        if self.choice_id:
+            if self.choice.question_id != self.question_id:
+                raise ValidationError({
+                    "choice": (
+                        "Siz buzib kirishga urindingiz! "
+                        "Tanlangan javob varianti ushbu "
+                        "savolga tegishli emas."
+                    )
+                })
+
+        # --------------------------------------------------
+        # session security
+        # --------------------------------------------------
+
+        if self.session_id:
+            if (
+                question.test_id
+                and question.test_id != self.session.test_id
+            ):
+                raise ValidationError({
+                    "question": (
+                        "Bu savol ushbu test seansiga "
+                        "tegishli test tarkibida emas."
+                    )
+                })
+
+        # --------------------------------------------------
+        # SINGLE_CHOICE
+        # --------------------------------------------------
+
+        if q_type == CourseQuestion.QuestionType.SINGLE_CHOICE:
+
             if self.answer_data:
-                raise ValidationError(
-                    "Ko'p tanlovli savol uchun 'answer_data' emas, 'choice' maydoni ishlatilishi kerak."
-                )
+                raise ValidationError({
+                    "answer_data": (
+                        "SINGLE_CHOICE savolda "
+                        "answer_data ishlatilmaydi."
+                    )
+                })
+
+            # selected_choices yangi objectda hali mavjud bo'lmaydi.
+            # Agar mavjud response update qilinayotgan bo'lsa tekshiramiz.
+            if self.pk and self.selected_choices.exists():
+                raise ValidationError({
+                    "selected_choices": (
+                        "SINGLE_CHOICE savolda "
+                        "selected_choices ishlatilmaydi. "
+                        "choice ishlatiladi."
+                    )
+                })
+
+            if self.choice_id:
+                if self.choice.question_id != self.question_id:
+                    raise ValidationError({
+                        "choice": (
+                            "Tanlangan variant ushbu "
+                            "savolga tegishli emas."
+                        )
+                    })
+
+        # --------------------------------------------------
+        # MULTIPLE_CHOICE
+        # --------------------------------------------------
+
+        elif q_type == CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+
+            if self.choice_id:
+                raise ValidationError({
+                    "choice": (
+                        "MULTIPLE_CHOICE savolda "
+                        "choice ishlatilmaydi. "
+                        "selected_choices ishlatiladi."
+                    )
+                })
+
+            if self.answer_data:
+                raise ValidationError({
+                    "answer_data": (
+                        "MULTIPLE_CHOICE savolda "
+                        "answer_data ishlatilmaydi."
+                    )
+                })
+
+            # M2M validation save()dan keyingi bosqichda
+            # serializer/service orqali ham bajarilishi kerak.
+
+        # --------------------------------------------------
+        # MATCHING / ARRANGE / FILL
+        # --------------------------------------------------
+
         elif q_type in (
             CourseQuestion.QuestionType.MATCHING,
             CourseQuestion.QuestionType.ARRANGE_WORDS,
             CourseQuestion.QuestionType.FILL_BLANKS,
         ):
-            if self.choice_id:
-                raise ValidationError(
-                    "Ushbu savol turi uchun 'choice' emas, 'answer_data' maydoni ishlatilishi kerak."
-                )
 
-    def _check_multiple_choice(self) -> bool:
+            if self.choice_id:
+                raise ValidationError({
+                    "choice": (
+                        "Ushbu savol turi uchun "
+                        "choice ishlatilmaydi."
+                    )
+                })
+
+            if self.pk and self.selected_choices.exists():
+                raise ValidationError({
+                    "selected_choices": (
+                        "Ushbu savol turi uchun "
+                        "selected_choices ishlatilmaydi."
+                    )
+                })
+
+    # ======================================================
+    # SINGLE CHOICE CHECK
+    # ======================================================
+
+    def _check_single_choice(self) -> bool:
+        """
+        SINGLE_CHOICE uchun:
+
+        Student:
+            B
+
+        Correct:
+            B
+
+        => True
+        """
+
         if not self.choice_id:
             return False
-        return self.choice.is_correct
+
+        if self.choice.question_id != self.question_id:
+            return False
+
+        return bool(self.choice.is_correct)
+
+    # ======================================================
+    # MULTIPLE CHOICE CHECK
+    # ======================================================
+
+    def _check_multiple_choice(self) -> bool:
+        """
+        MULTIPLE_CHOICE uchun tanlangan variantlar
+        correct variantlar bilan aynan bir xil bo'lishi kerak.
+
+        Masalan:
+
+        Correct:
+            B
+            D
+
+        Student:
+            B + D
+                -> True
+
+        Student:
+            B
+                -> False
+
+        Student:
+            B + C + D
+                -> False
+        """
+
+        selected_ids = set(
+            self.selected_choices.values_list(
+                "id",
+                flat=True,
+            )
+        )
+
+        if not selected_ids:
+            return False
+
+        # Buzib kirishni oldini olish:
+        # barcha tanlangan choice aynan shu savolniki bo'lishi kerak.
+
+        question_choice_ids = set(
+            self.question.choices.values_list(
+                "id",
+                flat=True,
+            )
+        )
+
+        if not selected_ids.issubset(question_choice_ids):
+            return False
+
+        correct_ids = set(
+            self.question.choices
+            .filter(is_correct=True)
+            .values_list(
+                "id",
+                flat=True,
+            )
+        )
+
+        if not correct_ids:
+            return False
+
+        # Strict matching:
+        # tanlanganlar == to'g'ri javoblar
+        return selected_ids == correct_ids
+
+    # ======================================================
+    # MATCHING
+    # ======================================================
 
     def _check_matching(self) -> bool:
         """
-        Kutilgan `answer_data` formati:
-        {"<pair_id>": "<talaba tanlagan right matni>", ...}
+        Kutilgan answer_data:
+
+        {
+            "1": "Olma",
+            "2": "Kitob"
+        }
         """
+
         if not self.answer_data:
             return False
 
-        pairs = {str(p.id): p.right for p in self.question.matching_pairs.all()}
+        pairs = {
+            str(p.id): p.right
+            for p in self.question.matching_pairs.all()
+        }
+
         if not pairs:
             return False
 
         for pair_id, correct_right in pairs.items():
             submitted = self.answer_data.get(pair_id)
-            if submitted is None or submitted.strip().lower() != correct_right.strip().lower():
+
+            if (
+                not isinstance(submitted, str)
+                or submitted.strip().lower()
+                != correct_right.strip().lower()
+            ):
                 return False
+
         return True
+
+    # ======================================================
+    # ARRANGE WORDS
+    # ======================================================
 
     def _check_arrange_words(self) -> bool:
         """
-        Kutilgan `answer_data` formati:
-        {"order": [item_id_in_position_1, item_id_in_position_2, ...]}
+        Kutilgan:
+
+        {
+            "order": [7, 3, 9, 2]
+        }
         """
+
         if not self.answer_data:
             return False
 
         submitted_order = self.answer_data.get("order")
+
         if not submitted_order:
             return False
 
-        correct_order = list(
-            self.question.arrange_items.order_by("correct_position").values_list("id", flat=True)
+        items = sorted(
+            self.question.arrange_items.all(),
+            key=lambda i: i.correct_position,
         )
 
+        correct_order = [
+            item.id
+            for item in items
+        ]
+
         try:
-            submitted_order = [int(i) for i in submitted_order]
+            submitted_order = [
+                int(item_id)
+                for item_id in submitted_order
+            ]
         except (TypeError, ValueError):
             return False
 
         return submitted_order == correct_order
 
+    # ======================================================
+    # FILL BLANKS
+    # ======================================================
+
     def _check_fill_blanks(self) -> bool:
         """
-        Kutilgan `answer_data` formati:
-        {"<blank_id>": "talaba yozgan matn", ...}
+        Kutilgan:
+
+        {
+            "11": "am",
+            "12": "Python"
+        }
         """
+
         if not self.answer_data:
             return False
 
-        blanks = list(self.question.blanks.all())
+        blanks = list(
+            self.question.blanks.all()
+        )
+
         if not blanks:
             return False
 
         for blank in blanks:
-            submitted = self.answer_data.get(str(blank.id))
+            submitted = self.answer_data.get(
+                str(blank.id)
+            )
+
             if not blank.is_correct_answer(submitted):
                 return False
+
         return True
+
+    # ======================================================
+    # CHECK + SCORE
+    # ======================================================
 
     def check_and_score(self):
         """
-        Javobni savol turiga qarab tekshiradi, `is_correct`ni yangilaydi va
-        (is_answered: bool, is_correct: bool) qaytaradi.
+        Javobni savol turiga qarab tekshiradi.
+
+        Return:
+
+            (is_answered, is_correct)
         """
+
         q_type = self.question.question_type
 
-        is_answered = bool(self.choice_id) or bool(self.answer_data)
+        # --------------------------------------------------
+        # Javob berilganligini aniqlash
+        # --------------------------------------------------
+
+        if q_type == CourseQuestion.QuestionType.SINGLE_CHOICE:
+            is_answered = bool(self.choice_id)
+
+        elif q_type == CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+            is_answered = self.selected_choices.exists()
+
+        else:
+            is_answered = bool(self.answer_data)
+
+        # --------------------------------------------------
+        # Javobsiz
+        # --------------------------------------------------
+
         if not is_answered:
             if self.is_correct is not None:
                 self.is_correct = None
-                self.save(update_fields=["is_correct"])
+                self.save(
+                    update_fields=["is_correct"]
+                )
+
             return False, False
 
+        # --------------------------------------------------
+        # Checker
+        # --------------------------------------------------
+
         checkers = {
-            CourseQuestion.QuestionType.MULTIPLE_CHOICE: self._check_multiple_choice,
-            CourseQuestion.QuestionType.MATCHING: self._check_matching,
-            CourseQuestion.QuestionType.ARRANGE_WORDS: self._check_arrange_words,
-            CourseQuestion.QuestionType.FILL_BLANKS: self._check_fill_blanks,
+            CourseQuestion.QuestionType.SINGLE_CHOICE:
+                self._check_single_choice,
+
+            CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+                self._check_multiple_choice,
+
+            CourseQuestion.QuestionType.MATCHING:
+                self._check_matching,
+
+            CourseQuestion.QuestionType.ARRANGE_WORDS:
+                self._check_arrange_words,
+
+            CourseQuestion.QuestionType.FILL_BLANKS:
+                self._check_fill_blanks,
         }
+
         checker = checkers.get(q_type)
-        result = bool(checker()) if checker else False
+
+        result = (
+            bool(checker())
+            if checker
+            else False
+        )
+
+        # --------------------------------------------------
+        # is_correct update
+        # --------------------------------------------------
 
         if self.is_correct != result:
             self.is_correct = result
-            self.save(update_fields=["is_correct"])
+
+            self.save(
+                update_fields=["is_correct"]
+            )
 
         return True, result

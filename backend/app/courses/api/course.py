@@ -12,9 +12,9 @@ from django.db.models import Q, Case, Count, ExpressionWrapper, FloatField, Pref
 from django.utils import timezone
 
 from django_bolt import Router, Depends, Request, JSON
-from django_bolt.exceptions import HTTPException
-from django_bolt.middleware import rate_limit
+from django_bolt.exceptions import HTTPException, NotFound
 
+from django_bolt.middleware import rate_limit
 from courses.access import ensure_course_access
 from problems.models import Challenge, Function, Hint, Language, Problem, Tags, TestCase
 from submissions.models import Submission
@@ -22,7 +22,7 @@ from baseuser.models import BaseUser
 from baseuser.authenticate import get_current_user_option, get_current_user
 
 from courses.models import (
-    Course, Lecture, Modul, Lesson, Enrollment,
+    ArrangeItem, Blank, BlankAnswer, Course, Lecture, MatchingPair, Modul, Lesson, Enrollment,
     CourseTest, CourseQuestion, CourseChoice,
     CourseTestSession, CourseUserResponse,
 )
@@ -136,30 +136,81 @@ def _course_list_qs():
 
 
 def _course_detail_qs(slug: str):
-    """O'ZGARDI: .only() ro'yxatiga 'level' va 'total_modules_count' qo'shildi."""
-    lesson_qs = (
-        Lesson.objects.filter(is_active=True)
-        .only("id", "title", "slug", "order", "total_tasks_count", "modul_id")
-        .order_by("order", "id")
-    )
-    module_qs = (
-        Modul.objects.filter(is_active=True)
-        .only("id", "title", "slug", "order", "course_id")
-        .prefetch_related(Prefetch("lessons", queryset=lesson_qs))
-        .order_by("order", "id")
-    )
     return (
-        Course.objects.filter(slug=slug, is_active=True)
-        .select_related("intro_video")
-        .prefetch_related(Prefetch("modullar", queryset=module_qs))
+        Course.objects
+        .filter(
+            slug=slug,
+            is_active=True,
+        )
+        .select_related(
+            "intro_video",
+        )
+        .prefetch_related(
+            Prefetch(
+                "modullar",
+                queryset=(
+                    Modul.objects
+                    .filter(is_active=True)
+                    .select_related("test")
+                    .prefetch_related(
+                        Prefetch(
+                            "lessons",
+                            queryset=(
+                                Lesson.objects
+                                .filter(is_active=True)
+                                .only(
+                                    "id",
+                                    "modul_id",
+                                    "title",
+                                    "slug",
+                                    "order",
+                                    "total_tasks_count",
+                                )
+                                .order_by("order")
+                            ),
+                        ),
+                    )
+                    .only(
+                        # Modul
+                        "id",
+                        "course_id",
+                        "title",
+                        "slug",
+                        "order",
+
+                        # CourseTest
+                        "test__id",
+                        "test__modul_id",
+                        "test__title",
+                        "test__slug",
+                        "test__duration",
+                        "test__min_pass_percentage",
+                        "test__is_active",
+                    )
+                    .order_by("order")
+                ),
+            ),
+        )
         .only(
-            "id", "title", "slug", "description", "price", "discount_price",
-            "level", "total_lessons_count", "total_test_count", "total_modules_count",
-            "intro_video__hls_url", "intro_video__thumbnail", "intro_video__duration",
+            # Course
+            "id",
+            "title",
+            "slug",
+            "description",
+            "level",
+            "price",
+            "discount_price",
+            "total_lessons_count",
+            "total_test_count",
+            "total_modules_count",
+
+            # Intro video
+            "intro_video__id",
+            "intro_video__hls_url",
+            "intro_video__thumbnail",
+            "intro_video__duration",
         )
     )
-
-
 def _students_count_cache_key(course_id: int) -> str:
     return f"course_students_count:{course_id}"
 
@@ -308,9 +359,6 @@ async def get_hero_course(request: Request):
 
 
 
-# ==========================================================
-# 2. KURS DETALI
-# ==========================================================
 @api.get("/{slug}")
 @rate_limit(rps=10, burst=20)
 async def course_detail(
@@ -318,54 +366,49 @@ async def course_detail(
     slug: str,
     user: BaseUser | None = Depends(get_current_user_option),
 ):
-    """
-    Kurs detali: modullar, darslar, video, user status.
+    # ==========================================================
+    # 1. STATIC COURSE
+    # ==========================================================
 
-    MUHIM: Statik kurs strukturasi (modullar/darslar nomi, tartibi va h.k.)
-    keshlanadi (STATIC_TTL, kamdan-kam o'zgaradi). Lekin user progress
-    (lesson/module/test statuslari) HECH QACHON keshlanmaydi — bu doimo
-    o'zgarib turadigan ma'lumot va eskirgan holat ko'rsatish (masalan
-    tugatilgan darsni "tugallanmagan" deb ko'rsatish) mantiqan noto'g'ri.
-    Shuning uchun user progress har safar to'g'ridan-to'g'ri bazadan
-    hisoblanadi.
-    """
-    # -----------------------------------------------------------------
-    # 1) STATIK MA'LUMOTLAR — barcha userlar uchun bir xil, keshlanadi
-    # -----------------------------------------------------------------
     data = get_course_detail_static(slug)
 
     if data is None:
         course = await _course_detail_qs(slug).afirst()
-        if not course:
+
+        if course is None:
             raise HTTPException(404, "Kurs topilmadi")
 
         modules = []
+
         async for module in course.modullar.all():
-            lessons = []
-            async for lesson in module.lessons.all():
-                lessons.append({
+
+            lessons = [
+                {
                     "id": lesson.id,
                     "t": lesson.title,
                     "s": lesson.slug,
                     "o": lesson.order,
                     "tk": lesson.total_tasks_count,
-                })
+                }
+                async for lesson in module.lessons.all()
+            ]
 
-            test_obj = await (
-                CourseTest.objects
-                .filter(modul_id=module.id, is_active=True)
-                .only("id", "title", "slug", "duration", "min_pass_percentage")
-                .afirst()
-            )
+            # Prefetch qilingan reverse OneToOne
+            # mavjud bo'lmasa DoesNotExist.
+            try:
+                test = module.test
+            except CourseTest.DoesNotExist:
+                test = None
 
             test_data = None
-            if test_obj:
+
+            if test is not None and test.is_active:
                 test_data = {
-                    "id": test_obj.id,
-                    "t": test_obj.title,
-                    "s": test_obj.slug,
-                    "dur": test_obj.duration,
-                    "min_pct": test_obj.min_pass_percentage,
+                    "id": test.id,
+                    "t": test.title,
+                    "s": test.slug,
+                    "dur": test.duration,
+                    "min_pct": test.min_pass_percentage,
                 }
 
             modules.append({
@@ -379,147 +422,345 @@ async def course_detail(
                 "ls": lessons,
             })
 
+        intro_video = course.intro_video
+
         data = {
             "id": course.id,
             "t": course.title,
             "s": course.slug,
             "desc": course.description,
             "level": course.level,
+
             "p": float(course.price),
-            "dp": float(course.discount_price) if course.discount_price else None,
+            "dp": (
+                float(course.discount_price)
+                if course.discount_price is not None
+                else None
+            ),
+
             "vid": {
-                "hls": course.intro_video.hls_url if course.intro_video else None,
+                "hls": intro_video.hls_url if intro_video else None,
                 "img": (
-                    course.intro_video.thumbnail.url
-                    if course.intro_video and course.intro_video.thumbnail else None
+                    intro_video.thumbnail.url
+                    if intro_video and intro_video.thumbnail
+                    else None
                 ),
-                "dur": course.intro_video.duration if course.intro_video else None,
+                "dur": intro_video.duration if intro_video else None,
             },
+
             "tl": course.total_lessons_count,
             "tt": course.total_test_count,
             "tm": course.total_modules_count,
             "mods": modules,
         }
+
         set_course_detail_static(slug, data)
 
-    # Statik nusxani olish (user/dinamik ma'lumotlar qo'shilishidan oldin)
+    # Cache objectni user uchun mutate qilib yubormaslik
     result = copy.deepcopy(data)
 
-    # O'quvchilar soni — statik keshdan mustaqil, o'zining 5 daqiqalik keshi bilan
+    # ==========================================================
+    # 2. STUDENTS COUNT
+    # ==========================================================
+
     result["students"] = await _get_students_count(result["id"])
 
-    # -----------------------------------------------------------------
-    # 2) ANONIM USER — locking va test statusisiz, faqat asosiy ma'lumot
-    # -----------------------------------------------------------------
-    if not user:
-        first_lesson = True
-        for i, m in enumerate(result["mods"]):
-            m["locked"] = i > 0
-            for l in m["ls"]:
-                l["locked"] = not first_lesson
-                first_lesson = False
+    # ==========================================================
+    # 3. ANONYMOUS
+    # ==========================================================
+
+    if user is None:
+        previous_lesson_exists = False
+
+        for module_index, module in enumerate(result["mods"]):
+
+            module["locked"] = module_index > 0
+
+            for lesson_index, lesson in enumerate(module["ls"]):
+
+                lesson["locked"] = (
+                    previous_lesson_exists
+                )
+
+                previous_lesson_exists = True
+
         return result
 
-    # -----------------------------------------------------------------
-    # 3) LOGIN QILGAN USER — progress + enrollment + test natijalari
-    #    HAR SAFAR BAZADAN, KESHSIZ.
-    # -----------------------------------------------------------------
+    # ==========================================================
+    # 4. USER PROGRESS
+    # ==========================================================
+
     course_id = result["id"]
 
-    lesson_ids = [l["id"] for m in result["mods"] for l in m["ls"]]
-    module_ids = [m["id"] for m in result["mods"]]
-    test_ids = [m["test"]["id"] for m in result["mods"] if m["test"]]
+    lesson_ids = [
+        lesson["id"]
+        for module in result["mods"]
+        for lesson in module["ls"]
+    ]
 
-    # --- LessonStatus ---
+    module_ids = [
+        module["id"]
+        for module in result["mods"]
+    ]
+
+    test_ids = [
+        module["test"]["id"]
+        for module in result["mods"]
+        if module["test"] is not None
+    ]
+
+    # ----------------------------------------------------------
+    # LessonStatus
+    # ----------------------------------------------------------
+
     lesson_statuses = {}
-    async for ls in LessonStatus.objects.filter(
-        user=user, lesson_id__in=lesson_ids
-    ).only("lesson_id", "is_completed", "finished_tasks_count"):
-        lesson_statuses[ls.lesson_id] = {
-            "done": ls.is_completed,
-            "ft": ls.finished_tasks_count,
-        }
 
-    # --- ModuleStatus ---
-    module_statuses = {}
-    async for ms in ModuleStatus.objects.filter(
-        user=user, modul_id__in=module_ids
-    ).only("modul_id", "is_completed", "completed_lessons", "completed_tests"):
-        module_statuses[ms.modul_id] = {
-            "done": ms.is_completed,
-            "cl": ms.completed_lessons,
-            "ct": ms.completed_tests,
-        }
-
-    # --- Modul testlari bo'yicha ENG YAXSHI natija (bitta so'rov, N+1 yo'q) ---
-    test_results = {}
-    attempted_ids = set()
-    if test_ids:
-        async for s in (
-            CourseTestSession.objects
-            .filter(user=user, test_id__in=test_ids, completed_at__isnull=False)
-            .order_by("test_id", "-total_xp_earned")
-            .only("test_id", "correct_count", "wrong_count", "unanswered_count")
+    if lesson_ids:
+        async for status in (
+            LessonStatus.objects
+            .filter(
+                user_id=user.id,
+                lesson_id__in=lesson_ids,
+            )
+            .values(
+                "lesson_id",
+                "is_completed",
+                "finished_tasks_count",
+            )
         ):
-            if s.test_id in test_results:
-                continue
-            total = s.correct_count + s.wrong_count + s.unanswered_count
-            score_pct = round((s.correct_count / total) * 100) if total else 0
-            test_results[s.test_id] = {"score_pct": score_pct}
-
-        # Foydalanuvchi umuman uringanmi (yakunlanmagan bo'lsa ham) — "attempted"
-        async for tid in (
-            CourseTestSession.objects
-            .filter(user=user, test_id__in=test_ids)
-            .values_list("test_id", flat=True).distinct()
-        ):
-            attempted_ids.add(tid)
-
-    # --- CourseStatus ---
-    status = await CourseStatus.objects.filter(
-        user=user, course_id=course_id
-    ).only(
-        "completed_lessons", "completed_tests", "is_completed", "started_at"
-    ).afirst()
-
-    # --- Enrollment ---
-    enrollment = await Enrollment.objects.filter(
-        user=user, course_id=course_id
-    ).only("is_paid", "created_at").afirst()
-
-    # -----------------------------------------------------------------
-    # 4) STATUSLARNI + LOCKING'NI RESPONSE'GA QO'SHISH
-    # -----------------------------------------------------------------
-    prev_module_done = True   # 1-modul hech qachon qulflanmaydi
-    prev_lesson_done = True   # Kursning birinchi lesson'i doim ochiq
-
-    for m in result["mods"]:
-        ms = module_statuses.get(m["id"], {"done": False, "cl": 0, "ct": 0})
-        m["ms"] = ms
-        m["locked"] = not prev_module_done
-        prev_module_done = ms["done"]
-
-        for l in m["ls"]:
-            st = lesson_statuses.get(l["id"])
-            l["us"] = st if st else {"done": False, "ft": 0}
-            l["locked"] = not prev_lesson_done
-            prev_lesson_done = st["done"] if st else False
-
-        if m["test"]:
-            tid = m["test"]["id"]
-            best = test_results.get(tid)
-            m["test"]["result"] = {
-                "attempted": tid in attempted_ids,
-                "score_pct": best["score_pct"] if best else None,
-                "passed": (best["score_pct"] >= m["test"]["min_pct"]) if best else None,
+            lesson_statuses[status["lesson_id"]] = {
+                "done": status["is_completed"],
+                "ft": status["finished_tasks_count"],
             }
 
+    # ----------------------------------------------------------
+    # ModuleStatus
+    # ----------------------------------------------------------
+
+    module_statuses = {}
+
+    if module_ids:
+        async for status in (
+            ModuleStatus.objects
+            .filter(
+                user_id=user.id,
+                modul_id__in=module_ids,
+            )
+            .values(
+                "modul_id",
+                "is_completed",
+                "completed_lessons",
+                "completed_tests",
+            )
+        ):
+            module_statuses[status["modul_id"]] = {
+                "done": status["is_completed"],
+                "cl": status["completed_lessons"],
+                "ct": status["completed_tests"],
+            }
+
+    # ----------------------------------------------------------
+    # Test sessions
+    # ----------------------------------------------------------
+
+    test_results = {}
+    attempted_test_ids = set()
+
+    if test_ids:
+
+        # Eng yaxshi yakunlangan attempt
+        async for session in (
+            CourseTestSession.objects
+            .filter(
+                user_id=user.id,
+                test_id__in=test_ids,
+                completed_at__isnull=False,
+            )
+            .order_by(
+                "test_id",
+                "-total_xp_earned",
+            )
+            .values(
+                "test_id",
+                "correct_count",
+                "wrong_count",
+                "unanswered_count",
+            )
+        ):
+            test_id = session["test_id"]
+
+            if test_id in test_results:
+                continue
+
+            total = (
+                session["correct_count"]
+                + session["wrong_count"]
+                + session["unanswered_count"]
+            )
+
+            score_pct = (
+                round(
+                    session["correct_count"] / total * 100
+                )
+                if total
+                else 0
+            )
+
+            test_results[test_id] = {
+                "score_pct": score_pct,
+            }
+
+        # Attempt qilingan testlar
+        async for test_id in (
+            CourseTestSession.objects
+            .filter(
+                user_id=user.id,
+                test_id__in=test_ids,
+            )
+            .values_list(
+                "test_id",
+                flat=True,
+            )
+            .distinct()
+        ):
+            attempted_test_ids.add(test_id)
+
+    # ----------------------------------------------------------
+    # CourseStatus
+    # ----------------------------------------------------------
+
+    course_status = await (
+        CourseStatus.objects
+        .filter(
+            user_id=user.id,
+            course_id=course_id,
+        )
+        .values(
+            "completed_lessons",
+            "completed_tests",
+            "is_completed",
+            "started_at",
+        )
+        .afirst()
+    )
+
+    # ----------------------------------------------------------
+    # Enrollment
+    # ----------------------------------------------------------
+
+    enrollment = await (
+        Enrollment.objects
+        .filter(
+            user_id=user.id,
+            course_id=course_id,
+        )
+        .values(
+            "is_paid",
+        )
+        .afirst()
+    )
+
+    # ==========================================================
+    # 5. APPLY PROGRESS + LOCK
+    # ==========================================================
+
+    previous_module_done = True
+    previous_lesson_done = True
+
+    for module in result["mods"]:
+
+        module_status = module_statuses.get(
+            module["id"],
+            {
+                "done": False,
+                "cl": 0,
+                "ct": 0,
+            },
+        )
+
+        module["ms"] = module_status
+
+        module["locked"] = not previous_module_done
+
+        previous_module_done = module_status["done"]
+
+        # ------------------------------------------------------
+        # Lessons
+        # ------------------------------------------------------
+
+        for lesson in module["ls"]:
+
+            lesson_status = lesson_statuses.get(
+                lesson["id"]
+            )
+
+            if lesson_status is None:
+                lesson_status = {
+                    "done": False,
+                    "ft": 0,
+                }
+
+            lesson["us"] = lesson_status
+            lesson["locked"] = not previous_lesson_done
+
+            previous_lesson_done = lesson_status["done"]
+
+        # ------------------------------------------------------
+        # Test
+        # ------------------------------------------------------
+
+        test = module["test"]
+
+        if test is not None:
+
+            test_id = test["id"]
+
+            best = test_results.get(test_id)
+
+            test["result"] = {
+                "attempted": test_id in attempted_test_ids,
+                "score_pct": (
+                    best["score_pct"]
+                    if best
+                    else None
+                ),
+                "passed": (
+                    best["score_pct"] >= test["min_pct"]
+                    if best
+                    else None
+                ),
+            }
+
+    # ==========================================================
+    # 6. COURSE PROGRESS
+    # ==========================================================
+
     result["progress"] = {
-        "paid": enrollment.is_paid if enrollment else False,
-        "started_at": status.started_at.isoformat() if status and status.started_at else None,
-        "cl": status.completed_lessons if status else 0,
-        "ct": status.completed_tests if status else 0,
-        "done": status.is_completed if status else False,
+        "paid": (
+            enrollment["is_paid"]
+            if enrollment
+            else False
+        ),
+        "started_at": (
+            course_status["started_at"].isoformat()
+            if course_status and course_status["started_at"]
+            else None
+        ),
+        "cl": (
+            course_status["completed_lessons"]
+            if course_status
+            else 0
+        ),
+        "ct": (
+            course_status["completed_tests"]
+            if course_status
+            else 0
+        ),
+        "done": (
+            course_status["is_completed"]
+            if course_status
+            else False
+        ),
     }
 
     return result
@@ -527,7 +768,6 @@ async def course_detail(
 # ==========================================================
 # 4. DARS DETALI (access lock bilan)
 # ==========================================================
-
 @api.get("/lesson/{slug}/")
 @rate_limit(rps=50, burst=20)
 async def get_lesson(
@@ -535,72 +775,123 @@ async def get_lesson(
     slug: str,
     request_user: BaseUser | None = Depends(get_current_user_option),
 ):
-    """Dars detali: lectures, problems, quizzes + user status + access lock."""
     if not request_user:
         raise HTTPException(401, "Tizimga kirish talab qilinadi")
 
+    # ==========================================================
+    # 1. LESSON
+    # ==========================================================
+
     lesson = await (
         Lesson.objects
-        .filter(slug=slug)
-        .select_related("modul", "modul__course")
+        .filter(
+            slug=slug,
+            is_active=True,
+        )
+        .select_related(
+            "modul",
+            "modul__course",
+        )
         .prefetch_related(
             Prefetch(
                 "lectures",
-                queryset=Lecture.objects.only(
-                    "id", "lesson_id", "title", "slug", "order",
-                    "xp", "reading_time", "video_id",
-                ).order_by("order"),
+                queryset=Lecture.objects
+                .filter(is_active=True)
+                .order_by("order", "id"),
             ),
             Prefetch(
                 "problems",
-                queryset=Problem.objects.only(
-                    "id", "lesson_id", "title", "slug", "is_active", "xp"
-                ).order_by("id"),
+                queryset=Problem.objects
+                .filter(is_active=True)
+                .order_by("id"),
             ),
             Prefetch(
                 "questions",
-                queryset=CourseQuestion.objects.filter(test__isnull=True).only(
-                    "id", "lesson_id", "difficulty", "xp", "text"
-                ).order_by("id"),
+                queryset=CourseQuestion.objects
+                .filter(test__isnull=True, is_embeddable=False)
+                .order_by("id"),
             ),
         )
         .afirst()
     )
 
-    if not lesson:
+    if lesson is None:
         raise HTTPException(404, "Dars topilmadi")
-    await ensure_course_access(request_user.id, lesson.modul.course)
 
-    # -----------------------------------------------------------------
-    # OLDINGI DARS + ACCESS TEKSHIRUVI
-    # -----------------------------------------------------------------
-    prev_lesson = await (
+    course = lesson.modul.course
+
+    # ==========================================================
+    # 2. COURSE ACCESS
+    # ==========================================================
+
+    await ensure_course_access(
+        request_user.id,
+        course,
+    )
+
+    # ==========================================================
+    # 3. PREVIOUS LESSON
+    # ==========================================================
+
+    previous_lesson = await (
         Lesson.objects
-        .filter(modul__course=lesson.modul.course, is_active=True)
+        .filter(
+            modul__course_id=course.id,
+            is_active=True,
+        )
         .filter(
             Q(modul__order__lt=lesson.modul.order)
-            | Q(modul__order=lesson.modul.order, order__lt=lesson.order)
+            |
+            Q(
+                modul__order=lesson.modul.order,
+                order__lt=lesson.order,
+            )
         )
-        .order_by("-modul__order", "-order")
-        .only("id")
+        .order_by(
+            "-modul__order",
+            "-order",
+            "-id",
+        )
+        .values(
+            "id",
+            "slug",
+            "title",
+        )
         .afirst()
     )
+
+    # ==========================================================
+    # 4. ACCESS
+    # ==========================================================
 
     access = {
         "locked": False,
         "previous_lesson_id": None,
+        "previous_lesson_slug": None,
         "previous_lesson_completed": True,
     }
 
-    if prev_lesson:
-        prev_done = await LessonStatus.objects.filter(
-            user=request_user, lesson=prev_lesson, is_completed=True
-        ).aexists()
-        access["previous_lesson_id"] = prev_lesson.id
-        access["previous_lesson_completed"] = prev_done
-        access["locked"] = not prev_done
+    if previous_lesson:
 
-    # Agar dars qulflangan bo'lsa — 403 qaytarib, sababini ko'rsatamiz
+        previous_done = await LessonStatus.objects.filter(
+            user_id=request_user.id,
+            lesson_id=previous_lesson["id"],
+            is_completed=True,
+        ).aexists()
+
+        access.update(
+            {
+                "previous_lesson_id": previous_lesson["id"],
+                "previous_lesson_slug": previous_lesson["slug"],
+                "previous_lesson_completed": previous_done,
+                "locked": not previous_done,
+            }
+        )
+
+    # ==========================================================
+    # 5. LOCKED
+    # ==========================================================
+
     if access["locked"]:
         return JSON(
             {
@@ -612,44 +903,107 @@ async def get_lesson(
             status_code=403,
         )
 
-    # -----------------------------------------------------------------
-    # STATUS (faqat ochiq lesson uchun)
-    # -----------------------------------------------------------------
-    lesson_status = await LessonStatus.objects.filter(
-        user=request_user, lesson=lesson
-    ).only("finished_tasks_count", "is_completed").afirst()
+    # ==========================================================
+    # 6. USER LESSON STATUS
+    # ==========================================================
+
+    lesson_status = await (
+        LessonStatus.objects
+        .filter(
+            user_id=request_user.id,
+            lesson_id=lesson.id,
+        )
+        .values(
+            "finished_tasks_count",
+            "is_completed",
+        )
+        .afirst()
+    )
+
+    # ==========================================================
+    # 7. COMPLETED LECTURES
+    # ==========================================================
 
     completed_lectures = {
-        pk async for pk in LectureStatus.objects.filter(
-            user=request_user, lecture__lesson=lesson, is_completed=True
-        ).values_list("lecture_id", flat=True)
+        lecture_id
+        async for lecture_id in (
+            LectureStatus.objects
+            .filter(
+                user_id=request_user.id,
+                lecture__lesson_id=lesson.id,
+                is_completed=True,
+            )
+            .values_list(
+                "lecture_id",
+                flat=True,
+            )
+        )
     }
+
+    # ==========================================================
+    # 8. COMPLETED QUESTIONS
+    # ==========================================================
 
     completed_questions = {
-        pk async for pk in CourseUserResponse.objects.filter(
-            user=request_user,
-            question__lesson=lesson,
-            session__isnull=True,
-            choice__is_correct=True,
-        ).values_list("question_id", flat=True).distinct()
-    }
+            question_id
+            async for question_id in (
+                CourseUserResponse.objects
+                .filter(
+                    user_id=request_user.id,
+                    question__lesson_id=lesson.id,
+                    session__isnull=True,
+                    is_correct=True,
+                )
+                .values_list("question_id", flat=True)
+                .distinct()
+            )
+        }
+
+    # ==========================================================
+    # 9. COMPLETED PROBLEMS
+    # ==========================================================
 
     completed_problems = {
-        pk async for pk in ProblemStatus.objects.filter(
-            user=request_user, problem__lesson=lesson, solved=True
-        ).values_list("problem_id", flat=True)
+        problem_id
+        async for problem_id in (
+            ProblemStatus.objects
+            .filter(
+                user_id=request_user.id,
+                problem__lesson_id=lesson.id,
+                solved=True,
+            )
+            .values_list(
+                "problem_id",
+                flat=True,
+            )
+        )
     }
+
+    # ==========================================================
+    # 10. RESPONSE
+    # ==========================================================
 
     return {
         "id": lesson.id,
         "t": lesson.title,
         "s": lesson.slug,
         "tk": lesson.total_tasks_count,
+
         "us": {
-            "ft": lesson_status.finished_tasks_count if lesson_status else 0,
-            "done": lesson_status.is_completed if lesson_status else False,
+            "ft": (
+                lesson_status["finished_tasks_count"]
+                if lesson_status
+                else 0
+            ),
+            "done": (
+                lesson_status["is_completed"]
+                if lesson_status
+                else False
+            ),
         },
+
         "access": access,
+
         "lecs": [
             {
                 "id": lec.id,
@@ -663,28 +1017,29 @@ async def get_lesson(
             }
             for lec in lesson.lectures.all()
         ],
+
         "probs": [
             {
-                "id": p.id,
-                "t": p.title,
-                "s": p.slug,
-                "xp": p.xp,
-                "done": p.id in completed_problems,
+                "id": problem.id,
+                "t": problem.title,
+                "s": problem.slug,
+                "xp": problem.xp,
+                "done": problem.id in completed_problems,
             }
-            for p in lesson.problems.all() if p.is_active
+            for problem in lesson.problems.all()
         ],
+
         "qs": [
             {
-                "id": q.id,
-                "txt": q.text,
-                "dif": q.difficulty,
-                "xp": q.xp,
-                "done": q.id in completed_questions,
+                "id": question.id,
+                "txt": question.text,
+                "dif": question.difficulty,
+                "xp": question.xp,
+                "done": question.id in completed_questions,
             }
-            for q in lesson.questions.all()
+            for question in lesson.questions.all()
         ],
     }
-
 # ==========================================================
 # 3. KURSGA YOZILISH (TO'LIQ YAXSHILANGAN)
 # ==========================================================
@@ -862,247 +1217,6 @@ async def get_lecture(
         },
     }
 
-
-# ==========================================================
-# 6. MA'RUZANI TUGATISH
-# ==========================================================
-
-@api.post("/lesson/{slug}/lectures/{lecture_slug}/complete/")
-@rate_limit(rps=5, burst=10)
-async def complete_lecture(
-    request: Request,
-    slug: str,
-    lecture_slug: str,
-    request_user: BaseUser | None = Depends(get_current_user_option),
-):
-    if not request_user:
-        raise HTTPException(401, "Tizimga kirish talab qilinadi")
-
-    lecture = await (
-        Lecture.objects
-        .filter(lesson__slug=slug, slug=lecture_slug)
-        .select_related("lesson__modul__course")
-        .only(
-            "id", "xp", "reading_time",
-            "lesson__id", "lesson__modul__id", "lesson__modul__course__id",
-        )
-        .afirst()
-    )
-
-    if not lecture:
-        raise HTTPException(404, "Ma'ruza topilmadi")
-
-    await ensure_course_access(request_user.id, lecture.lesson.modul.course)
-
-    status = await LectureStatus.objects.filter(
-        user=request_user,
-        lecture=lecture,
-    ).afirst()
-
-    if not status:
-        raise HTTPException(400, "Avval ma'ruzani oching")
-
-    if status.is_completed:
-        return {
-            "completed": False,
-            "xp": 0,
-        }
-
-    now = timezone.now()
-
-    if lecture.reading_time and status.started_at:
-        if now - status.started_at < timedelta(minutes=lecture.reading_time):
-            raise HTTPException(403, "Ma'ruzani tugatish uchun vaqt yetarli emas")
-
-    status.is_completed = True
-    status.completed_at = now
-
-    await status.asave(update_fields=["is_completed", "completed_at"])
-
-    await sync_to_async(mark_lesson_task_completed, thread_sensitive=True)(
-        user_id=request_user.id,
-        lesson_id=lecture.lesson_id,
-    )
-
-    await sync_to_async(award_xp, thread_sensitive=True)(
-        user=request_user,
-        xp_amount=lecture.xp,
-        source="lecture",
-        duration_mins=lecture.reading_time or 0,
-    )
-
-    return {
-        "completed": True,
-        "xp": lecture.xp,
-    }
-
-
-# ==========================================================
-# 7. DARSDAGI (LESSON) YAKKA QUIZ SAVOLI
-# ==========================================================
-
-@api.get("/lesson/{slug}/quizzes/{question_id}/")
-@rate_limit(rps=10, burst=20)
-async def get_quiz(
-    request: Request,
-    slug: str,
-    question_id: int,
-    request_user: BaseUser | None = Depends(get_current_user_option),
-):
-    if not request_user:
-        raise HTTPException(401, "Tizimga kirish talab qilinadi")
-
-    question = await (
-        CourseQuestion.objects
-        .filter(id=question_id, lesson__slug=slug)
-        .select_related("lesson__modul__course")
-        .prefetch_related(
-            Prefetch("choices", queryset=CourseChoice.objects.only("id", "question_id", "text"))
-        )
-        .only(
-            "id", "text", "difficulty", "xp",
-            "lesson__modul__course__id",
-            "lesson__modul__course__price",
-            "lesson__modul__course__discount_price",
-        )
-        .afirst()
-    )
-
-    if not question:
-        raise HTTPException(404, "Savol topilmadi")
-
-    await ensure_course_access(request_user.id, question.lesson.modul.course)
-
-    done = await (
-        CourseUserResponse.objects
-        .filter(
-            user=request_user,
-            question_id=question.id,
-            session__isnull=True,
-            choice__is_correct=True,
-        )
-        .aexists()
-    )
-
-    return {
-        "id": question.id,
-        "text": question.text,
-        "difficulty": question.difficulty,
-        "xp": question.xp,
-        "done": done,
-        "choices": [
-            {"id": choice.id, "text": choice.text}
-            for choice in question.choices.all()
-        ],
-    }
-
-
-# ==========================================================
-# 8. DARSDAGI QUIZGA JAVOB BERISH
-# ==========================================================
-
-class AnswerIn(msgspec.Struct):
-    choice_id: int
-
-
-@api.post("/lesson/{slug}/quizzes/{question_id}/complete/")
-@rate_limit(rps=5, burst=10)
-async def complete_quiz(
-    request: Request,
-    slug: str,
-    question_id: int,
-    payload: AnswerIn,
-    request_user: BaseUser | None = Depends(get_current_user_option),
-):
-    if not request_user:
-        raise HTTPException(401, "Tizimga kirish talab qilinadi")
-
-    question = await (
-        CourseQuestion.objects
-        .filter(id=question_id, lesson__slug=slug)
-        .select_related("lesson__modul__course", "explanation_video")
-        .only(
-            "id", "lesson_id", "xp", "explanation",
-            "lesson__modul__course__id",
-            "lesson__modul__course__price",
-            "lesson__modul__course__discount_price",
-            "explanation_video__hls_url",
-            "explanation_video__thumbnail",
-            "explanation_video__duration",
-        )
-        .afirst()
-    )
-
-    if not question:
-        raise HTTPException(404, "Savol topilmadi")
-
-    await ensure_course_access(request_user.id, question.lesson.modul.course)
-
-    choice = await (
-        CourseChoice.objects
-        .filter(id=payload.choice_id, question_id=question.id)
-        .only("id", "is_correct")
-        .afirst()
-    )
-
-    if not choice:
-        raise HTTPException(400, "Variant topilmadi")
-
-    old = await (
-        CourseUserResponse.objects
-        .filter(
-            user=request_user,
-            question_id=question.id,
-            session__isnull=True,
-            choice__is_correct=True,
-        )
-        .aexists()
-    )
-
-    xp = 0
-
-    if not old:
-        await CourseUserResponse.objects.acreate(
-            user=request_user,
-            question=question,
-            choice=choice,
-        )
-
-        if choice.is_correct:
-            xp = question.xp
-            try:
-                await sync_to_async(mark_lesson_task_completed, thread_sensitive=True)(
-                    user_id=request_user.id,
-                    lesson_id=question.lesson_id,
-                )
-                await sync_to_async(award_xp, thread_sensitive=True)(
-                    user=request_user,
-                    xp_amount=xp,
-                    source="quiz",
-                )
-            except Exception:
-                logger.exception("quiz reward error")
-
-    video = None
-    if question.explanation_video:
-        video = {
-            "url": question.explanation_video.hls_url,
-            "img": (
-                question.explanation_video.thumbnail.url
-                if question.explanation_video.thumbnail else None
-            ),
-            "time": question.explanation_video.duration,
-        }
-
-    return {
-        "ans": {
-            "id": choice.id,
-            "correct": choice.is_correct,
-        },
-        "xp": xp,
-        "exp": question.explanation,
-        "video": video,
-    }
 
 
 # ==========================================================
@@ -1691,4 +1805,898 @@ async def get_problem(
         **base_data,
         "acceptance": acceptance_rate,
         "solved":     is_solved,
+    }
+
+# GET descraption va hk. orqali savolarni olish yo'li questions/{question_id}/
+# ==========================================================
+# 16. YAKKA SAVOLNI ID ORQALI OLISH
+#
+# Maqsad:
+#   - Istalgan joydan savolni ID orqali olish
+#   - Lesson yoki Testga bog'langan bo'lishidan qat'i nazar ishlashi
+#   - N+1 query bo'lmasligi
+#   - Faqat frontendga kerakli fieldlarni yuborish
+#   - Question type bo'yicha kerakli relationlargina qaytarilishi
+#
+# Frontend:
+#
+#   GET /questions/{question_id}/
+#
+# Masalan description ichida:
+#
+#   {{savol:123:get}}
+#
+# backend shu 123 ID orqali ushbu endpointni chaqirishi mumkin.
+# ==========================================================
+# UNIVERSAL QUESTION SERIALIZER
+# ==========================================================
+
+def _serialize_question(question):
+    question_type = question.question_type
+
+    result = {
+        "id": question.id,
+        "txt": question.text,
+        "instruction": question.instruction,
+        "type": question_type,
+        "dif": question.difficulty,
+        "xp": question.xp,
+        "exp": question.explanation,
+        "vid": (
+            {
+                "hls": question.explanation_video.hls_url,
+                "img": (
+                    question.explanation_video.thumbnail.url
+                    if question.explanation_video.thumbnail
+                    else None
+                ),
+                "dur": question.explanation_video.duration,
+            }
+            if question.explanation_video
+            else None
+        ),
+    }
+
+    # ------------------------------------------------------
+    # SINGLE / MULTIPLE CHOICE
+    # ------------------------------------------------------
+
+    if question_type in (
+        CourseQuestion.QuestionType.SINGLE_CHOICE,
+        CourseQuestion.QuestionType.MULTIPLE_CHOICE,
+    ):
+        result["choices"] = [
+            {
+                "id": choice.id,
+                "txt": choice.text,
+            }
+            for choice in question.choices.all()
+        ]
+
+    # ------------------------------------------------------
+    # MATCHING
+    # ------------------------------------------------------
+
+    elif question_type == CourseQuestion.QuestionType.MATCHING:
+        import random
+
+        pairs = list(question.matching_pairs.all())
+
+        # Chap tomon — original tartib
+        result["pairs_left"] = [
+            {
+                "id": pair.id,
+                "txt": pair.left,
+                "o": pair.order,
+            }
+            for pair in pairs
+        ]
+
+        # O'ng tomon — random tartib
+        pairs_right = [
+            {
+                "id": pair.id,
+                "txt": pair.right,
+            }
+            for pair in pairs
+        ]
+
+        random.shuffle(pairs_right)
+
+        result["pairs_right"] = pairs_right
+
+    # ------------------------------------------------------
+    # ARRANGE WORDS
+    # ------------------------------------------------------
+
+    elif question_type == CourseQuestion.QuestionType.ARRANGE_WORDS:
+        result["items"] = [
+            {
+                "id": item.id,
+                "txt": item.text,
+            }
+            for item in question.arrange_items.all()
+        ]
+
+    # ------------------------------------------------------
+    # FILL BLANKS
+    # ------------------------------------------------------
+
+    elif question_type == CourseQuestion.QuestionType.FILL_BLANKS:
+        result["blanks"] = [
+            {
+                "id": blank.id,
+                "pos": blank.position,
+                "case": blank.case_sensitive,
+            }
+            for blank in question.blanks.all()
+        ]
+
+    return result
+
+
+# ==========================================================
+# GET /questions/{question_id}/
+# ==========================================================
+
+@api.get("/questions/{question_id}/")
+@rate_limit(rps=30, burst=60)
+async def get_question_by_id(
+    request: Request,
+    question_id: int,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    """
+    Universal embeddable question endpoint.
+
+    Faqat is_embeddable=True bo'lgan savollar olinadi.
+
+    Auth majburiy.
+
+    Question:
+        - Lesson'ga tegishli bo'lishi mumkin
+        - Test'ga tegishli bo'lishi mumkin
+
+    Agar question kursga tegishli bo'lsa,
+    foydalanuvchining kursga access'i tekshiriladi.
+    """
+
+    question = await (
+        CourseQuestion.objects
+        .filter(
+            id=question_id,
+            is_embeddable=True,
+        )
+        .select_related(
+            "explanation_video",
+            "lesson__modul__course",
+            "test__modul__course",
+        )
+        .only(
+            # --------------------------------------------------
+            # Question
+            # --------------------------------------------------
+
+            "id",
+            "lesson_id",
+            "test_id",
+            "text",
+            "instruction",
+            "question_type",
+            "difficulty",
+            "xp",
+            "explanation",
+
+            # --------------------------------------------------
+            # Lesson -> Modul -> Course
+            # --------------------------------------------------
+
+            "lesson__id",
+            "lesson__modul__id",
+            "lesson__modul__course__id",
+
+            # --------------------------------------------------
+            # Test -> Modul -> Course
+            # --------------------------------------------------
+
+            "test__id",
+            "test__modul__id",
+            "test__modul__course__id",
+
+            # --------------------------------------------------
+            # Explanation video
+            # --------------------------------------------------
+
+            "explanation_video__id",
+            "explanation_video__hls_url",
+            "explanation_video__thumbnail",
+            "explanation_video__duration",
+        )
+        .prefetch_related(
+
+            # --------------------------------------------------
+            # SINGLE / MULTIPLE CHOICE
+            # --------------------------------------------------
+
+            Prefetch(
+                "choices",
+                queryset=(
+                    CourseChoice.objects
+                    .only(
+                        "id",
+                        "question_id",
+                        "text",
+                    )
+                    .order_by("id")
+                ),
+            ),
+
+            # --------------------------------------------------
+            # MATCHING
+            # --------------------------------------------------
+
+            Prefetch(
+                "matching_pairs",
+                queryset=(
+                    MatchingPair.objects
+                    .only(
+                        "id",
+                        "question_id",
+                        "left",
+                        "right",
+                        "order",
+                    )
+                    .order_by("order", "id")
+                ),
+            ),
+
+            # --------------------------------------------------
+            # ARRANGE WORDS
+            # --------------------------------------------------
+
+            Prefetch(
+                "arrange_items",
+                queryset=(
+                    ArrangeItem.objects
+                    .only(
+                        "id",
+                        "question_id",
+                        "text",
+                    )
+                    .order_by("id")
+                ),
+            ),
+
+            # --------------------------------------------------
+            # FILL BLANKS
+            # --------------------------------------------------
+
+            Prefetch(
+                "blanks",
+                queryset=(
+                    Blank.objects
+                    .only(
+                        "id",
+                        "question_id",
+                        "position",
+                        "case_sensitive",
+                    )
+                    .order_by("position", "id")
+                ),
+            ),
+        )
+        .afirst()
+    )
+
+    if question is None:
+        raise NotFound(
+            404,
+            detail="Savol topilmadi!",
+        )
+
+    # ======================================================
+    # COURSE ACCESS
+    # ======================================================
+
+    course = None
+
+    if question.lesson_id:
+        course = question.lesson.modul.course
+
+    elif question.test_id:
+        course = question.test.modul.course
+
+    if course is not None:
+        await ensure_course_access(
+            request_user.id,
+            course,
+        )
+
+    # ======================================================
+    # SERIALIZE
+    # ======================================================
+
+    return _serialize_question(question)
+
+# ==========================================================
+# 17. UNIVERSAL QUESTION ANSWER
+#
+# Barcha joydagi CourseQuestion uchun ishlaydi:
+#
+#   - Lesson quiz
+#   - Test question
+#   - Description ichidagi question
+#
+# Endpoint:
+#
+#   POST /questions/{question_id}/answer/
+#
+# Frontend faqat USER JAVOBINI yuboradi.
+#
+# To'g'ri javob backenddan hech qachon yuborilmaydi.
+# ==========================================================
+
+
+class QuestionAnswerIn(msgspec.Struct):
+    # ------------------------------------------------------
+    # SINGLE_CHOICE
+    # ------------------------------------------------------
+
+    choice_id: int | None = None
+
+    # ------------------------------------------------------
+    # MULTIPLE_CHOICE
+    # ------------------------------------------------------
+
+    selected_choice_ids: list[int] | None = None
+
+    # ------------------------------------------------------
+    # MATCHING / ARRANGE / FILL_BLANKS
+    # ------------------------------------------------------
+
+    answer_data: dict | None = None
+
+
+def _question_video_data(question):
+    """
+    Explanation video ma'lumotlarini frontend formatida qaytaradi.
+
+    DB query bu yerda ochilmaydi.
+    explanation_video oldindan select_related qilinadi.
+    """
+
+    video = question.explanation_video
+
+    if not video:
+        return None
+
+    return {
+        "hls": video.hls_url,
+        "img": (
+            video.thumbnail.url
+            if video.thumbnail
+            else None
+        ),
+        "dur": video.duration,
+    }
+
+
+@api.post("/questions/{question_id}/answer/")
+@rate_limit(rps=10, burst=20)
+async def answer_question(
+    request: Request,
+    question_id: int,
+    payload: QuestionAnswerIn,
+    request_user: BaseUser = Depends(get_current_user),
+):
+    """
+    Universal savol javob endpointi.
+
+    Bu endpoint savolning qayerda ishlatilishidan qat'i nazar
+    javobni tekshiradi.
+
+    Question:
+        - lessonga tegishli bo'lishi mumkin
+        - testga tegishli bo'lishi mumkin
+
+    Agar savol lesson ichida bo'lsa:
+        session = None
+
+    Agar savol test ichida bo'lsa:
+        test session kerak bo'ladi.
+
+    Muhim:
+        Correct answer frontendga yuborilmaydi.
+    """
+
+    # ======================================================
+    # 1. SAVOLNI OLAMIZ
+    #
+    # select_related:
+    #   explanation_video
+    #   lesson -> modul -> course
+    #   test -> modul -> course
+    #
+    # bilan oldindan olinadi.
+    # ======================================================
+
+    question = await (
+        CourseQuestion.objects
+        .filter(id=question_id)
+        .select_related(
+            "explanation_video",
+            "lesson__modul__course",
+            "test__modul__course",
+        )
+        .only(
+            # --------------------------------------------------
+            # Question
+            # --------------------------------------------------
+
+            "id",
+            "lesson_id",
+            "test_id",
+            "question_type",
+            "xp",
+            "explanation",
+
+            # --------------------------------------------------
+            # Lesson -> Modul -> Course
+            # --------------------------------------------------
+
+            "lesson__id",
+            "lesson__modul__id",
+            "lesson__modul__course__id",
+
+            # --------------------------------------------------
+            # Test -> Modul -> Course
+            # --------------------------------------------------
+
+            "test__id",
+            "test__modul__id",
+            "test__modul__course__id",
+
+            # --------------------------------------------------
+            # Explanation video
+            # --------------------------------------------------
+
+            "explanation_video__id",
+            "explanation_video__hls_url",
+            "explanation_video__thumbnail",
+            "explanation_video__duration",
+        )
+        .prefetch_related(
+
+            # --------------------------------------------------
+            # SINGLE / MULTIPLE CHOICE
+            # --------------------------------------------------
+
+            Prefetch(
+                "choices",
+                queryset=CourseChoice.objects.only(
+                    "id",
+                    "question_id",
+                    "is_correct",
+                ),
+            ),
+
+            # --------------------------------------------------
+            # MATCHING
+            # --------------------------------------------------
+
+            Prefetch(
+                "matching_pairs",
+                queryset=MatchingPair.objects.only(
+                    "id",
+                    "question_id",
+                    "left",
+                    "right",
+                    "order",
+                ),
+            ),
+
+            # --------------------------------------------------
+            # ARRANGE
+            # --------------------------------------------------
+
+            Prefetch(
+                "arrange_items",
+                queryset=ArrangeItem.objects.only(
+                    "id",
+                    "question_id",
+                    "text",
+                    "correct_position",
+                ),
+            ),
+
+            # --------------------------------------------------
+            # FILL BLANK
+            # --------------------------------------------------
+
+            Prefetch(
+                "blanks",
+                queryset=(
+                    Blank.objects
+                    .only(
+                        "id",
+                        "question_id",
+                        "position",
+                        "case_sensitive",
+                    )
+                    .prefetch_related(
+                        Prefetch(
+                            "answers",
+                            queryset=BlankAnswer.objects.only(
+                                "id",
+                                "blank_id",
+                                "answer",
+                            ),
+                        )
+                    )
+                ),
+            ),
+        )
+        .afirst()
+    )
+
+    # ======================================================
+    # 2. QUESTION TOPILMADIK
+    # ======================================================
+
+    if question is None:
+        raise HTTPException(
+            404,
+            "Savol topilmadi",
+        )
+
+    # ======================================================
+    # 3. COURSE ACCESS
+    #
+    # Question lessonda yoki testda bo'lishi mumkin.
+    # ======================================================
+
+    course = None
+
+    if question.lesson_id:
+        course = question.lesson.modul.course
+
+    elif question.test_id:
+        course = question.test.modul.course
+
+    if course is None:
+        raise HTTPException(
+            400,
+            "Savol hech qanday kursga tegishli emas",
+        )
+
+    await ensure_course_access(
+        request_user.id,
+        course,
+    )
+
+    # ======================================================
+    # 4. TEST QUESTIONMI YOKI LESSON QUESTIONMI?
+    # ======================================================
+
+    session = None
+
+    if question.test_id:
+
+        # --------------------------------------------------
+        # Test savoliga javob berayotgan bo'lsa,
+        # aktiv sessionni aniqlaymiz.
+        #
+        # User session_id yubormaydi.
+        # Backend question -> test -> active session orqali
+        # topadi.
+        # --------------------------------------------------
+
+        session = await (
+            CourseTestSession.objects
+            .filter(
+                user_id=request_user.id,
+                test_id=question.test_id,
+                completed_at__isnull=True,
+            )
+            .order_by("-started_at")
+            .afirst()
+        )
+
+        if session is None:
+            raise HTTPException(
+                400,
+                "Test seansi boshlanmagan",
+            )
+
+    # ======================================================
+    # 5. OLDIN TO'G'RI YECHILGANMI?
+    #
+    # Lesson question:
+    #     session IS NULL
+    #
+    # Test question:
+    #     session = current test session
+    #
+    # Test savolida global "already done" tekshirmaymiz.
+    # Chunki user keyingi test attemptida yana javob berishi
+    # mumkin.
+    # ======================================================
+
+    existing_correct = await (
+        CourseUserResponse.objects
+        .filter(
+            user_id=request_user.id,
+            question_id=question.id,
+            session=session,
+            is_correct=True,
+        )
+        .aexists()
+    )
+
+    if existing_correct:
+
+        return {
+            "question_id": question.id,
+            "correct": True,
+            "xp": 0,
+            "already_done": True,
+            "explanation": question.explanation,
+            "video": _question_video_data(question),
+        }
+
+    # ======================================================
+    # 6. JAVOBNI VALIDATSIYA QILAMIZ
+    # ======================================================
+
+    q_type = question.question_type
+
+    response = None
+
+    # ======================================================
+    # SINGLE CHOICE
+    # ======================================================
+
+    if q_type == CourseQuestion.QuestionType.SINGLE_CHOICE:
+
+        if payload.choice_id is None:
+            raise HTTPException(
+                400,
+                "choice_id talab qilinadi",
+            )
+
+        choice = await (
+            CourseChoice.objects
+            .filter(
+                id=payload.choice_id,
+                question_id=question.id,
+            )
+            .only(
+                "id",
+                "is_correct",
+            )
+            .afirst()
+        )
+
+        if choice is None:
+            raise HTTPException(
+                400,
+                "Variant topilmadi",
+            )
+
+        response = CourseUserResponse(
+            user=request_user,
+            question=question,
+            session=session,
+            choice=choice,
+        )
+
+    # ======================================================
+    # MULTIPLE CHOICE
+    # ======================================================
+
+    elif q_type == CourseQuestion.QuestionType.MULTIPLE_CHOICE:
+
+        selected_ids = list(
+            set(
+                payload.selected_choice_ids or []
+            )
+        )
+
+        if not selected_ids:
+            raise HTTPException(
+                400,
+                "Kamida bitta variant tanlang",
+            )
+
+        choices = [
+            choice
+            async for choice in (
+                CourseChoice.objects
+                .filter(
+                    question_id=question.id,
+                    id__in=selected_ids,
+                )
+                .only(
+                    "id",
+                )
+            )
+        ]
+
+        if len(choices) != len(selected_ids):
+            raise HTTPException(
+                400,
+                "Noto'g'ri variant mavjud",
+            )
+
+        response = CourseUserResponse(
+            user=request_user,
+            question=question,
+            session=session,
+        )
+
+        await sync_to_async(
+            response.save,
+            thread_sensitive=True,
+        )()
+
+        await sync_to_async(
+            response.selected_choices.set,
+            thread_sensitive=True,
+        )(selected_ids)
+
+    # ======================================================
+    # MATCHING / ARRANGE / FILL
+    # ======================================================
+
+    elif q_type in (
+        CourseQuestion.QuestionType.MATCHING,
+        CourseQuestion.QuestionType.ARRANGE_WORDS,
+        CourseQuestion.QuestionType.FILL_BLANKS,
+    ):
+
+        if not payload.answer_data:
+            raise HTTPException(
+                400,
+                "answer_data talab qilinadi",
+            )
+
+        response = CourseUserResponse(
+            user=request_user,
+            question=question,
+            session=session,
+            answer_data=payload.answer_data,
+        )
+
+    # ======================================================
+    # UNKNOWN TYPE
+    # ======================================================
+
+    else:
+
+        raise HTTPException(
+            400,
+            "Noma'lum savol turi",
+        )
+
+    # ======================================================
+    # 7. RESPONSE SAQLASH
+    # ======================================================
+
+    if response.pk is None:
+        await sync_to_async(
+            response.save,
+            thread_sensitive=True,
+        )()
+
+    # ======================================================
+    # 8. JAVOBNI TEKSHIRISH
+    #
+    # Sizdagi mavjud:
+    #
+    #     response.check_and_score()
+    #
+    # ishlatiladi.
+    #
+    # U:
+    #     - is_answered
+    #     - is_correct
+    #
+    # qaytaradi.
+    # ======================================================
+
+    is_answered, is_correct = await sync_to_async(
+        response.check_and_score,
+        thread_sensitive=True,
+    )()
+
+    # ======================================================
+    # 9. XP
+    # ======================================================
+
+    xp = 0
+
+    if is_correct:
+
+        xp = question.xp
+
+        # --------------------------------------------------
+        # LESSON QUESTION
+        #
+        # Faqat lesson question bo'lsa lesson task
+        # completion qilamiz.
+        # --------------------------------------------------
+
+        if question.lesson_id:
+
+            try:
+
+                await sync_to_async(
+                    mark_lesson_task_completed,
+                    thread_sensitive=True,
+                )(
+                    user_id=request_user.id,
+                    lesson_id=question.lesson_id,
+                )
+
+            except Exception:
+
+                logger.exception(
+                    "lesson quiz completion error",
+                    extra={
+                        "user_id": request_user.id,
+                        "question_id": question.id,
+                    },
+                )
+
+        # --------------------------------------------------
+        # XP
+        # --------------------------------------------------
+
+        try:
+            if CourseUserResponse:
+                with transaction.atomic():
+                    response = (
+                        CourseUserResponse.objects
+                        .select_for_update()
+                        .filter(
+                            user_id=request_user.id,
+                            question_id=question.id,
+                        )
+                        .first()
+                    )
+
+                    if response and not response.xp_awarded:
+                        response.xp_awarded = True
+                        response.save(update_fields=["xp_awarded"])
+
+                        award_xp(
+                            user=request_user,
+                            xp_amount=xp,
+                            source="quiz",
+                        )
+
+        except Exception:
+            logger.exception(
+                "quiz XP reward error",
+                extra={
+                    "user_id": request_user.id,
+                    "question_id": question.id,
+                },
+            )
+    # ======================================================
+    # 10. RESPONSE
+    # ======================================================
+
+    return {
+        "question_id": question.id,
+
+        "correct": is_correct,
+
+        "xp": xp,
+
+        "already_done": False,
+
+        "explanation": question.explanation,
+
+        "video": _question_video_data(question),
     }
