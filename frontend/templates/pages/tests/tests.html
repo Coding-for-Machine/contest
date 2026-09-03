@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Testlar | CfM Contest</title>
+<meta name="description" content="CfM Contest platformasidagi barcha testlar. Bilimingizni sinab ko'ring va XP to'plang.">
+<meta property="og:title" content="Testlar | CfM Contest">
+<meta property="og:type" content="website">
+
+<!-- Global dizayn tizimi shriftlari (global.css shu shriftlarga tayanadi) -->
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+<!-- Tailwind (utility-layout uchun) — global.css klasslari bilan birga ishlatiladi -->
+<script src="https://cdn.tailwindcss.com"></script>
+<!-- Alpine.js -->
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+
+<!-- O'ZGARTIRILMAYDIGAN umumiy dizayn tizimi -->
+<link rel="stylesheet" href="/assets/css/style.css">
+
+<style>
+    /* Ushbu sahifaga xos, global.css'dagi CSS o'zgaruvchilaridan foydalanadigan qo'shimcha stillar. */
+    .search-wrap { position: relative; max-width: 420px; }
+    .search-wrap .material-icons {
+        position: absolute; left: 14px; top: 50%; transform: translateY(-50%);
+        color: var(--ink-faint); font-size: 20px; pointer-events: none;
+    }
+    .search-wrap input.input { padding-left: 2.7rem; border-radius: 999px; }
+
+    .chip {
+        display: inline-flex; align-items: center; gap: 6px;
+        padding: 7px 14px; border-radius: 999px; font-size: 13px; font-weight: 600;
+        cursor: pointer; border: 1.5px solid var(--line); background: #fff; color: var(--ink-soft);
+        transition: all .15s ease; white-space: nowrap;
+    }
+    .chip:hover { border-color: var(--ink); color: var(--ink); }
+    .chip.active { background: var(--ink); color: #fff; border-color: var(--ink); }
+    .chip .material-icons { font-size: 15px; }
+
+    .test-thumb { aspect-ratio: 16/9; background: var(--surface-2); }
+    .skeleton-card .skeleton-thumb { aspect-ratio: 16/9; }
+    .skeleton-card .skeleton-line { height: 12px; margin-bottom: 8px; }
+</style>
+</head>
+<body class="bg-white">
+
+<header id="navbar" class="topbar" role="banner"></header>
+
+<main class="container-rc py-8 sm:py-12" x-data="testsListPage()" x-init="init()">
+
+    <!-- Sarlavha -->
+    <div class="mb-7">
+        <h1 class="font-display font-bold text-3xl sm:text-[2.4rem] tracking-tight flex items-center gap-3">
+            <span class="material-icons" style="font-size:2rem; color:var(--ink-soft);">quiz</span>
+            Testlar
+        </h1>
+        <p class="text-[var(--ink-soft)] mt-2 max-w-xl text-[15px]">
+            Bob va imtihon testlarini yeching. Xato javob ball kamaytiradi — puxta o'ylab javob bering.
+        </p>
+    </div>
+
+    <!-- Statistika (GET /stats/) -->
+    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div class="stat-chip">
+            <span class="material-icons">library_books</span>
+            <span><span class="stat-num" x-text="stats.total"></span><br>jami test</span>
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">play_circle</span>
+            <span><span class="stat-num" x-text="stats.attempted"></span><br>boshlangan</span>
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">celebration</span>
+            <span><span class="stat-num" x-text="stats.passed"></span><br>o'tilgan</span>
+        </div>
+        <div class="stat-chip">
+            <span class="material-icons">bolt</span>
+            <span><span class="stat-num" x-text="stats.total_xp"></span><br>XP</span>
+        </div>
+    </div>
+
+    <!-- Qidiruv -->
+    <div class="search-wrap mb-4">
+        <span class="material-icons">search</span>
+        <input
+            type="search"
+            class="input"
+            placeholder="Test nomi bo'yicha qidirish... ( / )"
+            x-model="search"
+            @input="onSearchInput()"
+        >
+    </div>
+
+    <!-- Filtrlar -->
+    <div class="flex flex-wrap items-center gap-2 mb-8">
+        <span class="text-xs font-bold uppercase tracking-wider text-[var(--ink-faint)] mr-1">Filtr:</span>
+
+        <button class="chip" :class="isFree === null && 'active'" @click="setFree(null)">Barchasi</button>
+        <button class="chip" :class="isFree === true && 'active'" @click="setFree(true)">
+            <span class="material-icons">redeem</span> Bepul
+        </button>
+        <button class="chip" :class="isFree === false && 'active'" @click="setFree(false)">
+            <span class="material-icons">payments</span> Pullik
+        </button>
+        <span class="w-px h-5 bg-[var(--line)] mx-1"></span>
+        <button class="chip" :class="onlyAvailable && 'active'" @click="toggleAvailable()">
+            <span class="material-icons">play_circle</span> Hozir ochiq
+        </button>
+    </div>
+
+    <!-- Natijalar soni -->
+    <div class="text-xs text-[var(--ink-soft)] mb-3" x-show="!initialLoading">
+        <span x-text="total"></span> ta test topildi
+    </div>
+
+    <!-- Grid -->
+    <div id="testsGrid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
+
+        <!-- Skeletonlar (dastlabki yuklash) -->
+        <template x-if="initialLoading">
+            <template x-for="n in 6" :key="n">
+                <div class="card skeleton-card overflow-hidden">
+                    <div class="skeleton skeleton-thumb"></div>
+                    <div class="p-4">
+                        <div class="skeleton skeleton-line" style="width:70%"></div>
+                        <div class="skeleton skeleton-line" style="width:45%"></div>
+                        <div class="skeleton skeleton-line" style="width:55%; margin-top:10px;"></div>
+                    </div>
+                </div>
+            </template>
+        </template>
+
+        <!-- Haqiqiy kartalar -->
+        <template x-if="!initialLoading">
+            <template x-for="item in items" :key="item.id">
+                <a :href="'/test/' + item.slug"
+                   class="card card-hover accent-bar flex flex-col overflow-hidden hover:no-underline"
+                   :class="'accent-bar ' + accentClass(item)">
+                    <div class="test-thumb relative overflow-hidden">
+                        <img :src="item.img" x-show="item.img" :alt="item.title" class="w-full h-full object-cover">
+                        <div x-show="!item.img" class="w-full h-full flex items-center justify-center text-[var(--ink-faint)]">
+                            <span class="material-icons" style="font-size:2.2rem;">quiz</span>
+                        </div>
+                        <span class="badge absolute top-2 left-2" :class="isOpenNow(item) ? 'badge-test-open' : 'badge-test-closed'">
+                            <span class="material-icons" style="font-size:13px;" x-text="isOpenNow(item) ? 'play_circle' : 'lock_clock'"></span>
+                            <span x-text="isOpenNow(item) ? 'Ochiq' : 'Yopiq'"></span>
+                        </span>
+                    </div>
+
+                    <div class="p-4 flex-1 flex flex-col gap-2">
+                        <h3 class="font-bold text-[15px] leading-snug line-clamp-2" x-text="item.title"></h3>
+
+                        <div class="flex flex-wrap gap-3 text-xs text-[var(--ink-soft)]">
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons" style="font-size:15px;">quiz</span>
+                                <span x-text="item.qty"></span> savol
+                            </span>
+                            <span class="flex items-center gap-1">
+                                <span class="material-icons" style="font-size:15px;">schedule</span>
+                                <span x-text="item.time"></span> daq
+                            </span>
+                        </div>
+
+                        <div class="flex items-center gap-2 mt-1 flex-wrap">
+                            <template x-if="item.buy === null || item.buy === undefined">
+                                <span class="badge badge-neutral">Bepul</span>
+                            </template>
+                            <template x-if="item.buy === true">
+                                <span class="badge badge-easy">
+                                    <span class="material-icons" style="font-size:12px;">check</span> Xarid qilingan
+                                </span>
+                            </template>
+                            <template x-if="item.buy === false">
+                                <span class="badge badge-brand">
+                                    <span class="material-icons" style="font-size:12px;">payments</span> Pullik
+                                </span>
+                            </template>
+
+                            <template x-if="item.user">
+                                <span class="badge" :class="scoreBadgeClass(item)" x-text="userBadgeText(item)"></span>
+                            </template>
+                        </div>
+                    </div>
+                </a>
+            </template>
+        </template>
+    </div>
+
+    <!-- Bo'sh holat -->
+    <div x-show="!initialLoading && !loading && items.length === 0" class="text-center py-16 text-[var(--ink-soft)]">
+        <span class="material-icons" style="font-size:4rem; color:var(--ink-faint);">search_off</span>
+        <h3 class="text-xl font-bold mt-4 mb-2 text-[var(--ink)]">Testlar topilmadi</h3>
+        <p>Qidiruv yoki filtr shartlariga mos test yo'q.</p>
+        <button class="btn btn-outline mt-4" @click="resetFilters()">
+            <span class="material-icons" style="font-size:18px;">refresh</span> Filtrlarni tozalash
+        </button>
+    </div>
+
+    <!-- Yana yuklash -->
+    <div class="flex justify-center mt-8" x-show="!initialLoading && hasMore">
+        <button class="btn btn-outline text-sm" :disabled="loading" @click="loadTests(false)">
+            <span class="material-icons" style="font-size:18px;" x-show="!loading">expand_more</span>
+            <span class="material-icons" style="font-size:18px;" x-show="loading">hourglass_top</span>
+            <span x-text="loading ? 'Yuklanmoqda...' : 'Yana yuklash'"></span>
+        </button>
+    </div>
+
+</main>
+
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs"></div>
+
+<!-- O'ZGARTIRILMAYDIGAN umumiy JS (navbar, Auth, toast, debounce va h.k.) -->
+<script src="/assets/js/main.js"></script>
+
+<script>
+function testsListPage() {
+    return {
+        // ---- Filtr / paginatsiya holati ----
+        search: '',
+        isFree: null,          // null=barchasi, true=bepul, false=pullik
+        onlyAvailable: false,
+        limit: 9,
+        offset: 0,
+
+        // ---- Ma'lumotlar ----
+        items: [],
+        total: 0,
+        stats: { total: 0, attempted: 0, passed: 0, total_xp: 0 },
+
+        // ---- Holat bayroqlari ----
+        loading: false,
+        initialLoading: true,
+        hasMore: true,
+        _searchTimer: null,
+
+        async init() {
+            await Promise.all([this.loadStats(), this.loadTests(true)]);
+            this.initialLoading = false;
+        },
+
+        // /api/v1/tests/ manzilidagi endpointlarni chaqiruvchi yordamchi.
+        // apiFetch (global.js) o'rniga shu ishlatiladi, chunki data API bazaviy
+        // manzili (RC_DATA_API_BASE) auth API'dan alohida bo'lishi mumkin.
+        async callApi(path) {
+            const base = (window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1') + '/tests';
+            const token = window.Auth ? window.Auth.getToken() : '';
+            const headers = { 'Accept': 'application/json' };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+
+            const res = await fetch(base + path, { headers });
+            let data = null;
+            try { data = await res.json(); } catch (e) { /* bo'sh javob */ }
+            if (!res.ok) {
+                const msg = (data && (data.detail?.message || data.detail || data.message)) || ('HTTP ' + res.status);
+                throw new Error(typeof msg === 'string' ? msg : JSON.stringify(msg));
+            }
+            return data;
+        },
+
+        async loadStats() {
+            try {
+                this.stats = await this.callApi('/stats/');
+            } catch (e) {
+                console.error('Stats yuklashda xatolik:', e);
+            }
+        },
+
+        buildQuery() {
+            const p = new URLSearchParams();
+            p.set('limit', this.limit);
+            p.set('offset', this.offset);
+            if (this.search) p.set('search', this.search);
+            if (this.isFree !== null) p.set('is_free', this.isFree);
+            if (this.onlyAvailable) p.set('only_available', true);
+            return p.toString();
+        },
+
+        async loadTests(reset) {
+            if (this.loading) return;
+            this.loading = true;
+            if (reset) { this.offset = 0; this.items = []; this.hasMore = true; }
+
+            try {
+                const res = await this.callApi('/?' + this.buildQuery());
+                this.total = res.total;
+                this.items = reset ? res.items : this.items.concat(res.items);
+                // Backend endi has_more/next_offset qaytarmaydi — qoida:
+                // qaytgan items soni limitdan kam bo'lsa, demak oxiri.
+                this.hasMore = res.items.length === this.limit;
+                this.offset += res.items.length;
+            } catch (e) {
+                window.showToast('Testlarni yuklashda xatolik: ' + e.message, 'error');
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        onSearchInput() {
+            clearTimeout(this._searchTimer);
+            this._searchTimer = setTimeout(() => this.loadTests(true), 350);
+        },
+
+        setFree(val) { this.isFree = val; this.loadTests(true); },
+        toggleAvailable() { this.onlyAvailable = !this.onlyAvailable; this.loadTests(true); },
+
+        resetFilters() {
+            this.search = '';
+            this.isFree = null;
+            this.onlyAvailable = false;
+            this.loadTests(true);
+        },
+
+        // ---- Ko'rinish yordamchilari ----
+        isOpenNow(item) {
+            const now = Date.now();
+            if (item.start && now < new Date(item.start).getTime()) return false;
+            if (item.end && now > new Date(item.end).getTime()) return false;
+            return true;
+        },
+
+        accentClass(item) {
+            const now = Date.now();
+            if (item.start && now < new Date(item.start).getTime()) return 'upcoming';
+            if (item.end && now > new Date(item.end).getTime()) return 'ended';
+            return 'live';
+        },
+
+        userBadgeText(item) {
+            if (!item.user) return '';
+            if (item.user.status === 'completed') return 'Ball: ' + item.user.score;
+            if (item.user.status === 'in_progress') return 'Jarayonda';
+            return 'Muddati o\'tgan';
+        },
+
+        scoreBadgeClass(item) {
+            if (!item.user) return 'badge-neutral';
+            if (item.user.status === 'completed') return 'badge-easy';
+            if (item.user.status === 'in_progress') return 'badge-info';
+            return 'badge-hard';
+        },
+    };
+}
+</script>
+</body>
+</html>

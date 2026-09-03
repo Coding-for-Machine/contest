@@ -1,0 +1,87 @@
+{% extends "layout.html" %}
+{% block title %}Reyting | RobaContest{% endblock %}
+{% block content %}
+
+<section class="container-rc py-10">
+  <div class="mb-8">
+    <h1 class="font-display font-bold text-3xl mb-2">Reyting</h1>
+    <p class="text-inksoft text-sm">Platformadagi eng ko'p XP to'plagan foydalanuvchilar.</p>
+  </div>
+
+  <div class="flex flex-wrap gap-2 mb-8">
+    <button class="badge badge-info" data-p="all">Barcha vaqt</button>
+    <button class="badge badge-neutral" data-p="month">Bu oy</button>
+    <button class="badge badge-neutral" data-p="week">Bu hafta</button>
+  </div>
+
+  <!-- TOP 3 PODIUM -->
+  <div class="grid grid-cols-3 gap-3 sm:gap-5 mb-10 items-end" id="podium">
+    <div class="card p-5 text-center order-1"><div class="text-3xl mb-2">🥈</div><div class="w-14 h-14 rounded-full bg-ink text-white flex items-center justify-center mx-auto mb-2 font-display font-bold">SB</div><div class="font-semibold text-sm truncate">sardorbek</div><div class="font-mono text-xs text-inksoft mt-1">14,820 XP</div></div>
+    <div class="card p-6 text-center order-2 border-2 border-ink"><div class="text-4xl mb-2">🥇</div><div class="w-16 h-16 rounded-full bg-ink text-white flex items-center justify-center mx-auto mb-2 font-display font-bold">AD</div><div class="font-semibold text-sm truncate">aziz_dev</div><div class="font-mono text-xs text-inksoft mt-1">16,210 XP</div></div>
+    <div class="card p-5 text-center order-3"><div class="text-3xl mb-2">🥉</div><div class="w-14 h-14 rounded-full bg-ink text-white flex items-center justify-center mx-auto mb-2 font-display font-bold">MK</div><div class="font-semibold text-sm truncate">madina.k</div><div class="font-mono text-xs text-inksoft mt-1">13,050 XP</div></div>
+  </div>
+
+  <div class="card overflow-hidden">
+    <table class="table-rc">
+      <thead><tr><th>O'rin</th><th>Foydalanuvchi</th><th>Daraja</th><th class="text-right">XP</th></tr></thead>
+      <tbody id="boardBody">
+        <tr><td colspan="4" class="text-center py-8"><div class="skeleton h-4 w-full"></div></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="flex items-center justify-center gap-2 mt-8" id="pager"></div>
+</section>
+
+{% endblock %}
+{% block extra_scripts %}
+<script>
+(async function () {
+  const levelBadge = { beginner:['badge-neutral','Yangi'], bronze:['badge-medium','Bronza'], silver:['badge-info','Kumush'], gold:['badge-medium','Oltin'], pro:['badge-hard','Pro'] };
+
+  function row(u, i) {
+    const [cls,label] = levelBadge[u.level] || levelBadge.beginner;
+    return `<tr class="${i<3?'me':''}">
+      <td class="font-mono">${i+1}</td>
+      <td class="flex items-center gap-2.5 py-2">
+        <span class="w-7 h-7 rounded-full bg-ink text-white flex items-center justify-center text-[10px] font-bold font-display">${(u.name||'?').slice(0,2).toUpperCase()}</span>
+        ${RC_Utils.escHtml(u.name)}
+      </td>
+      <td><span class="badge ${cls}">${label}</span></td>
+      <td class="text-right font-mono font-bold">${RC_Utils.fmtNum(u.xp)}</td>
+    </tr>`;
+  }
+
+  const demo = [
+    {name:'aziz_dev', level:'pro', xp:16210},
+    {name:'sardorbek', level:'pro', xp:14820},
+    {name:'madina.k', level:'gold', xp:13050},
+    {name:'javlon_uz', level:'gold', xp:11200},
+    {name:'dilnoza_t', level:'silver', xp:9840},
+    {name:'shaxzod.b', level:'silver', xp:8720},
+    {name:'nodira_a', level:'bronze', xp:6100},
+    {name:'otabek99', level:'bronze', xp:4950},
+  ];
+
+  async function load(period) {
+    const body = document.getElementById('boardBody');
+    try {
+      const data = await apiFetch('/leaderboard?period=' + (period || 'all'));
+      body.innerHTML = (data.results || data).map(row).join('');
+    } catch {
+      body.innerHTML = demo.map(row).join('');
+    }
+  }
+
+  document.querySelectorAll('[data-p]').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('[data-p]').forEach(b => b.className = 'badge badge-neutral');
+      btn.className = 'badge badge-info';
+      load(btn.dataset.p);
+    });
+  });
+
+  load('all');
+})();
+</script>
+{% endblock %}

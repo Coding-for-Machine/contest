@@ -1,0 +1,6 @@
+{
+  "name": "CfM Contest",
+  "description": "Dasturlash va algoritmlarni o'rganish platformasi",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title x-text="test ? test.title + ' | CfM Contest' : 'Test | CfM Contest'">Test | CfM Contest</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&family=Space+Grotesk:wght@500;700&family=JetBrains+Mono:wght@400;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons">
+
+<script src="https://cdn.tailwindcss.com"></script>
+<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/hls.js@0.14.17/dist/hls.min.js"></script>
+
+<!-- Markdown va MathJax -->
+<script src="https://cdn.jsdelivr.net/npm/marked@11.1.1/marked.min.js"></script>
+<script>
+    window.MathJax = {
+        tex: {
+            inlineMath: [['$', '$'], ['\\(', '\\)']],
+            displayMath: [['$$', '$$'], ['\\[', '\\]']],
+            processEscapes: true
+        },
+        options: {
+            skipHtmlTag: {
+                'script': true,
+                'noscript': true,
+                'style': true,
+                'textarea': true,
+                'pre': true,
+                'code': true
+            }
+        },
+        startup: {
+            typeset: false
+        }
+    };
+</script>
+<script async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js" id="MathJax-script"></script>
+
+<link rel="stylesheet" href="/assets/css/style.css">
+
+<style>
+    .video-player-wrapper {
+        position: relative;
+        width: 100%;
+        aspect-ratio: 16 / 9;
+        background: #000;
+        border-radius: var(--radius);
+        overflow: hidden;
+        cursor: pointer;
+    }
+    .video-player-wrapper video { width: 100%; height: 100%; display: block; object-fit: contain; background: #000; }
+    .video-player-wrapper .poster {
+        position: absolute; inset: 0;
+        background-size: cover; background-position: center;
+        transition: opacity 0.5s ease; z-index: 2;
+    }
+    .video-player-wrapper .poster.hidden { opacity: 0; pointer-events: none; }
+    .video-player-wrapper .play-btn {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 3; width: 80px; height: 80px;
+        background: rgba(255,255,255,0.25); border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        transition: all 0.3s ease; border: 2px solid rgba(255,255,255,0.5);
+    }
+    .video-player-wrapper .play-btn .material-icons { font-size: 48px; color: white; text-shadow: 0 2px 10px rgba(0,0,0,0.5); margin-left: 4px; }
+    .video-player-wrapper .play-btn:hover { background: rgba(255,255,255,0.35); transform: translate(-50%, -50%) scale(1.05); }
+    .video-controls {
+        position: absolute; bottom: 0; left: 0; right: 0;
+        background: linear-gradient(transparent, rgba(0,0,0,0.7) 60%, rgba(0,0,0,0.9));
+        padding: 16px 16px 12px; z-index: 5;
+        opacity: 0; transition: opacity 0.3s ease;
+    }
+    .video-player-wrapper:hover .video-controls,
+    .video-player-wrapper.show-controls .video-controls { opacity: 1; }
+    .video-controls .progress-bar {
+        width: 100%; height: 4px; background: rgba(255,255,255,0.2);
+        border-radius: 2px; cursor: pointer; position: relative;
+        margin-bottom: 10px; transition: height 0.2s ease;
+    }
+    .video-controls .progress-bar:hover { height: 6px; }
+    .video-controls .progress-bar .filled {
+        height: 100%; background: var(--primary, #E53935);
+        border-radius: 2px; position: relative;
+        transition: width 0.1s linear;
+    }
+    .video-controls .progress-bar .filled .thumb {
+        position: absolute; right: -6px; top: 50%; transform: translateY(-50%);
+        width: 12px; height: 12px; background: var(--primary, #E53935);
+        border-radius: 50%; opacity: 0; transition: opacity 0.2s ease;
+        box-shadow: 0 0 8px rgba(0,0,0,0.4);
+    }
+    .video-controls .progress-bar:hover .filled .thumb { opacity: 1; }
+    .video-controls .controls-bottom {
+        display: flex; align-items: center; gap: 12px;
+    }
+    .video-controls .controls-bottom .ctrl-btn {
+        background: none; border: none; color: rgba(255,255,255,0.9);
+        cursor: pointer; padding: 4px; display: flex; align-items: center;
+        justify-content: center; transition: color 0.2s ease; border-radius: 4px;
+    }
+    .video-controls .controls-bottom .ctrl-btn:hover { color: #fff; }
+    .video-controls .controls-bottom .ctrl-btn .material-icons { font-size: 22px; }
+    .video-controls .controls-bottom .time {
+        color: rgba(255,255,255,0.9); font-size: 13px;
+        font-family: 'JetBrains Mono', monospace; min-width: 100px;
+    }
+    .video-controls .controls-bottom .volume-wrap { display: flex; align-items: center; gap: 8px; }
+    .video-controls .controls-bottom .volume-wrap .volume-bar {
+        width: 60px; height: 4px; background: rgba(255,255,255,0.2);
+        border-radius: 2px; cursor: pointer; position: relative;
+        transition: width 0.3s ease;
+    }
+    .video-controls .controls-bottom .volume-wrap .volume-bar .filled {
+        height: 100%; background: rgba(255,255,255,0.8);
+        border-radius: 2px; transition: width 0.1s linear;
+    }
+    .video-controls .controls-bottom .fullscreen-btn .material-icons { font-size: 20px; }
+    .video-controls .controls-bottom .spacer { flex: 1; }
+    .video-player-wrapper .loading-spinner {
+        position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+        z-index: 4; display: none;
+    }
+    .video-player-wrapper .loading-spinner.active { display: block; }
+    .video-player-wrapper .loading-spinner .spinner {
+        width: 48px; height: 48px;
+        border: 4px solid rgba(255,255,255,0.1);
+        border-top-color: #fff; border-radius: 50%;
+        animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    
+    .video-modal {
+        display: none; position: fixed; inset: 0; z-index: 1000;
+        background: rgba(0,0,0,0.95); align-items: center; justify-content: center;
+        padding: 20px; backdrop-filter: blur(8px);
+    }
+    .video-modal.active { display: flex; }
+    .video-modal .video-container {
+        position: relative; width: 100%; max-width: 1100px;
+        aspect-ratio: 16 / 9; background: #000;
+        border-radius: 8px; overflow: hidden;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    }
+    .video-modal .video-container video {
+        width: 100%; height: 100%; display: block;
+        object-fit: contain; background: #000;
+    }
+    .video-modal .close-btn {
+        position: absolute; top: 12px; right: 12px;
+        background: rgba(0,0,0,0.6); border: none; color: white;
+        width: 44px; height: 44px; border-radius: 50%;
+        cursor: pointer; display: flex; align-items: center;
+        justify-content: center; font-size: 20px;
+        transition: all 0.3s ease; z-index: 10; backdrop-filter: blur(4px);
+    }
+    .video-modal .close-btn:hover { background: rgba(255,255,255,0.2); transform: scale(1.1); }
+    .video-modal .video-title {
+        position: absolute; bottom: 80px; left: 24px;
+        color: white; font-size: 18px; font-weight: 600;
+        z-index: 6; text-shadow: 0 2px 20px rgba(0,0,0,0.8);
+        max-width: 70%; pointer-events: none;
+    }
+    
+    .fact-chip {
+        display: flex; flex-direction: column; gap: 2px;
+        border: 1px solid var(--line); border-radius: var(--radius-sm);
+        padding: 12px 14px; background: var(--surface);
+    }
+    .fact-chip .val { font-family: 'JetBrains Mono', monospace; font-weight: 700; font-size: 19px; }
+    .fact-chip .lbl { font-size: 11.5px; color: var(--ink-soft); }
+    
+    .user-sidebar { position: sticky; top: 80px; align-self: start; }
+    .user-stat-item {
+        display: flex; justify-content: space-between;
+        padding: 8px 0; border-bottom: 1px solid var(--line);
+        font-size: 14px;
+    }
+    .user-stat-item:last-child { border-bottom: none; }
+    .user-stat-item .label { color: var(--ink-soft); }
+    .user-stat-item .value { font-weight: 600; color: var(--ink); }
+    
+    .prose { color: var(--ink); line-height: 1.8; }
+    .prose h1 { font-size: 1.8rem; font-weight: 700; margin: 1.5rem 0 0.75rem 0; font-family: 'Space Grotesk', sans-serif; }
+    .prose h2 { font-size: 1.5rem; font-weight: 600; margin: 1.25rem 0 0.5rem 0; font-family: 'Space Grotesk', sans-serif; }
+    .prose h3 { font-size: 1.25rem; font-weight: 600; margin: 1rem 0 0.5rem 0; }
+    .prose p { margin: 0 0 0.75rem 0; }
+    .prose ul, .prose ol { margin: 0.5rem 0 0.75rem 1.5rem; }
+    .prose li { margin: 0.25rem 0; }
+    .prose blockquote {
+        border-left: 4px solid var(--primary);
+        padding: 0.5rem 1rem; margin: 0.75rem 0;
+        background: var(--surface);
+        border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+    }
+    .prose blockquote p:last-child { margin-bottom: 0; }
+    .prose code {
+        font-family: 'JetBrains Mono', monospace;
+        background: var(--surface-2); padding: 0.15rem 0.4rem;
+        border-radius: 4px; font-size: 0.9em;
+    }
+    .prose pre {
+        background: var(--surface-2); padding: 1rem;
+        border-radius: var(--radius-sm); overflow-x: auto;
+        margin: 0.75rem 0; border: 1px solid var(--line);
+    }
+    .prose pre code { background: transparent; padding: 0; font-size: 0.85rem; }
+    .prose table {
+        width: 100%; border-collapse: collapse; margin: 0.75rem 0; font-size: 0.9rem;
+    }
+    .prose table th, .prose table td {
+        border: 1px solid var(--line); padding: 0.5rem 0.75rem; text-align: left;
+    }
+    .prose table th { background: var(--surface-2); font-weight: 600; }
+    .prose table tr:nth-child(even) { background: var(--surface); }
+    .prose img { max-width: 100%; border-radius: var(--radius-sm); margin: 0.75rem 0; }
+    .prose a { color: var(--primary); text-decoration: underline; }
+    .prose a:hover { opacity: 0.8; }
+    .prose hr { border: none; border-top: 2px solid var(--line); margin: 1.5rem 0; }
+    
+    @media (max-width: 1024px) { .user-sidebar { position: relative; top: 0; } }
+    @media (max-width: 640px) {
+        .video-controls .controls-bottom .volume-wrap { display: none; }
+        .video-controls .controls-bottom .time { font-size: 11px; min-width: 70px; }
+        .video-player-wrapper .play-btn { width: 56px; height: 56px; }
+        .video-player-wrapper .play-btn .material-icons { font-size: 32px; }
+        .video-modal .video-title { font-size: 14px; bottom: 70px; left: 16px; max-width: 80%; }
+    }
+</style>
+</head>
+<body class="bg-white">
+
+<header id="navbar" class="topbar" role="banner"></header>
+
+<main class="container-rc py-8 sm:py-12" x-data="testDetailPage()" x-init="init()">
+    
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        
+        <!-- ===== LEFT COLUMN ===== -->
+        <div class="lg:col-span-2">
+            
+            <a href="/tests" class="nav-link inline-flex items-center gap-1 mb-6" style="padding:0;">
+                <span class="material-icons" style="font-size:18px;">arrow_back</span> Testlar ro'yxati
+            </a>
+
+            <!-- Skeleton -->
+            <div x-show="loading" class="space-y-4">
+                <div class="skeleton" style="aspect-ratio:16/9; border-radius:var(--radius);"></div>
+                <div class="skeleton" style="height:28px; width:70%;"></div>
+                <div class="skeleton" style="height:14px; width:40%;"></div>
+            </div>
+
+            <!-- Xatolik -->
+            <div x-show="!loading && loadError" class="text-center py-16 text-[var(--ink-soft)]">
+                <span class="material-icons" style="font-size:3.5rem; color:var(--ink-faint);">error_outline</span>
+                <h3 class="text-xl font-bold mt-4 mb-2 text-[var(--ink)]">Test topilmadi</h3>
+                <p x-text="loadError"></p>
+                <a href="/tests" class="btn btn-outline mt-4">Ro'yxatga qaytish</a>
+            </div>
+
+            <!-- ===== ASOSIY KONTENT ===== -->
+            <template x-if="!loading && test">
+                <div>
+                    <!-- Video Player -->
+                    <div class="video-player-wrapper mb-6" 
+                         x-data="videoPlayer()" 
+                         x-init="initPlayer(test.video?.hls, test.video?.img, test.title)"
+                         @click="togglePlay()">
+                        
+                        <div class="poster" :style="posterStyle" :class="{ hidden: !showPoster }"></div>
+                        <div class="loading-spinner" :class="{ active: loading }">
+                            <div class="spinner"></div>
+                        </div>
+                        <div class="play-btn" x-show="showPoster || paused" :style="{ opacity: (showPoster || paused) ? 1 : 0 }">
+                            <span class="material-icons">play_arrow</span>
+                        </div>
+                        <video id="mainVideo" @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @play="onPlay" @pause="onPause" @waiting="onWaiting" @canplay="onCanPlay"></video>
+                        
+                        <div class="video-controls" @click.stop>
+                            <div class="progress-bar" @click="seek($event)">
+                                <div class="filled" :style="{ width: progress + '%' }">
+                                    <div class="thumb"></div>
+                                </div>
+                            </div>
+                            <div class="controls-bottom">
+                                <button class="ctrl-btn" @click="togglePlay()">
+                                    <span class="material-icons" x-text="paused ? 'play_arrow' : 'pause'"></span>
+                                </button>
+                                <div class="time">
+                                    <span x-text="formatTime(currentTime)"></span> / <span x-text="formatTime(duration)"></span>
+                                </div>
+                                <div class="volume-wrap">
+                                    <button class="ctrl-btn" @click="toggleMute()">
+                                        <span class="material-icons" x-text="muted ? 'volume_off' : (volume > 0.5 ? 'volume_up' : 'volume_down')"></span>
+                                    </button>
+                                    <div class="volume-bar" @click="setVolume($event)">
+                                        <div class="filled" :style="{ width: (muted ? 0 : volume * 100) + '%' }"></div>
+                                    </div>
+                                </div>
+                                <div class="spacer"></div>
+                                <button class="ctrl-btn fullscreen-btn" @click="toggleFullscreen()">
+                                    <span class="material-icons" x-text="fullscreen ? 'fullscreen_exit' : 'fullscreen'"></span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <h1 class="font-display font-bold text-2xl sm:text-3xl tracking-tight mb-2" x-text="test.title"></h1>
+
+                    <!-- Badge'lar -->
+                    <div class="flex flex-wrap items-center gap-2 mb-6">
+                        <span class="badge" :class="getBuyBadgeClass()">
+                            <span class="material-icons" style="font-size:12px;" x-text="getBuyIcon()"></span>
+                            <span x-text="getBuyText()"></span>
+                        </span>
+                        <span class="badge badge-neutral" x-show="test.user && test.user.count > 0">
+                            <span class="material-icons" style="font-size:12px;">history</span>
+                            <span x-text="test.user.count + ' marta urinilgan'"></span>
+                        </span>
+                        <span class="badge badge-info" x-show="test.video">
+                            <span class="material-icons" style="font-size:12px;">video_library</span>
+                            <span>Video mavjud</span>
+                        </span>
+                        <span class="badge" :class="isOpenNow() ? 'badge-test-open' : 'badge-test-closed'">
+                            <span class="material-icons" style="font-size:12px;" x-text="isOpenNow() ? 'play_circle' : 'lock_clock'"></span>
+                            <span x-text="isOpenNow() ? 'Hozir ochiq' : 'Yopiq'"></span>
+                        </span>
+                    </div>
+
+                    <!-- Faktlar -->
+                    <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+                        <div class="fact-chip">
+                            <span class="val" x-text="test.qty || 0"></span>
+                            <span class="lbl">savol</span>
+                        </div>
+                        <div class="fact-chip">
+                            <span class="val" x-text="test.time || 0"></span>
+                            <span class="lbl">daqiqa</span>
+                        </div>
+                        <div class="fact-chip">
+                            <span class="val" x-text="test.min_pass_percentage + '%'"></span>
+                            <span class="lbl">o'tish balli</span>
+                        </div>
+                        <div class="fact-chip">
+                            <span class="val" x-text="test.max_att > 0 ? test.max_att : '∞'"></span>
+                            <span class="lbl">urinish</span>
+                        </div>
+                    </div>
+
+                    <!-- Tavsif (Markdown + MathJax) -->
+                    <div class="prose max-w-none mb-8" 
+                         x-html="renderMarkdown(test.des)"
+                         x-init="renderMath()">
+                    </div>
+
+                    <!-- Qo'shimcha ma'lumotlar -->
+                    <div class="flex flex-wrap gap-3 text-xs text-[var(--ink-soft)] mb-8">
+                        <span class="flex items-center gap-1">
+                            <span class="material-icons" style="font-size:15px;">warning</span>
+                            Xato javob uchun jarima: <b x-text="Math.round(test.penalty * 100) + '%'"></b>
+                        </span>
+                        <span class="flex items-center gap-1">
+                            <span class="material-icons" style="font-size:15px;">favorite</span>
+                            <b x-text="test.lifelines || 0"></b> ta Reler
+                        </span>
+                        <span class="flex items-center gap-1" x-show="test.rand">
+                            <span class="material-icons" style="font-size:15px;">shuffle</span>
+                            Savollar tasodifiy tanlanadi
+                        </span>
+                        <span class="flex items-center gap-1" x-show="test.video?.len">
+                            <span class="material-icons" style="font-size:15px;">timer</span>
+                            Video: <b x-text="test.video.len"></b>
+                        </span>
+                    </div>
+
+                    <!-- ===== CTA ===== -->
+                    <div class="mb-10">
+                        <!-- Pullik va sotib olinmagan -->
+                        <template x-if="test.buy === false && test.price && test.price > 0">
+                            <div class="card p-5 flex items-center justify-between flex-wrap gap-3">
+                                <div>
+                                    <div class="font-bold text-lg" x-text="fmtPrice(test.price)"></div>
+                                    <div class="text-xs text-[var(--ink-soft)]">Testni topshirish uchun sotib oling</div>
+                                </div>
+                                <button class="btn btn-primary" @click="onBuyClick()">
+                                    <span class="material-icons" style="font-size:18px;">shopping_cart</span> Sotib olish
+                                </button>
+                            </div>
+                        </template>
+
+                        <!-- Bepul yoki sotib olingan -->
+                        <template x-if="test.buy === true || test.buy === null || test.buy === undefined || !test.price || test.price === 0">
+                            <button
+                                class="btn btn-primary btn-block sm:w-auto"
+                                :disabled="!isOpenNow() || starting"
+                                @click="onStartClick()"
+                            >
+                                <span class="material-icons" style="font-size:18px;" x-show="!starting" x-text="ctaIcon()"></span>
+                                <span class="material-icons" style="font-size:18px;" x-show="starting">hourglass_top</span>
+                                <span x-text="starting ? 'Boshlanmoqda...' : ctaText()"></span>
+                            </button>
+                        </template>
+
+                        <p class="text-xs text-[var(--ink-soft)] mt-2" x-show="!isOpenNow()">
+                            Bu test hozircha yopiq (vaqt oynasidan tashqarida).
+                        </p>
+                    </div>
+
+                    <!-- ===== URINISHLAR TARIXI ===== -->
+                    <div x-show="Auth.isLoggedIn() && sessionsHistory.length > 0">
+                        <h2 class="font-bold text-lg mb-3">Mening urinishlarim</h2>
+                        <div class="overflow-x-auto">
+                            <table class="table-rc">
+                                <thead>
+                                    <tr><th>Sana</th><th>Holati</th><th>Ball</th><th>XP</th></tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="s in sessionsHistory" :key="s.session_id">
+                                        <tr>
+                                            <td class="font-mono text-xs" x-text="formatDate(s.started_at)"></td>
+                                            <td><span class="badge" :class="historyBadgeClass(s.status)" x-text="historyStatusText(s.status)"></span></td>
+                                            <td class="font-mono" x-text="s.score || 0"></td>
+                                            <td class="font-mono" x-text="s.xp || 0"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </template>
+        </div>
+        
+        <!-- ===== RIGHT SIDEBAR ===== -->
+        <div class="lg:col-span-1">
+            <div class="user-sidebar" x-show="!loading && test">
+                <div class="card p-6">
+                    <h3 class="font-bold text-lg mb-4 flex items-center gap-2">
+                        <span class="material-icons">person</span>
+                        Foydalanuvchi
+                    </h3>
+                    
+                    <div class="space-y-1">
+                        <div class="user-stat-item">
+                            <span class="label">Holati</span>
+                            <span class="badge" :class="userStatusBadgeClass()" x-text="userStatusText()"></span>
+                        </div>
+                        <div class="user-stat-item">
+                            <span class="label">Urinishlar</span>
+                            <span class="value" x-text="test.user?.count || 0"></span>
+                        </div>
+                        <div class="user-stat-item">
+                            <span class="label">Eng yaxshi ball</span>
+                            <span class="value" x-text="test.user?.score || 0"></span>
+                        </div>
+                        <div class="user-stat-item">
+                            <span class="label">Jami XP</span>
+                            <span class="value" x-text="test.user?.xp || 0"></span>
+                        </div>
+                        <div class="user-stat-item" x-show="test.user?.status === 'in_progress'">
+                            <span class="label">Jarayon</span>
+                            <span class="value" style="color: var(--info);">Davom etmoqda</span>
+                        </div>
+                        <div class="user-stat-item" x-show="test.user?.status === 'completed' && test.user?.score >= test.min_pass_percentage">
+                            <span class="label">Natija</span>
+                            <span class="value" style="color: var(--easy);">✅ O'tdi</span>
+                        </div>
+                        <div class="user-stat-item" x-show="test.user?.status === 'completed' && test.user?.score < test.min_pass_percentage">
+                            <span class="label">Natija</span>
+                            <span class="value" style="color: var(--hard);">❌ O'tmadi</span>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-[var(--line)]" x-show="test.video">
+                        <h4 class="text-sm font-semibold mb-2 flex items-center gap-1">
+                            <span class="material-icons" style="font-size:16px;">video_library</span>
+                            Video
+                        </h4>
+                        <div class="text-xs text-[var(--ink-soft)] space-y-1">
+                            <div class="flex justify-between">
+                                <span>Davomiyligi:</span>
+                                <span class="font-mono" x-text="test.video?.len || 'N/A'"></span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span>Format:</span>
+                                <span>HLS</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="mt-4 pt-4 border-t border-[var(--line)]">
+                        <h4 class="text-sm font-semibold mb-2 flex items-center gap-1">
+                            <span class="material-icons" style="font-size:16px;">schedule</span>
+                            Vaqtlar
+                        </h4>
+                        <div class="text-xs text-[var(--ink-soft)] space-y-1">
+                            <div class="flex justify-between" x-show="test.start">
+                                <span>Boshlanish:</span>
+                                <span class="font-mono" x-text="formatDate(test.start)"></span>
+                            </div>
+                            <div class="flex justify-between" x-show="test.end">
+                                <span>Tugash:</span>
+                                <span class="font-mono" x-text="formatDate(test.end)"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+    </div>
+
+</main>
+
+<!-- ===== VIDEO MODAL ===== -->
+<div id="videoModal" class="video-modal" @click.self="closeVideoPlayer()">
+    <div class="video-container">
+        <button class="close-btn" @click="closeVideoPlayer()">✕</button>
+        <div class="video-title" x-text="test?.title || ''"></div>
+        <div class="video-player-wrapper" style="border-radius:0; aspect-ratio:16/9;" 
+             x-data="videoPlayer()" 
+             x-init="initPlayer(test?.video?.hls, test?.video?.img, test?.title)"
+             @click="togglePlay()">
+            <div class="poster" :style="posterStyle" :class="{ hidden: !showPoster }"></div>
+            <div class="loading-spinner" :class="{ active: loading }">
+                <div class="spinner"></div>
+            </div>
+            <div class="play-btn" x-show="showPoster || paused" :style="{ opacity: (showPoster || paused) ? 1 : 0 }">
+                <span class="material-icons">play_arrow</span>
+            </div>
+            <video id="modalVideo" @loadedmetadata="onLoadedMetadata" @timeupdate="onTimeUpdate" @play="onPlay" @pause="onPause" @waiting="onWaiting" @canplay="onCanPlay"></video>
+            <div class="video-controls" @click.stop>
+                <div class="progress-bar" @click="seek($event)">
+                    <div class="filled" :style="{ width: progress + '%' }">
+                        <div class="thumb"></div>
+                    </div>
+                </div>
+                <div class="controls-bottom">
+                    <button class="ctrl-btn" @click="togglePlay()">
+                        <span class="material-icons" x-text="paused ? 'play_arrow' : 'pause'"></span>
+                    </button>
+                    <div class="time">
+                        <span x-text="formatTime(currentTime)"></span> / <span x-text="formatTime(duration)"></span>
+                    </div>
+                    <div class="volume-wrap">
+                        <button class="ctrl-btn" @click="toggleMute()">
+                            <span class="material-icons" x-text="muted ? 'volume_off' : (volume > 0.5 ? 'volume_up' : 'volume_down')"></span>
+                        </button>
+                        <div class="volume-bar" @click="setVolume($event)">
+                            <div class="filled" :style="{ width: (muted ? 0 : volume * 100) + '%' }"></div>
+                        </div>
+                    </div>
+                    <div class="spacer"></div>
+                    <button class="ctrl-btn fullscreen-btn" @click="toggleFullscreen()">
+                        <span class="material-icons" x-text="fullscreen ? 'fullscreen_exit' : 'fullscreen'"></span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ===== ACCESS CODE MODAL ===== -->
+<div id="accessCodeModal" class="modal-overlay">
+    <div class="modal-box" x-data>
+        <h3 class="font-bold text-lg mb-1">Kirish kodi kerak</h3>
+        <p class="text-sm text-[var(--ink-soft)] mb-4">Bu test yopiq. Davom etish uchun kirish kodini kiriting.</p>
+        <input type="text" id="accessCodeInput" class="input mb-2" placeholder="Kirish kodi" x-data @keydown.enter="document.getElementById('accessCodeSubmitBtn').click()">
+        <p id="accessCodeError" class="text-xs mb-3" style="color:var(--hard); display:none;"></p>
+        <div class="flex gap-2 justify-end">
+            <button class="btn btn-ghost" onclick="Modal.close('accessCodeModal')">Bekor qilish</button>
+            <button id="accessCodeSubmitBtn" class="btn btn-primary" onclick="window.testDetailStartWithCode()">Tasdiqlash</button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container" class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 max-w-xs"></div>
+
+<script src="/assets/js/main.js"></script>
+
+<script>
+// ============================================================
+// VIDEO PLAYER COMPONENT
+// ============================================================
+function videoPlayer() {
+    return {
+        video: null,
+        hlsInstance: null,
+        posterStyle: {},
+        showPoster: true,
+        paused: true,
+        loading: false,
+        currentTime: 0,
+        duration: 0,
+        progress: 0,
+        volume: 0.8,
+        muted: false,
+        fullscreen: false,
+        videoSrc: null,
+        posterImg: null,
+        title: '',
+
+        initPlayer(src, poster, title) {
+            this.videoSrc = src;
+            this.posterImg = poster;
+            this.title = title || '';
+            if (poster) {
+                this.posterStyle = {
+                    backgroundImage: 'url(' + poster + ')',
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                };
+            }
+            this.video = this.$el.querySelector('video');
+            if (!this.video) return;
+            
+            if (src && Hls.isSupported()) {
+                this.hlsInstance = new Hls({ enableWorker: true, lowLatencyMode: true, backbufferLength: 30 });
+                this.hlsInstance.loadSource(src);
+                this.hlsInstance.attachMedia(this.video);
+                this.hlsInstance.on(Hls.Events.MANIFEST_PARSED, () => {
+                    this.video.play().catch(() => {});
+                });
+                this.hlsInstance.on(Hls.Events.ERROR, (e, data) => {
+                    if (data.fatal) this.hlsInstance.recoverMediaError();
+                });
+            } else if (src && this.video.canPlayType('application/vnd.apple.mpegurl')) {
+                this.video.src = src;
+            }
+            this.video.volume = this.volume;
+            document.addEventListener('fullscreenchange', () => {
+                this.fullscreen = !!document.fullscreenElement;
+            });
+        },
+
+        togglePlay() {
+            if (!this.video) return;
+            if (this.showPoster) { this.showPoster = false; this.video.play().catch(() => {}); return; }
+            if (this.video.paused) this.video.play().catch(() => {});
+            else this.video.pause();
+        },
+        onPlay() { this.paused = false; this.showPoster = false; },
+        onPause() { this.paused = true; },
+        onLoadedMetadata() { this.duration = this.video.duration || 0; },
+        onTimeUpdate() {
+            if (!this.video) return;
+            this.currentTime = this.video.currentTime || 0;
+            this.duration = this.video.duration || 0;
+            this.progress = this.duration > 0 ? (this.currentTime / this.duration * 100) : 0;
+        },
+        onWaiting() { this.loading = true; },
+        onCanPlay() { this.loading = false; },
+        seek(event) {
+            if (!this.video || !this.duration) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            this.video.currentTime = x * this.duration;
+        },
+        setVolume(event) {
+            if (!this.video) return;
+            const rect = event.currentTarget.getBoundingClientRect();
+            const x = (event.clientX - rect.left) / rect.width;
+            this.volume = Math.max(0, Math.min(1, x));
+            this.video.volume = this.volume;
+            this.muted = false;
+        },
+        toggleMute() {
+            if (!this.video) return;
+            this.muted = !this.muted;
+            this.video.muted = this.muted;
+        },
+        toggleFullscreen() {
+            if (!this.video) return;
+            const container = this.$el.closest('.video-player-wrapper') || this.$el;
+            if (!document.fullscreenElement) container.requestFullscreen().catch(() => {});
+            else document.exitFullscreen().catch(() => {});
+        },
+        formatTime(seconds) {
+            if (!seconds || isNaN(seconds)) return '0:00';
+            const m = Math.floor(seconds / 60);
+            const s = Math.floor(seconds % 60);
+            return m + ':' + (s < 10 ? '0' : '') + s;
+        }
+    };
+}
+
+// ============================================================
+// MAIN PAGE COMPONENT - TO'LIQ TUZATILGAN
+// ============================================================
+function testDetailPage() {
+    return {
+        slug: null,
+        test: null,
+        loading: true,
+        loadError: null,
+        starting: false,
+        sessionsHistory: [],
+        Auth: window.Auth,
+        user: null,
+
+        async init() {
+            // URL dan slug ni olish - /test/{slug} formatidan
+            const pathParts = window.location.pathname.split('/');
+            if (pathParts.length >= 3 && pathParts[1] === 'test') {
+                this.slug = pathParts[2];
+            } else {
+                const params = new URLSearchParams(window.location.search);
+                this.slug = params.get('slug');
+            }
+            
+            if (!this.slug) {
+                this.loading = false;
+                this.loadError = "Test slug'i ko'rsatilmagan.";
+                return;
+            }
+            
+            if (window.Auth) this.user = window.Auth.getUser();
+            
+            await this.loadTest();
+            if (window.Auth && window.Auth.isLoggedIn()) {
+                this.loadSessionsHistory();
+            }
+            window.testDetailStartWithCode = () => this.startTest(document.getElementById('accessCodeInput').value.trim());
+        },
+
+        // ============================================================
+        // API CALL - TO'G'RI PREFIX BILAN
+        // ============================================================
+        async callApi(path, opts) {
+            // Base: /api/v1/
+            const base = window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1';
+            const token = window.Auth ? window.Auth.getToken() : '';
+            const headers = { 
+                'Accept': 'application/json', 
+                'Content-Type': 'application/json' 
+            };
+            if (token) headers['Authorization'] = 'Bearer ' + token;
+
+            const res = await fetch(base + path, {
+                method: (opts && opts.method) || 'GET',
+                headers,
+                body: opts && opts.body ? JSON.stringify(opts.body) : undefined,
+            });
+
+            let data = null;
+            try { data = await res.json(); } catch (e) {}
+
+            if (!res.ok) {
+                const err = new Error();
+                err.status = res.status;
+                err.detail = data && data.detail !== undefined ? data.detail : data;
+                throw err;
+            }
+            return data;
+        },
+
+        // ============================================================
+        // LOAD TEST - /api/v1/tests/{slug}
+        // ============================================================
+        async loadTest() {
+            this.loading = true;
+            this.loadError = null;
+            try {
+                this.test = await this.callApi('/tests/' + this.slug);
+                this.$nextTick(() => {
+                    this.renderMath();
+                });
+            } catch (e) {
+                this.loadError = e.status === 404
+                    ? "Bunday test mavjud emas yoki faol emas."
+                    : ("Yuklashda xatolik: " + (e.message || 'noma\'lum xatolik'));
+            } finally {
+                this.loading = false;
+            }
+        },
+
+        // ============================================================
+        // LOAD SESSIONS - /api/v1/tests/{slug}/sessions
+        // ============================================================
+        async loadSessionsHistory() {
+            try {
+                const res = await this.callApi('/tests/' + this.slug + '/sessions?limit=10&offset=0');
+                this.sessionsHistory = res.data || [];
+            } catch (e) {
+                console.error('Urinishlar tarixini yuklashda xatolik:', e);
+            }
+        },
+
+        // ============================================================
+        // START TEST - /api/v1/test-session/{slug}/start
+        // ============================================================
+        async startTest(accessCode) {
+            if (this.starting) return;
+            this.starting = true;
+            const errEl = document.getElementById('accessCodeError');
+            if (errEl) errEl.style.display = 'none';
+
+            try {
+                // ✅ TO'G'RI: /api/v1/test-session/{slug}/start
+                const res = await this.callApi('/test-session/' + this.slug + '/start', {
+                    method: 'POST',
+                    body: { access_code: accessCode || null },
+                });
+
+                Modal.close('accessCodeModal');
+
+                sessionStorage.setItem('quiz_active_session', JSON.stringify({
+                    session_id: res.session_id,
+                    slug: this.slug,
+                    title: this.test.title,
+                    questions: res.questions,
+                    duration_minutes: res.duration_minutes,
+                    expires_at: res.expires_at,
+                    lifelines: res.lifelines
+                }));
+                window.location.href = '/tests/exam?session=' + res.session_id;
+            } catch (e) {
+                if (e.status === 401 && e.detail && e.detail.code === 'access_code_required') {
+                    Modal.open('accessCodeModal');
+                } else if (e.status === 403 && e.detail === "Kirish kodi noto'g'ri.") {
+                    if (errEl) { 
+                        errEl.textContent = "Kirish kodi noto'g'ri."; 
+                        errEl.style.display = 'block'; 
+                    }
+                } else if (e.status === 401) {
+                    window.Auth.requireAuth('/login');
+                } else {
+                    const msg = (e.detail && (e.detail.message || e.detail)) || e.message || "Noma'lum xatolik";
+                    window.showToast(typeof msg === 'string' ? msg : "Testni boshlab bo'lmadi.", 'error');
+                }
+            } finally {
+                this.starting = false;
+            }
+        },
+
+        // ============================================================
+        // MARKDOWN & MATHJAX
+        // ============================================================
+        renderMarkdown(text) {
+            if (!text) return '';
+            try { return marked.parse(text); } catch (e) { console.error('Markdown xatosi:', e); return text; }
+        },
+
+        renderMath() {
+            if (window.MathJax && window.MathJax.typesetPromise) {
+                try {
+                    const container = document.querySelector('.prose');
+                    if (container) {
+                        window.MathJax.typesetPromise([container]).catch(err => {
+                            console.error('MathJax xatosi:', err);
+                        });
+                    }
+                } catch (e) { console.error('MathJax xatosi:', e); }
+            }
+        },
+
+        // ============================================================
+        // VIDEO
+        // ============================================================
+        openVideoPlayer() {
+            if (!this.test?.video?.hls) {
+                window.showToast('Video mavjud emas', 'info');
+                return;
+            }
+            const modal = document.getElementById('videoModal');
+            modal.classList.add('active');
+            document.body.style.overflow = 'hidden';
+            const modalPlayer = document.querySelector('#videoModal .video-player-wrapper');
+            if (modalPlayer && modalPlayer.__x) {
+                modalPlayer.__x.initPlayer(this.test.video.hls, this.test.video.img, this.test.title);
+            }
+        },
+
+        closeVideoPlayer() {
+            const modal = document.getElementById('videoModal');
+            modal.classList.remove('active');
+            document.body.style.overflow = '';
+            const video = document.getElementById('modalVideo');
+            if (video) { video.pause(); video.src = ''; video.load(); }
+            if (window._hlsInstance) { window._hlsInstance.destroy(); window._hlsInstance = null; }
+        },
+
+        // ============================================================
+        // YORDAMCHI FUNKSIYALAR
+        // ============================================================
+        isOpenNow() {
+            if (!this.test) return false;
+            const now = Date.now();
+            if (this.test.start && now < new Date(this.test.start).getTime()) return false;
+            if (this.test.end && now > new Date(this.test.end).getTime()) return false;
+            return true;
+        },
+
+        fmtPrice(price) {
+            if (!price || price === 0) return 'Bepul';
+            return Number(price).toLocaleString('uz-UZ') + " so'm";
+        },
+
+        getBuyBadgeClass() {
+            if (!this.test) return 'badge-neutral';
+            if (this.test.buy === true) return 'badge-easy';
+            if (this.test.buy === false && this.test.price && this.test.price > 0) return 'badge-brand';
+            return 'badge-neutral';
+        },
+
+        getBuyIcon() {
+            if (!this.test) return 'redeem';
+            if (this.test.buy === true) return 'check';
+            if (this.test.buy === false && this.test.price && this.test.price > 0) return 'payments';
+            return 'redeem';
+        },
+
+        getBuyText() {
+            if (!this.test) return 'Bepul';
+            if (this.test.buy === true) return 'Xarid qilingan';
+            if (this.test.buy === false && this.test.price && this.test.price > 0) {
+                return 'Narxi: ' + this.fmtPrice(this.test.price);
+            }
+            return 'Bepul';
+        },
+
+        formatDate(dateStr) {
+            if (!dateStr) return 'N/A';
+            try {
+                const date = new Date(dateStr);
+                return date.toLocaleString('uz-UZ', {
+                    day: '2-digit', month: '2-digit', year: 'numeric',
+                    hour: '2-digit', minute: '2-digit'
+                });
+            } catch (e) { return dateStr; }
+        },
+
+        ctaText() {
+            if (!this.test) return 'Boshlash';
+            const status = this.test.user?.status;
+            if (status === 'in_progress') return 'Davom ettirish';
+            if (status === 'completed') {
+                if (this.test.max_att === 0 || (this.test.user.count < this.test.max_att)) {
+                    return 'Qayta topshirish';
+                }
+                return "Natijalarni ko'rish";
+            }
+            return 'Boshlash';
+        },
+
+        ctaIcon() {
+            if (!this.test) return 'play_circle';
+            const status = this.test.user?.status;
+            if (status === 'in_progress') return 'play_arrow';
+            if (status === 'completed') return 'refresh';
+            return 'play_circle';
+        },
+
+        userStatusBadgeClass() {
+            if (!this.test || !this.test.user) return 'badge-neutral';
+            const status = this.test.user.status;
+            if (status === 'completed') return 'badge-easy';
+            if (status === 'in_progress') return 'badge-info';
+            return 'badge-neutral';
+        },
+
+        userStatusText() {
+            if (!this.test || !this.test.user) return 'Boshlanmagan';
+            const status = this.test.user.status;
+            if (status === 'completed') return 'Yakunlangan';
+            if (status === 'in_progress') return 'Jarayonda';
+            return 'Boshlanmagan';
+        },
+
+        historyBadgeClass(status) {
+            if (status === 'completed') return 'badge-easy';
+            if (status === 'in_progress') return 'badge-info';
+            return 'badge-neutral';
+        },
+
+        historyStatusText(status) {
+            const map = { 'completed': 'Yakunlangan', 'in_progress': 'Jarayonda', 'expired': 'Muddati o\'tgan' };
+            return map[status] || status;
+        },
+
+        onBuyClick() {
+            window.showToast("To'lov tizimi tez orada ulanadi.", 'info');
+        },
+
+        onStartClick() {
+            if (!window.Auth || !window.Auth.isLoggedIn()) {
+                window.Auth.requireAuth('/login');
+                return;
+            }
+            this.startTest(null);
+        },
+    };
+}
+
+// Global video funksiyalari
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const modal = document.getElementById('videoModal');
+        if (modal.classList.contains('active')) {
+            const page = document.querySelector('[x-data]').__x;
+            if (page && page.closeVideoPlayer) page.closeVideoPlayer();
+        }
+    }
+});
+</script>
+</body>
+</html>

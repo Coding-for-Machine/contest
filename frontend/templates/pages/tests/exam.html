@@ -1,0 +1,884 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.5, user-scalable=yes">
+    <title>Test topshirilmoqda | CfM Contest</title>
+    
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/marked/11.1.0/marked.min.js"></script>
+    <script>
+        MathJax = { tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }, svg: { fontCache: 'global' } };
+    </script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.2/es5/tex-svg.js" async></script>
+    
+    <link rel="stylesheet" href="/assets/css/style.css">
+    
+    <style>
+        .q-dot {
+            width: 36px; height: 36px; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px; font-weight: 700;
+            cursor: pointer; transition: all 0.2s ease;
+            border: 2px solid var(--line);
+            background: #fff;
+            color: var(--ink-soft);
+            user-select: none;
+            position: relative;
+        }
+        .q-dot:active { transform: scale(0.92); }
+        .q-dot.active { border-color: var(--info); background: var(--info-bg); color: var(--info); box-shadow: 0 0 0 3px rgba(29,95,214,0.15); }
+        .q-dot.answered { border-color: var(--easy); background: var(--easy-bg); color: var(--easy); }
+        .q-dot.answered::after { content: '✓'; position: absolute; top: -5px; right: -5px; font-size: 9px; background: var(--easy); color: #fff; border-radius: 50%; width: 14px; height: 14px; display: flex; align-items: center; justify-content: center; }
+        .q-dot.flagged { border-color: var(--hard); background: var(--hard-bg); color: var(--hard); }
+        .q-dot.flagged::after { content: '🚩'; position: absolute; top: -6px; right: -6px; font-size: 10px; }
+        .q-dot.current { box-shadow: 0 0 0 3px rgba(29,95,214,0.25); }
+        
+        .option-label {
+            display: flex; align-items: center; gap: 12px;
+            padding: 12px 16px;
+            border: 2px solid var(--line);
+            border-radius: 10px;
+            cursor: pointer; transition: all 0.15s ease;
+            background: #fff;
+            font-size: 14px;
+            user-select: none;
+        }
+        .option-label:active { transform: scale(0.98); }
+        .option-label .letter {
+            width: 28px; height: 28px;
+            border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            background: var(--surface-2);
+            font-weight: 700; font-size: 12px;
+            color: var(--ink-soft);
+            flex-shrink: 0;
+        }
+        .option-label.selected { border-color: var(--info); background: var(--info-bg); }
+        .option-label.selected .letter { background: var(--info); color: #fff; }
+        .option-label.eliminated { opacity: 0.35; pointer-events: none; text-decoration: line-through; }
+        
+        .timer-bar {
+            position: sticky;
+            top: 0;
+            z-index: 30;
+            background: #fff;
+            border-bottom: 1px solid var(--line);
+            padding: 8px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 4px;
+        }
+        
+        .option-label .markdown-inline {
+            background: transparent;
+            padding: 0;
+            font-size: inherit;
+        }
+        
+        .sending-overlay {
+            position: fixed;
+            inset: 0;
+            z-index: 100;
+            background: rgba(255,255,255,0.85);
+            backdrop-filter: blur(4px);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+        }
+        .sending-overlay.active { display: flex; }
+        .sending-overlay .spinner {
+            width: 48px;
+            height: 48px;
+            border: 4px solid var(--line);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        
+        .drawer-toggle {
+            position: fixed;
+            bottom: 80px; right: 16px;
+            z-index: 50;
+            width: 52px; height: 52px;
+            border-radius: 50%;
+            background: var(--ink);
+            color: #fff;
+            border: none;
+            box-shadow: 0 4px 20px rgba(11,15,20,0.3);
+            cursor: pointer;
+            display: none;
+            align-items: center; justify-content: center;
+            transition: transform 0.2s;
+        }
+        .drawer-toggle:active { transform: scale(0.9); }
+        
+        .question-drawer {
+            position: fixed;
+            bottom: 0; left: 0; right: 0;
+            z-index: 45;
+            background: #fff;
+            border-top: 1px solid var(--line);
+            box-shadow: 0 -4px 20px rgba(0,0,0,0.08);
+            padding: 12px 16px 20px;
+            transform: translateY(100%);
+            transition: transform 0.35s cubic-bezier(0.16,1,0.3,1);
+            max-height: 55vh;
+            overflow-y: auto;
+            border-radius: 16px 16px 0 0;
+        }
+        .question-drawer.open { transform: translateY(0); }
+        
+        @media (max-width: 768px) {
+            .drawer-toggle { display: flex; }
+            .q-dot { width: 30px; height: 30px; font-size: 10px; }
+            .option-label { padding: 10px 12px; font-size: 13px; }
+            .option-label .letter { width: 24px; height: 24px; font-size: 11px; }
+        }
+        @media (max-width: 480px) {
+            .q-dot { width: 26px; height: 26px; font-size: 9px; border-width: 1.5px; }
+            .option-label { padding: 8px 10px; font-size: 12px; }
+            .option-label .letter { width: 20px; height: 20px; font-size: 10px; }
+            .timer-bar .time { font-size: 14px; }
+        }
+    </style>
+</head>
+<body class="bg-white">
+
+<!-- ===== TOP BAR WITH TIMER ===== -->
+<div class="timer-bar">
+    <div class="flex items-center gap-3">
+        <a href="/tests" class="p-1 rounded-lg hover:bg-surface-2 transition-colors">
+            <span class="material-icons">close</span>
+        </a>
+        <span class="text-sm font-medium hidden sm:inline" id="testTitle">Test</span>
+    </div>
+    
+    <div class="flex items-center gap-4">
+        <div class="flex items-center gap-2">
+            <span class="material-icons text-ink-soft">timer</span>
+            <span class="font-mono font-bold text-lg" id="timerDisplay">00:00</span>
+        </div>
+        <div class="hidden sm:flex items-center gap-2 text-sm text-ink-soft">
+            <span class="material-icons">check_circle</span>
+            <span class="font-mono font-bold" id="answeredCount">0</span>
+            <span>/</span>
+            <span id="totalQuestions">0</span>
+        </div>
+        <button class="btn btn-primary btn-sm" id="finishBtn">
+            <span class="material-icons text-sm">check</span>
+            <span class="hidden sm:inline">Yakunlash</span>
+        </button>
+    </div>
+</div>
+
+<!-- ===== SENDING OVERLAY ===== -->
+<div class="sending-overlay" id="sendingOverlay">
+    <div class="spinner"></div>
+    <p class="mt-4 text-ink font-medium">Javoblar yuborilmoqda...</p>
+    <p class="text-sm text-ink-soft mt-1">Iltimos kuting</p>
+</div>
+
+<!-- ===== MAIN CONTENT ===== -->
+<main class="container-rc mx-auto px-4 py-4 sm:py-6 max-w-3xl" id="mainContent">
+    
+    <div id="loadingState" class="text-center py-20">
+        <span class="material-icons text-4xl text-ink-faint animate-spin">hourglass_top</span>
+        <p class="mt-3 text-ink-soft">Yuklanmoqda...</p>
+    </div>
+    
+    <div id="missingState" class="text-center py-20" style="display:none;">
+        <span class="material-icons text-6xl text-ink-faint">link_off</span>
+        <h3 class="text-xl font-bold mt-4">Sessiya topilmadi</h3>
+        <p class="text-ink-soft mt-2">Iltimos, testni tafsilotlar sahifasidan qayta boshlang.</p>
+        <a href="/tests" class="btn btn-primary mt-6">Testlar ro'yxati</a>
+    </div>
+    
+    <div id="quizState" style="display:none;">
+        <div class="space-y-6">
+            <div class="flex flex-wrap gap-2" id="questionDots"></div>
+            
+            <div class="card p-5 sm:p-6">
+                <div class="flex items-start justify-between mb-4 gap-2 flex-wrap">
+                    <span class="text-sm font-mono text-ink-soft" id="questionCounter">Savol 1 / 0</span>
+                    <div class="flex items-center gap-2">
+                        <button class="btn btn-outline btn-sm p-1.5 min-w-[32px] min-h-[32px]" id="flagBtn" title="Belgilash">
+                            <span class="material-icons text-sm">flag</span>
+                        </button>
+                        <button class="btn btn-outline btn-sm p-1.5 min-w-[32px] min-h-[32px]" id="lifelineBtn" title="50/50">
+                            <span class="material-icons text-sm">emergency</span>
+                            <span class="text-xs font-mono" id="lifelineCount">0</span>
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="prose max-w-none mb-5" id="questionText"></div>
+                
+                <div class="space-y-2.5" id="optionsContainer"></div>
+            </div>
+            
+            <div class="flex items-center justify-between">
+                <button class="btn btn-outline" id="prevBtn" disabled>
+                    <span class="material-icons">arrow_back</span> Oldingi
+                </button>
+                <span class="text-sm text-ink-soft" id="navInfo">0/0 javob</span>
+                <button class="btn btn-primary" id="nextBtn">Keyingi <span class="material-icons">arrow_forward</span></button>
+            </div>
+        </div>
+    </div>
+    
+    <div id="resultState" style="display:none;">
+        <div class="text-center py-6">
+            <div class="w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-4 border-4" id="resultCircle">
+                <span class="font-mono text-3xl font-bold" id="resultPercentage">0%</span>
+            </div>
+            
+            <h2 class="font-display font-bold text-2xl mb-1" id="resultTitle"></h2>
+            <p class="text-ink-soft mb-6" id="resultDesc"></p>
+            
+            <div class="grid grid-cols-3 gap-3 max-w-xs mx-auto mb-6">
+                <div class="bg-easy-bg text-easy p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultCorrect">0</div>
+                    <div class="text-xs">to'g'ri</div>
+                </div>
+                <div class="bg-hard-bg text-hard p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultWrong">0</div>
+                    <div class="text-xs">xato</div>
+                </div>
+                <div class="bg-surface-2 text-ink-soft p-3 rounded-lg">
+                    <div class="font-mono font-bold text-xl" id="resultUnanswered">0</div>
+                    <div class="text-xs">javobsiz</div>
+                </div>
+            </div>
+            
+            <div class="badge badge-brand text-base px-6 py-2.5 mb-6" id="resultXp">
+                <span class="material-icons">bolt</span> +0 XP
+            </div>
+            
+            <div class="flex gap-3 justify-center flex-wrap">
+                <a href="#" class="btn btn-outline" id="resultBackBtn">Test sahifasiga qaytish</a>
+                <a href="/tests" class="btn btn-primary">Boshqa testlar</a>
+            </div>
+        </div>
+    </div>
+    
+</main>
+
+<button class="drawer-toggle" id="drawerToggle">
+    <span class="material-icons">list_alt</span>
+</button>
+
+<div class="question-drawer" id="questionDrawer">
+    <div class="flex items-center justify-between mb-3">
+        <span class="font-semibold flex items-center gap-2">
+            <span class="material-icons">list_alt</span> Savollar
+        </span>
+        <button class="p-1 rounded-lg hover:bg-surface-2" id="drawerCloseBtn">
+            <span class="material-icons">close</span>
+        </button>
+    </div>
+    <div class="flex flex-wrap gap-2" id="drawerDots"></div>
+    <div class="flex items-center gap-4 mt-3 pt-3 border-t border-line text-xs text-ink-soft">
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-easy"></span> Javob</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-hard"></span> Belgilangan</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-surface-2 border border-line"></span> Javobsiz</span>
+        <span class="flex items-center gap-1"><span class="w-2.5 h-2.5 rounded-full bg-info-bg border-2 border-info"></span> Hozirgi</span>
+    </div>
+</div>
+
+<div class="modal-overlay" id="finishModal">
+    <div class="modal-box max-w-sm text-center">
+        <span class="material-icons text-4xl text-info">fact_check</span>
+        <h3 class="font-bold text-lg mt-2 mb-1">Testni yakunlaysizmi?</h3>
+        <p class="text-sm text-ink-soft mb-2" id="finishModalInfo">0 / 0 savolga javob berdingiz.</p>
+        <p class="text-sm text-hard mb-4" id="finishModalWarning" style="display:none;">Javobsiz qoldirgan savollaringiz bo'ladi.</p>
+        <div class="flex gap-2">
+            <button class="btn btn-outline flex-1" onclick="Modal.close('finishModal')">Bekor qilish</button>
+            <button class="btn btn-primary flex-1" id="confirmFinishBtn">
+                <span class="material-icons">check</span> Yakunlash
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="toast-container"></div>
+
+<script src="/assets/js/main.js"></script>
+
+<script>
+(function() {
+    'use strict';
+    
+    // ===== STATE =====
+    const state = {
+        sessionId: null,
+        slug: null,
+        testTitle: '',
+        questions: [],
+        answers: {},        // index -> choice_index
+        flags: {},          // index -> true/false
+        eliminated: {},     // index -> [eliminated_choice_ids]
+        currentIndex: 0,
+        lifelinesLeft: 0,
+        timeLeft: 0,
+        totalQuestions: 0,
+        drawerOpen: false,
+        timerInterval: null,
+        result: null,
+        sending: false,
+        finishInProgress: false,
+        initialized: false,
+        loadingSession: false,
+        phase: 'loading'
+    };
+    
+    // ===== DOM REFS =====
+    const $ = (id) => document.getElementById(id);
+    const dom = {
+        loadingState: $('loadingState'),
+        missingState: $('missingState'),
+        quizState: $('quizState'),
+        resultState: $('resultState'),
+        testTitle: $('testTitle'),
+        timerDisplay: $('timerDisplay'),
+        answeredCount: $('answeredCount'),
+        totalQuestions: $('totalQuestions'),
+        finishBtn: $('finishBtn'),
+        sendingOverlay: $('sendingOverlay'),
+        questionDots: $('questionDots'),
+        drawerDots: $('drawerDots'),
+        questionCounter: $('questionCounter'),
+        questionText: $('questionText'),
+        optionsContainer: $('optionsContainer'),
+        flagBtn: $('flagBtn'),
+        lifelineBtn: $('lifelineBtn'),
+        lifelineCount: $('lifelineCount'),
+        prevBtn: $('prevBtn'),
+        nextBtn: $('nextBtn'),
+        navInfo: $('navInfo'),
+        drawerToggle: $('drawerToggle'),
+        questionDrawer: $('questionDrawer'),
+        drawerCloseBtn: $('drawerCloseBtn'),
+        finishModalInfo: $('finishModalInfo'),
+        finishModalWarning: $('finishModalWarning'),
+        confirmFinishBtn: $('confirmFinishBtn'),
+        resultCircle: $('resultCircle'),
+        resultPercentage: $('resultPercentage'),
+        resultTitle: $('resultTitle'),
+        resultDesc: $('resultDesc'),
+        resultCorrect: $('resultCorrect'),
+        resultWrong: $('resultWrong'),
+        resultUnanswered: $('resultUnanswered'),
+        resultXp: $('resultXp'),
+        resultBackBtn: $('resultBackBtn')
+    };
+    
+    const Auth = window.Auth || {
+        getToken: () => localStorage.getItem('token') || '',
+        isLoggedIn: () => !!localStorage.getItem('token')
+    };
+    
+    // ===== API =====
+    async function callApi(path, opts) {
+        const base = window.RC_DATA_API_BASE || 'http://localhost:8000/api/v1';
+        const token = Auth.getToken();
+        const headers = { 'Accept': 'application/json', 'Content-Type': 'application/json' };
+        if (token) headers['Authorization'] = 'Bearer ' + token;
+        
+        const url = base + path;
+        const body = opts && opts.body ? JSON.stringify(opts.body) : undefined;
+        
+        console.log('📤 API:', url);
+        if (body) console.log('📤 Body:', body);
+        
+        const res = await fetch(url, { 
+            method: (opts && opts.method) || 'GET', 
+            headers, 
+            body 
+        });
+        
+        let data = null;
+        const contentType = res.headers.get('content-type');
+        if (contentType && contentType.includes('application/json')) {
+            try { data = await res.json(); } catch (e) {}
+        }
+        
+        console.log('📥 Javob:', res.status, data);
+        
+        if (!res.ok) {
+            const err = new Error();
+            err.status = res.status;
+            err.detail = data && data.detail !== undefined ? data.detail : data;
+            err.message = (data && (data.message || data.detail?.message)) || res.statusText || 'Xatolik yuz berdi';
+            throw err;
+        }
+        return data;
+    }
+    
+    // ===== HELPERS =====
+    function formatTime(seconds) {
+        if (!seconds || seconds < 0) return '00:00';
+        const m = Math.floor(seconds / 60);
+        const s = Math.floor(seconds % 60);
+        return String(m).padStart(2, '0') + ':' + String(s).padStart(2, '0');
+    }
+    
+    function renderMarkdown(text) {
+        if (!text) return '';
+        try { return marked.parse(text); } catch (e) { return text; }
+    }
+    
+    function getAnsweredCount() { return Object.keys(state.answers).length; }
+    function getCurrentQuestion() { return state.questions[state.currentIndex] || null; }
+    
+    // ===== RENDER =====
+    function renderDots() {
+        let html = '';
+        state.questions.forEach((q, i) => {
+            let cls = 'q-dot';
+            if (i === state.currentIndex) cls += ' active current';
+            if (state.flags[i]) cls += ' flagged';
+            else if (state.answers[i] !== undefined) cls += ' answered';
+            html += `<div class="${cls}" data-index="${i}">${i + 1}</div>`;
+        });
+        dom.questionDots.innerHTML = html;
+        dom.drawerDots.innerHTML = html;
+        
+        dom.questionDots.querySelectorAll('.q-dot').forEach(el => {
+            el.addEventListener('click', () => goTo(parseInt(el.dataset.index)));
+        });
+        dom.drawerDots.querySelectorAll('.q-dot').forEach(el => {
+            el.addEventListener('click', () => { goTo(parseInt(el.dataset.index)); closeDrawer(); });
+        });
+    }
+    
+    function renderQuestion() {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        
+        dom.questionCounter.textContent = `Savol ${state.currentIndex + 1} / ${state.questions.length}`;
+        dom.questionText.innerHTML = renderMarkdown(q.text);
+        dom.flagBtn.classList.toggle('active', !!state.flags[state.currentIndex]);
+        dom.lifelineCount.textContent = state.lifelinesLeft;
+        dom.lifelineBtn.disabled = state.lifelinesLeft <= 0 || (state.eliminated[state.currentIndex] || []).length > 0;
+        
+        const elim = state.eliminated[state.currentIndex] || [];
+        let optionsHtml = '';
+        q.choices.forEach((choice, idx) => {
+            const selected = state.answers[state.currentIndex] === idx;
+            const isElim = elim.includes(choice.id);
+            let cls = 'option-label';
+            if (selected) cls += ' selected';
+            if (isElim) cls += ' eliminated';
+            optionsHtml += `
+                <div class="${cls}" data-choice-index="${idx}">
+                    <span class="letter">${String.fromCharCode(65 + idx)}</span>
+                    <span class="flex-1 markdown-inline">${renderMarkdown(choice.text)}</span>
+                </div>
+            `;
+        });
+        dom.optionsContainer.innerHTML = optionsHtml;
+        
+        dom.optionsContainer.querySelectorAll('.option-label:not(.eliminated)').forEach(el => {
+            el.addEventListener('click', () => { selectOption(parseInt(el.dataset.choiceIndex)); });
+        });
+        
+        dom.prevBtn.disabled = state.currentIndex === 0;
+        const isLast = state.currentIndex === state.questions.length - 1;
+        dom.nextBtn.textContent = isLast ? 'Yakunlash' : 'Keyingi';
+        dom.nextBtn.innerHTML = isLast ? 
+            '<span class="material-icons">check</span> Yakunlash' : 
+            'Keyingi <span class="material-icons">arrow_forward</span>';
+        
+        dom.navInfo.textContent = `${getAnsweredCount()}/${state.questions.length} javob`;
+        dom.answeredCount.textContent = getAnsweredCount();
+        dom.totalQuestions.textContent = state.questions.length;
+        
+        renderDots();
+        
+        if (window.MathJax && MathJax.typesetPromise) {
+            MathJax.typesetPromise([dom.questionText, dom.optionsContainer]).catch(() => {});
+        }
+    }
+    
+    function renderResult() {
+        const r = state.result;
+        if (!r) return;
+        
+        dom.resultState.style.display = 'block';
+        dom.quizState.style.display = 'none';
+        
+        const passed = r.passed;
+        dom.resultCircle.className = `w-28 h-28 rounded-full flex items-center justify-center mx-auto mb-4 border-4 ${passed ? 'border-easy bg-easy-bg text-easy' : 'border-hard bg-hard-bg text-hard'}`;
+        dom.resultPercentage.textContent = Math.round(r.percentage) + '%';
+        dom.resultTitle.textContent = passed ? '🎉 Tabriklaymiz!' : '😔 Afsuski...';
+        dom.resultDesc.textContent = passed ? 'Siz testdan muvaffaqiyatli o\'tdingiz!' : 'Qayta urinib ko\'ring!';
+        dom.resultCorrect.textContent = r.correct_count || 0;
+        dom.resultWrong.textContent = r.wrong_count || 0;
+        dom.resultUnanswered.textContent = r.unanswered_count || 0;
+        dom.resultXp.innerHTML = `<span class="material-icons">bolt</span> +${r.xp_earned || 0} XP`;
+        dom.resultBackBtn.href = '/test/' + state.slug;
+    }
+    
+    // ===== ACTIONS =====
+    function goTo(index) {
+        if (index < 0 || index >= state.questions.length) return;
+        state.currentIndex = index;
+        renderQuestion();
+        if (window.innerWidth < 768) closeDrawer();
+    }
+    
+    function selectOption(choiceIndex) {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        
+        // Agar bir xil variant tanlansa, uni o'chirish (deselect)
+        if (state.answers[state.currentIndex] === choiceIndex) {
+            delete state.answers[state.currentIndex];
+        } else {
+            state.answers[state.currentIndex] = choiceIndex;
+        }
+        
+        localStorage.setItem('quiz_answers_' + state.sessionId, JSON.stringify(state.answers));
+        renderQuestion();
+    }
+    
+    function toggleFlag() {
+        state.flags[state.currentIndex] = !state.flags[state.currentIndex];
+        renderQuestion();
+    }
+    
+    async function useLifeline() {
+        const q = getCurrentQuestion();
+        if (!q) return;
+        if (state.lifelinesLeft <= 0 || (state.eliminated[state.currentIndex] || []).length > 0) return;
+        
+        try {
+            const result = await callApi('/test-session/session/' + state.sessionId + '/lifeline', {
+                method: 'POST',
+                body: { question_id: q.id }
+            });
+            state.eliminated[state.currentIndex] = result.eliminated_choice_ids;
+            state.lifelinesLeft = result.lifelines_left;
+            showToast('🛟 2 ta noto\'g\'ri variant olib tashlandi', 'info', 2000);
+            renderQuestion();
+        } catch (e) {
+            showToast('Lifeline ishlatmadi: ' + e.message, 'error');
+        }
+    }
+    
+    function toggleDrawer() {
+        state.drawerOpen = !state.drawerOpen;
+        dom.questionDrawer.classList.toggle('open', state.drawerOpen);
+        dom.drawerToggle.style.display = state.drawerOpen ? 'none' : 'flex';
+    }
+    
+    function closeDrawer() {
+        state.drawerOpen = false;
+        dom.questionDrawer.classList.remove('open');
+        dom.drawerToggle.style.display = 'flex';
+    }
+    
+    function confirmFinish() {
+        const total = state.questions.length;
+        const answered = getAnsweredCount();
+        dom.finishModalInfo.textContent = `${answered} / ${total} savolga javob berdingiz.`;
+        dom.finishModalWarning.style.display = answered < total ? 'block' : 'none';
+        Modal.open('finishModal');
+    }
+    
+    // ============================================================
+    // YAKUNLASH - BULK SINKHRON (Celery'siz)
+    // ============================================================
+    async function submitAndFinish() {
+        if (state.finishInProgress) return;
+        state.finishInProgress = true;
+        state.sending = true;
+        dom.sendingOverlay.classList.add('active');
+
+        console.log('🚀 Yakunlash boshlandi...');
+        Modal.close('finishModal');
+
+        try {
+            // 1. Barcha javoblarni yig'amiz - FIX: question_id ni to'g'ri olish
+            const answersList = [];
+            for (const [index, choiceIndex] of Object.entries(state.answers)) {
+                const question = state.questions[parseInt(index)];
+                if (!question) {
+                    console.warn('⚠️ Savol topilmadi index:', index);
+                    continue;
+                }
+                
+                const choice = question.choices[parseInt(choiceIndex)];
+                answersList.push({
+                    question_id: question.id,
+                    choice_id: choice ? choice.id : null
+                });
+            }
+
+            console.log('📤 Javoblar:', answersList.length, 'ta');
+            console.log('📤 Tafsilot:', JSON.stringify(answersList, null, 2));
+
+            if (answersList.length === 0) {
+                showToast('Hech qanday javob yo\'q', 'warning');
+                dom.sendingOverlay.classList.remove('active');
+                state.finishInProgress = false;
+                return;
+            }
+
+            // 2. BULK SINKHRON API ga yuboramiz
+            const result = await callApi('/test-session/session/' + state.sessionId + '/answers/bulk', {
+                method: 'POST',
+                body: { answers: answersList }
+            });
+
+            console.log('✅ Bulk natija:', result);
+
+            // 3. Testni yakunlaymiz (grading)
+            const finishResult = await callApi('/test-session/session/' + state.sessionId + '/finish', {
+                method: 'POST'
+            });
+
+            console.log('✅ Finish natija:', finishResult);
+
+            state.result = finishResult;
+            state.phase = 'result';
+            dom.sendingOverlay.classList.remove('active');
+            state.finishInProgress = false;
+
+            localStorage.removeItem('quiz_active_session');
+            localStorage.removeItem('quiz_answers_' + state.sessionId);
+
+            renderResult();
+            showToast('📊 Test yakunlandi!', 'success', 2500);
+
+        } catch (e) {
+            console.error('❌ Yakunlashda xatolik:', e);
+            console.error('Status:', e.status);
+            console.error('Detail:', e.detail);
+            
+            let errorMsg = e.message || 'Noma\'lum xato';
+            if (e.detail && typeof e.detail === 'string') {
+                errorMsg = e.detail;
+            } else if (e.detail && e.detail.message) {
+                errorMsg = e.detail.message;
+            }
+            
+            showToast('Yakunlashda xatolik: ' + errorMsg, 'error');
+            state.sending = false;
+            dom.sendingOverlay.classList.remove('active');
+            state.finishInProgress = false;
+        }
+    }
+    
+    // ============================================================
+    // START TIMER
+    // ============================================================
+    function startTimer() {
+        if (state.timerInterval) clearInterval(state.timerInterval);
+        state.timerInterval = setInterval(() => {
+            state.timeLeft--;
+            dom.timerDisplay.textContent = formatTime(state.timeLeft);
+            dom.timerDisplay.className = 'font-mono font-bold text-lg ' + 
+                (state.timeLeft < 60 ? 'text-hard' : (state.timeLeft < 300 ? 'text-medium' : 'text-ink'));
+            if (state.timeLeft <= 0) {
+                clearInterval(state.timerInterval);
+                showToast('⏰ Vaqt tugadi!', 'warning', 3000);
+                submitAndFinish();
+            }
+        }, 1000);
+    }
+    
+    // ============================================================
+    // LOAD SESSION
+    // ============================================================
+    async function loadSession() {
+        if (state.loadingSession) return;
+        state.loadingSession = true;
+        
+        try {
+            const data = await callApi('/test-session/session/' + state.sessionId + '/questions');
+            
+            state.slug = data.test_slug;
+            state.questions = data.questions || [];
+            state.totalQuestions = state.questions.length;
+            state.timeLeft = data.duration_minutes * 60 || 0;
+            state.lifelinesLeft = data.lifelines || 0;
+            state.testTitle = data.test_title || 'Test';
+            dom.testTitle.textContent = state.testTitle;
+            
+            const savedAnswers = localStorage.getItem('quiz_answers_' + state.sessionId);
+            if (savedAnswers) {
+                try { 
+                    state.answers = JSON.parse(savedAnswers); 
+                    console.log('📂 Saqlangan javoblar:', state.answers);
+                } catch(e) {
+                    console.warn('Javoblarni yuklashda xatolik:', e);
+                }
+            }
+            
+            if (data.status === 'in_progress') {
+                const status = await callApi('/test-session/session/' + state.sessionId);
+                state.timeLeft = status.remaining_seconds || state.timeLeft;
+                state.phase = 'quiz';
+                dom.timerDisplay.textContent = formatTime(state.timeLeft);
+                dom.loadingState.style.display = 'none';
+                dom.quizState.style.display = 'block';
+                startTimer();
+                renderQuestion();
+            } else {
+                // Sessiya allaqachon yakunlangan - natijani olamiz
+                const finishResult = await callApi('/test-session/session/' + state.sessionId + '/finish', {
+                    method: 'POST',
+                });
+                state.result = finishResult;
+                state.phase = 'result';
+                dom.loadingState.style.display = 'none';
+                dom.resultState.style.display = 'block';
+                renderResult();
+            }
+            
+        } catch (e) {
+            console.error('loadSession xatosi:', e);
+            state.phase = 'missing';
+            dom.loadingState.style.display = 'none';
+            dom.missingState.style.display = 'block';
+        } finally {
+            state.loadingSession = false;
+        }
+    }
+    
+    // ============================================================
+    // INIT
+    // ============================================================
+    async function init() {
+        if (state.initialized) return;
+        state.initialized = true;
+        
+        console.log('🚀 init boshlandi');
+        
+        const params = new URLSearchParams(window.location.search);
+        state.sessionId = params.get('session');
+        
+        if (state.sessionId) {
+            await loadSession();
+            return;
+        }
+        
+        const stored = localStorage.getItem('quiz_active_session');
+        if (stored) {
+            try {
+                const data = JSON.parse(stored);
+                state.sessionId = data.session_id;
+                state.slug = data.slug;
+                state.questions = data.questions || [];
+                state.timeLeft = data.duration_minutes * 60 || 0;
+                state.lifelinesLeft = data.lifelines || 0;
+                state.totalQuestions = state.questions.length;
+                state.testTitle = data.title || 'Test';
+                dom.testTitle.textContent = state.testTitle;
+                
+                const savedAnswers = localStorage.getItem('quiz_answers_' + state.sessionId);
+                if (savedAnswers) {
+                    try { state.answers = JSON.parse(savedAnswers); } catch(e) {}
+                }
+                
+                state.phase = 'quiz';
+                dom.loadingState.style.display = 'none';
+                dom.quizState.style.display = 'block';
+                dom.timerDisplay.textContent = formatTime(state.timeLeft);
+                startTimer();
+                renderQuestion();
+                return;
+            } catch (e) {}
+        }
+        
+        state.phase = 'missing';
+        dom.loadingState.style.display = 'none';
+        dom.missingState.style.display = 'block';
+    }
+    
+    // ============================================================
+    // EVENT LISTENERS
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        dom.prevBtn.addEventListener('click', () => goTo(state.currentIndex - 1));
+        dom.nextBtn.addEventListener('click', () => {
+            if (state.currentIndex === state.questions.length - 1) {
+                confirmFinish();
+            } else {
+                goTo(state.currentIndex + 1);
+            }
+        });
+        dom.flagBtn.addEventListener('click', toggleFlag);
+        dom.lifelineBtn.addEventListener('click', useLifeline);
+        dom.finishBtn.addEventListener('click', confirmFinish);
+        dom.confirmFinishBtn.addEventListener('click', submitAndFinish);
+        dom.drawerToggle.addEventListener('click', toggleDrawer);
+        dom.drawerCloseBtn.addEventListener('click', toggleDrawer);
+        
+        document.addEventListener('keydown', function(e) {
+            if (state.phase !== 'quiz') return;
+            if (e.key === 'ArrowLeft' && !dom.prevBtn.disabled) {
+                e.preventDefault();
+                goTo(state.currentIndex - 1);
+            }
+            if (e.key === 'ArrowRight' && !dom.nextBtn.disabled) {
+                e.preventDefault();
+                if (state.currentIndex === state.questions.length - 1) {
+                    confirmFinish();
+                } else {
+                    goTo(state.currentIndex + 1);
+                }
+            }
+            if (e.key >= '1' && e.key <= '4') {
+                const idx = parseInt(e.key) - 1;
+                const q = getCurrentQuestion();
+                if (q && q.choices[idx]) {
+                    e.preventDefault();
+                    selectOption(idx);
+                }
+            }
+            if (e.key === 'Escape') closeDrawer();
+        });
+        
+        init();
+    });
+    
+    // ===== TOAST =====
+    window.showToast = function(message, type = 'info', duration = 3000) {
+        const container = document.getElementById('toast-container');
+        const colors = {
+            info: 'bg-info-bg text-info border-info/20',
+            success: 'bg-easy-bg text-easy border-easy/20',
+            warning: 'bg-medium-bg text-medium border-medium/20',
+            error: 'bg-hard-bg text-hard border-hard/20'
+        };
+        const icons = { info: 'info', success: 'check_circle', warning: 'warning', error: 'error' };
+        const toast = document.createElement('div');
+        toast.className = `flex items-center gap-3 p-3 rounded-lg border shadow-sm ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span class="material-icons">${icons[type] || 'info'}</span><span>${message}</span>`;
+        container.appendChild(toast);
+        setTimeout(() => {
+            toast.style.opacity = '0';
+            toast.style.transform = 'translateX(20px)';
+            toast.style.transition = 'all 0.3s ease';
+            setTimeout(() => toast.remove(), 300);
+        }, duration);
+    };
+    
+    window.submitAndFinish = submitAndFinish;
+    
+})();
+</script>
+
+</body>
+</html>

@@ -329,28 +329,3 @@ def course_test_deleted(sender, instance, **kwargs):
 
     except Exception:
         logger.exception("course_test_deleted")
-
-
-# signals.py — kurs/lesson/enrollment o'zgarganda cache invalidatsiya
-from django.db.models.signals import post_save, post_delete
-from django.dispatch import receiver
-from courses.models import Course, Lesson, Lecture, Enrollment
-from courses.api import cache as course_cache
-
-@receiver([post_save, post_delete], sender=Course)
-def course_changed(sender, instance, **kwargs):
-    course_cache.delete_course_list_static()
-    course_cache.delete_course_detail_static(instance.slug)
-
-@receiver([post_save, post_delete], sender=Lesson)
-def lesson_changed(sender, instance, **kwargs):
-    course_cache.delete_course_detail_static(instance.modul.course.slug)
-
-@receiver([post_save, post_delete], sender=Lecture)
-def lecture_changed(sender, instance, **kwargs):
-    course_cache.delete_course_detail_static(instance.lesson.modul.course.slug)
-
-@receiver([post_save, post_delete], sender=Enrollment)
-def enrollment_changed(sender, instance, **kwargs):
-    course_cache.delete_course_user_cache(instance.course.slug, instance.user_id)
-    course_cache.delete_course_detail_static(instance.course.slug)
